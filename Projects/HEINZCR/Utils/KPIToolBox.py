@@ -564,7 +564,21 @@ class HEINZCRToolBox:
         for row in results.itertuples():
             parent_dict = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
                                                         sub_category_fk=row.sub_category_fk)
-            score = 1 if row.into_interval else 0
+
+            score_value = 'Not Present'
+            in_session = row.in_session
+            if in_session:
+                if not pd.isna(row.trax_average) and row.suggested_price:
+                    # if row.trax_average >= row.min_target and row.trax_average <= row.max_target:
+                    price_in_interval = 1 if row.into_interval else 0
+                    if price_in_interval == 1:
+                        score_value = 'Pass'
+                    else:
+                        score_value = 'Fail'
+                else:
+                    score_value = 'No Price'
+
+            score = Const.PRESENCE_PRICE_VALUES[score_value]
             self.common_v2.write_to_db_result(adherence_kpi_fk, numerator_id=row.product_fk,
                                               denominator_id=row.sub_category_fk, result=row.trax_average,
                                               score=score, target=row.suggested_price, numerator_result=row.min_target,
@@ -577,7 +591,6 @@ class HEINZCRToolBox:
             columns={'product_fk': 'product_count'})
         aggregated_results['percent_complete'] = \
             aggregated_results.loc[:, 'into_interval'] / aggregated_results.loc[:, 'product_count']
-
 
         for row in aggregated_results.itertuples():
             identifier_result = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
@@ -612,7 +625,7 @@ class HEINZCRToolBox:
             'product_ean_code'].tolist()
         for product_in_session in products_in_session:
             if product_in_session:
-                row = my_config_df[my_config_df['ean_code'] == int(product_in_session)]
+                row = my_config_df[my_config_df['ean_code'] == product_in_session]
                 if not row.empty:
                     # ean_code = row['EAN CODE'].values[0]
                     # product_pk = self.labels[self.labels['ean_code'] == product_in_session]['pk'].values[0]
@@ -620,23 +633,23 @@ class HEINZCRToolBox:
                         self.all_products[self.all_products['product_ean_code']
                                           == product_in_session]['product_fk'].iloc[0]
 
-                    print(product_pk)
                     # product_in_session_df = self.scif[self.scif['product_ean_code'] == ean_code]
                     mpisc_df_price = \
                         self.match_product_in_scene[(self.match_product_in_scene['product_fk'] == product_pk) |
                                                     (self.match_product_in_scene[
                                                          'substitution_product_fk'] == product_pk)]['price']
                     try:
-                        suggested_price = row['suggested_price'].values[0]
+                        suggested_price = float(row['suggested_price'].values[0])
                     except Exception as e:
                         Log.error("Product with ean_code {} is not in the configuration file for customer type {}"
                                   .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
                         break
-                    upper_percentage = (100 + row['percentage_weight'].values[0]) / float(100)
-                    lower_percentage = (100 - row['percentage_weight'].values[0]) / float(100)
+                    percentage_weight = int(row['percentage_weight'].values[0])
+                    upper_percentage = (100 + percentage_weight) / float(100)
+                    lower_percentage = (100 - percentage_weight) / float(100)
                     min_price = suggested_price * lower_percentage
                     max_price = suggested_price * upper_percentage
-                    percentage_sku = row['percentage_weight'].values[0]
+                    percentage_sku = percentage_weight
                     into_interval = 0
                     prices_sum = 0
                     count = 0
@@ -655,7 +668,8 @@ class HEINZCRToolBox:
                             into_interval = 100
 
                     results_df.loc[len(results_df)] = [product_pk, trax_average,
-                                                       suggested_price, into_interval / 100, min_price, max_price, percentage_sku ]
+                                                       suggested_price, into_interval / 100, min_price, max_price,
+                                                       percentage_sku]
 
                     # self.common.write_to_db_result_new_tables(fk=10,
                     #                                           numerator_id=product_pk,
@@ -700,7 +714,6 @@ class HEINZCRToolBox:
             pass
         else:
             pass
-
 
         return df
 
