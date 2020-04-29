@@ -282,10 +282,12 @@ class JNJToolBox:
 
         for sku in self.products_in_ass:
             if sku in products_in_session:
-                result = 2
+                # result = 2
+                result = self.result_value_pk(self.DISTRIBUTED)
                 result_num = 1
             else:
-                result = 1
+                # result = 1
+                result = self.result_value_pk(self.OOS)
                 result_num = 0
                 # Saving OOS
                 self.common.write_to_db_result(fk=oos_per_product_kpi_fk, numerator_id=sku, numerator_result=result,
@@ -305,7 +307,9 @@ class JNJToolBox:
         extra_products_in_scene = set(products_in_session) - set(self.products_in_ass)
         for sku in extra_products_in_scene:
             if sku in own_manufacturer_skus:
-                result = 3 # Extra
+                # Extra
+                result = self.result_value_pk(self.EXTRA)
+                # result = 3
                 result_num = 1
                 self.common.write_to_db_result(fk=msl_per_product_kpi_fk, numerator_id=sku, numerator_result=result_num,
                                                result=result, denominator_id=self.own_manuf_fk, denominator_result=1,
@@ -413,10 +417,10 @@ class JNJToolBox:
 
                 for sku in relevant_for_ass:
                     if sku in products_in_session:
-                        result = 2
+                        result = self.result_value_pk(self.DISTRIBUTED)
                         result_num = 1
                     else:
-                        result = 1
+                        result = self.result_value_pk(self.OOS)
                         result_num = 0
                         # Saving OOS
                         self.common.write_to_db_result(fk=oos_cat_subcat_sku_kpi_fk, result=result, score=result,
