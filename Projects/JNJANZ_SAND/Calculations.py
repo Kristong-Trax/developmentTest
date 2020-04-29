@@ -43,13 +43,11 @@ class JNJANZ_SANDCalculations(BaseCalculationsScript):
         self.timer.stop('KPIGenerator.run_project_calculations')
 
     def calculate_local_assortment(self, jnj_generator, data_provider, output, common, exclusion_data):
-        ## TODO :  .... Assortment
+        # TODO :  .... Assortment
         # LOCAL MSL / OSS Assortment KPIs
+        local_assort_toolbox = JNJToolBox(data_provider, output, common,  jnj_generator.exclusive_template)
+        local_assort_toolbox.main_calculation()
 
-        local_assort_toolbox= JNJToolBox(data_provider, output, common,  jnj_generator.exclusive_template)
-        local_assort_toolbox.reset_scif_and_matches()
-        local_assort_toolbox.filter_scif_matches_for_kpi("local_msl")
-        local_assort_toolbox.local_assortment_hierarchy_per_store_calc()
 
 
     @staticmethod

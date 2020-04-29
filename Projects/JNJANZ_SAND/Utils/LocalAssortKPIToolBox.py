@@ -13,12 +13,6 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils.GlobalProjects.JNJ.Utils.GeneralToolBox import JNJGENERALToolBox
 from KPIUtils.GlobalProjects.JNJ.Utils.Fetcher import JNJQueries
 from KPIUtils.Calculations.Assortment import Assortment
-#from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as db_insert
-from pandas.io.sql import DatabaseError
-from dateutil.relativedelta import relativedelta
-from KPIUtils_v2.Utils.Consts.DB import StaticKpis
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 import KPIUtils_v2.Utils.Parsers.ParseInputKPI as Parser
 
@@ -64,27 +58,6 @@ class JNJToolBox:
     ASSORTMENT_FK = 'assortment_fk'
     ASSORTMENT_GROUP_FK = 'assortment_group_fk'
     ASSORTMENT_SUPER_GROUP_FK = 'assortment_super_group_fk'
-    EYE_HAND_LVL_KPI = 'eye_hand_level_sos'
-    EYE_HAND_LVL_KPI_DE = 'eye_hand_level_sos_de'
-    EYE_HAND_LVL_KPI_DE_COMPETITORS = 'eye_hand_level_sos_de_competitors'
-    EYE_HAND_LVL_KPI_BASED_ASSORTMENT = 'eye_hand_level_sos_based_assortment'
-    EYE_HAND_LVL_SUB_CAT_KPI = 'eye_hand_level_sos_sub_category'
-    EYE_HAND_LVL_SUB_CAT_BRAND_KPI = 'eye_hand_level_sos_sub_category_brand'
-    EYE_HAND_LVL_SUB_CAT_BRAND_KPI_COMPETITORS = 'eye_hand_level_sos_sub_category_brand_competitors'
-    EYE_HAND_LVL_SUB_CAT_KPI_BASED_ASSORTMENT = 'eye_hand_level_sos_sub_category_based_assortment'
-
-
-    # jnjanz dynamic msl/oos KPIs
-    OOS_BY_DYNAMIC_ASSORT_STORE_KPI = 'OOS_BY_DYNAMIC_ASSORT_STORE'
-    OOS_BY_DYNAMIC_ASSORT_PRODUCT = 'OOS_BY_DYNAMIC_ASSORT_PRODUCT'
-    OOS_BY_DYNAMIC_ASSORT_CATEGORY = 'OOS_BY_DYNAMIC_ASSORT_CATEGORY'
-    OOS_BY_DYNAMIC_ASSORT_CATEGORY_SUB_CATEGORY = 'OOS_BY_DYNAMIC_ASSORT_CATEGORY_SUB_CATEGORY'
-    OOS_BY_DYNAMIC_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT = 'OOS_BY_DYNAMIC_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT'
-    MSL_BY_DYNAMIC_ASSORT = 'MSL_BY_DYNAMIC_ASSORT'
-    MSL_BY_DYNAMIC_ASSORT_PRODUCT = 'MSL_BY_DYNAMIC_ASSORT_PRODUCT'
-    MSL_BY_DYNAMIC_ASSORT_CATEGORY = 'MSL_BY_DYNAMIC_ASSORT_CATEGORY'
-    MSL_BY_DYNAMIC_ASSORT_CATEGORY_SUB_CATEGORY = 'MSL_BY_DYNAMIC_ASSORT_CATEGORY_SUB_CATEGORY'
-    MSL_BY_DYNAMIC_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT = 'MSL_BY_DYNAMIC_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT'
 
     # local_msl availability
     LOCAL_MSL_AVAILABILITY = 'local_msl'
@@ -109,41 +82,12 @@ class JNJToolBox:
     MSL_AVAILABILITY_SKU = 'MSL - SKU'
 
     JNJ = 'JOHNSON & JOHNSON'
-    PRODUCT_PRESENCE_IN_CATEGORY_CUSTOM = 'PRODUCT_PRESENCE_IN_CATEGORY_CUSTOM'
-    DST_BY_CATEGORY = 'DST_BY_CATEGORY'
     TYPE_SKU = 'SKU'
     TYPE_OTHER = 'Other'
-    STORE_ASSORT = 'store_assortment - SKU'
 
-    OOS_KPI = 'OOS_BY_DYNAMIC_ASSORT'
-    OOS_CAT_KPI = 'OOS_BY_CATEGORY'
-    STORE_ASS_SKU = 'store_level_assortment - SKU'
-    STORE_ASS = 'store_level_assortment'
-    PROMO = 'promo - SKU'
-    PROMO_SUB_CAT = 'promo_sub_category'
-    PROMO_SUB_CAT_BRAND = 'promo_sub_category_brand'
-
-    PRODUCT_PRESENCE_SUB_CATEGORY_CUSTOM = 'PRODUCT_PRESENCE_SUB_CATEGORY_CUSTOM'
-    OOS_BY_SUB_CATEGORY_BY_PRODUCT = 'OOS_BY_SUB_CATEGORY_BY_PRODUCT'
-    OOS_SUB_CAT_KPI = 'OOS_BY_SUB_CATEGORY'
-    DST_SUB_CAT_KPI = 'DST_BY_SUB_CATEGORY'
     SUCCESSFUL = [1, 4]
-
     OTHER = 'Other'
 
-    OSA_OTC = 'OSA OTC'
-    OSA_MOUTHWASH = 'OSA Mouthwash'
-
-    PROD_PRESENCE_BY_SUBCAT_STATEFUL = 'product_presence_by_subcategory_stateful'
-    DIST_BY_SUBCAT_STATEFUL = 'dst_by_subcategory_stateful'
-    OOS_BY_SUBCAT_STATEFUL = 'oos_by_subcategory_stateful'
-    PROD_PRESENCE_BY_CATEGORY_STATEFUL = 'product_presence_by_category_stateful'
-    DIST_BY_CATEGORY_STATEFUL = 'dst_by_category_stateful'
-    OOS_BY_CATEGORY_STATEFUL = 'oos_by_category_stateful'
-
-    STOCK_RATIO = 0.2
-    STOCK_SMART_ATTRIBUTE = 'stock'
-    SMART_ATTRIBUTE = 'smart_attribute'
     YES = 'Yes'
     NO = 'No'
 
@@ -175,14 +119,10 @@ class JNJToolBox:
         self.New_kpi_static_data = common.get_new_kpi_static_data()
         self.kpi_results_new_tables_queries = []
         self.all_products = self.ps_data_provider.get_sub_category(self.all_products, 'sub_category_local_name')
-        # self.store_assortment = self.ps_data_provider.store_ass
         self.store_info = self.data_provider[Data.STORE_INFO]
         self.store_info = self.ps_data_provider.get_ps_store_info(self.store_info)
         self.current_date = datetime.now()
-        # self.store_sos_policies = self.ps_data_provider.get_store_policies()
         self.labels = self.ps_data_provider.get_labels()
-        self.product_promotion = self.ps_data_provider.get_products_in_promotion()
-        # self.session_category_info = self.ps_data_provider.session_category_info
         self.products_in_ass = []
         self.products_to_ass = pd.DataFrame(columns=assTemplate.COLUMNS_ASSORTMENT_DEFINITION_SHEET)
         self.assortment_policy = pd.DataFrame(columns=assTemplate.COLUMNS_STORE_ATTRIBUTES_TO_ASSORT)
@@ -196,7 +136,6 @@ class JNJToolBox:
         self.products_for_ass_new = pd.DataFrame(columns=['session_id', 'product_fk'])
         self.prev_session_products_new_ass = pd.DataFrame()
         self.session_category_new_ass = pd.DataFrame()
-        self.osa_queries = []
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
         self.kpi_result_values = self.get_kpi_result_values_df()
         self.parser = Parser
@@ -291,6 +230,11 @@ class JNJToolBox:
         scene_fk_list = scene_fk_list['scene_fk'].unique().tolist()
         return scene_fk_list
 
+    def get_own_manufacturer_skus_in_scif(self):
+        # Filter scif by own_manufacturer & product_type = 'SKU'
+        return self.scif[(self.scif.manufacturer_fk == self.own_manuf_fk)
+                         & (self.scif.product_type == "SKU")
+                         & (self.scif["facings"] > 0)]['item_id'].unique().tolist()
 
     def fetch_local_assortment_products(self):
         # TODO Fix with real assortment
@@ -322,9 +266,7 @@ class JNJToolBox:
 
     @kpi_runtime()
     def local_assortment_hierarchy_per_store_calc(self):
-        print("Can see the code changes")
-        Log.info("Can see the code changes")
-
+        Log.debug("starting local_assortment calc")
         self.products_in_ass, lvl3_assortment = self.fetch_local_assortment_products()
         self.products_in_ass = np.unique(self.products_in_ass)
         if len(self.products_in_ass) == 0:
@@ -332,7 +274,6 @@ class JNJToolBox:
             return
         self.local_assortment_hierarchy_per_category_and_subcategory()
 
-        Log.debug("starting oos_per_store_calc")
         oos_per_product_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name'] ==
                                                           self.OOS_BY_LOCAL_ASSORT_PRODUCT]['pk'].values[0]
         msl_per_product_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name'] ==
@@ -360,22 +301,15 @@ class JNJToolBox:
 
         # Saving MSL - Extra
         # Add the New Products found in Session from same manufacturer into MSL
+        own_manufacturer_skus = self.get_own_manufacturer_skus_in_scif()
         extra_products_in_scene = set(products_in_session) - set(self.products_in_ass)
         for sku in extra_products_in_scene:
-            #Filter scif by own_manufacturer & product_type = 'SKU'
-            own_manufacturer_skus = self.scif[
-                (self.scif.manufacturer_fk == self.own_manuf_fk)
-                & (self.scif.product_type == "SKU")
-                & (self.scif["facings"] > 0)
-            ]['item_id'].tolist()
-
             if sku in own_manufacturer_skus:
-                result = 3 #Extra
+                result = 3 # Extra
                 result_num = 1
                 self.common.write_to_db_result(fk=msl_per_product_kpi_fk, numerator_id=sku, numerator_result=result_num,
                                                result=result, denominator_id=self.own_manuf_fk, denominator_result=1,
                                                score=result, identifier_parent="MSL_Local_store", should_enter=True)
-
 
         oos_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name'] ==
                                               self.OOS_BY_LOCAL_ASSORT_STORE_KPI]['pk'].values[0]
@@ -503,3 +437,14 @@ class JNJToolBox:
 
         Log.debug("finishing assortment_per_category")
         return
+
+    def main_calculation(self):
+        try:
+            if self.scif.empty:
+                Log.warning('Scene item facts is empty for this session')
+            self.reset_scif_and_matches()
+            self.filter_scif_matches_for_kpi("local_msl")
+            self.local_assortment_hierarchy_per_store_calc()
+        except Exception as e:
+            Log.error("Error: {}".format(e))
+        return 0
