@@ -76,7 +76,6 @@ class JNJToolBox:
     MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY = 'MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY'
     MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT = 'MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT'
 
-
     # msl availability
     MSL_AVAILABILITY = 'MSL'
     MSL_AVAILABILITY_SKU = 'MSL - SKU'
@@ -300,7 +299,7 @@ class JNJToolBox:
                                            score=result, identifier_parent="MSL_Local_store", should_enter=True)
 
         # Saving MSL - Extra
-        # Add the New Products found in Session from same manufacturer into MSL
+        # Add the Extra Products found in Session from same manufacturer into MSL
         own_manufacturer_skus = self.get_own_manufacturer_skus_in_scif()
         extra_products_in_scene = set(products_in_session) - set(self.products_in_ass)
         for sku in extra_products_in_scene:
