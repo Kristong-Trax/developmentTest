@@ -54,11 +54,11 @@ class SceneLayoutComplianceCalc(object):
             (self.kpi_static_data[KPI_TYPE_COL] == GSK_LAYOUT_COMPLIANCE_BLOCK)
             & (self.kpi_static_data['delete_time'].isnull())]
 
+        self.calculate_gsk_layout_compliance_brand_fsos(kpi_details=gsk_layout_compliance_brand_fsos)
         self.calculate_gsk_layout_compliance_block(kpi_details=gsk_layout_compliance_block)
         self.calculate_gsk_layout_compliance_sequence(kpi_details=gsk_layout_compliance_sequence)
         self.calculate_gsk_layout_compliance_super_brand_fsos(kpi_details=gsk_layout_compliance_sbrand_fsos)
         self.calculate_gsk_layout_compliance_position(kpi_details=gsk_layout_compliance_position)
-        self.calculate_gsk_layout_compliance_brand_fsos(kpi_details=gsk_layout_compliance_brand_fsos)
 
     def calculate_gsk_layout_compliance_block(self, kpi_details):
         Log.info("Calculating {kpi} for session: {sess} and scene: {scene}".format(
@@ -108,7 +108,7 @@ class SceneLayoutComplianceCalc(object):
                             super_id=super_brand_pk,
                             scat=sub_category_pk,
                         ))
-                    exclude_stacked_products = bool(int(each_target.stacking_exclude))
+                    stacking_include = bool(int(each_target.stacking_include))
                     # able to pass sub cat and super brand[?] // or get the prods and pass
                     block_filters = {'sub_category_fk': [sub_category_pk],
                                      'Super Brand': [super_brand_custom_entity.name.iloc[0]]
@@ -117,7 +117,7 @@ class SceneLayoutComplianceCalc(object):
                     additional_filters = {
                         'minimum_facing_for_block': 1,
                         'minimum_block_ratio': 0,
-                        'include_stacking': not exclude_stacked_products,
+                        'include_stacking': stacking_include,
                         'check_vertical_horizontal': True,
                     }
                     block_res = self.block.network_x_block_together(
@@ -197,7 +197,7 @@ class SceneLayoutComplianceCalc(object):
                 sequence_brand_pks = each_target.sequence_brand_pks
                 condition = each_target.condition
                 sub_category_pk = each_target.sub_category_fk
-                exclude_stacked_products = bool(int(each_target.stacking_exclude))
+                stacking_include = bool(int(each_target.stacking_include))
                 stack_filtered_mpis = self.match_product_data
                 Log.info("Checking if brand: {br} is present {condition} as in sequence : {seq}.".
                          format(br=brand_pk_to_check,
@@ -213,7 +213,7 @@ class SceneLayoutComplianceCalc(object):
                                     br_lst=sequence_brand_pks
                                     ))
                     continue
-                if exclude_stacked_products:
+                if not stacking_include:
                     # consider only stacking layer 1 products
                     stack_filtered_mpis = self.match_product_data[self.match_product_data['stacking_layer'] == 1]
                 interested_brand_prod_data = stack_filtered_mpis[
@@ -326,14 +326,14 @@ class SceneLayoutComplianceCalc(object):
                                      v=each_target.template_fks,
                                      ))
                     continue
-                result = score = 0
+                numerator = result = score = 0
                 store_banner_pk = each_target.store_banner_pk
                 super_brand_pk = each_target.super_brand_pk
                 brand_pk = each_target.brand_pk
                 sub_category_pk = each_target.sub_category_fk
-                exclude_stacked_products = bool(int(each_target.stacking_exclude))
+                stacking_include = bool(int(each_target.stacking_include))
                 facings_field = 'facings'
-                if exclude_stacked_products:
+                if not stacking_include:
                     # consider only stacking layer 1 products
                     facings_field = 'facings_ign_stack'
                 scif_with_products = self.scif.merge(self.products, on='product_fk',
@@ -343,13 +343,13 @@ class SceneLayoutComplianceCalc(object):
                     # should never happen
                     Log.error('Super Brand not found. Custom Entity Not loaded with a recent template update.')
                     continue
-                super_brand_name = super_brand_custom_entity.name.iloc[0]
-                numerator = scif_with_products[
-                    (scif_with_products['Super Brand'] == super_brand_name) &
-                    (scif_with_products['sub_category_fk'] == sub_category_pk)][facings_field].sum()
                 denominator = scif_with_products[
                     (scif_with_products['sub_category_fk'] == sub_category_pk)][facings_field].sum()
                 if denominator:
+                    super_brand_name = super_brand_custom_entity.name.iloc[0]
+                    numerator = scif_with_products[
+                        (scif_with_products['Super Brand'] == super_brand_name) &
+                        (scif_with_products['sub_category_fk'] == sub_category_pk)][facings_field].sum()
                     result = round((numerator / float(denominator)) * 100, 2)
                 if result >= each_target.threshold:
                     score = 1
@@ -398,7 +398,7 @@ class SceneLayoutComplianceCalc(object):
                 store_banner_pk = each_target.store_banner_pk
                 sub_category_pk = each_target.sub_category_fk
                 brand_pk = each_target.brand_pk
-                exclude_stacked_products = bool(int(each_target.stacking_exclude))
+                stacking_include = bool(int(each_target.stacking_include))
                 # numerator - Cumulative no of Facings "of the brand and sub category" available at desired shelf
                 numerator = 0  # number of facings available in desired shelf
                 # check for banner and template match in target
@@ -419,7 +419,7 @@ class SceneLayoutComplianceCalc(object):
                                      ))
                     continue
                 stack_filtered_mpis = self.match_product_data
-                if exclude_stacked_products:
+                if not stacking_include:
                     # consider only stacking layer 1 products
                     stack_filtered_mpis = self.match_product_data[self.match_product_data['stacking_layer'] == 1]
                 # denominator - total number of facings "of the brand and sub category" available in whole scene
@@ -527,32 +527,32 @@ class SceneLayoutComplianceCalc(object):
                                      v=each_target.template_fks,
                                      ))
                     continue
-                result = score = 0
+                numerator = result = score = 0
                 store_banner_pk = each_target.store_banner_pk
                 super_brand_pk = each_target.super_brand_pk
                 brand_pk = each_target.brand_pk
                 sub_category_pk = each_target.sub_category_fk
-                exclude_stacked_products = bool(int(each_target.stacking_exclude))
+                stacking_include = bool(int(each_target.stacking_include))
                 facings_field = 'facings'
-                if exclude_stacked_products:
+                if not stacking_include:
                     # consider only stacking layer 1 products
                     facings_field = 'facings_ign_stack'
-                numerator = self.scif[
-                    (self.scif['brand_fk'] == brand_pk) &
-                    (self.scif['sub_category_fk'] == sub_category_pk)][facings_field].sum()
-                scif_with_products = self.scif.merge(self.products, on='product_fk',
-                                                     how='left', suffixes=('', '_prod'))
                 super_brand_custom_entity = self.custom_entity_data[self.custom_entity_data['pk'] == super_brand_pk]
                 if super_brand_custom_entity.empty:
                     # should never happen
                     Log.error('Super Brand not found. Custom Entity Not loaded with a recent template update.')
                     continue
                 super_brand_name = super_brand_custom_entity.name.iloc[0]
+                scif_with_products = self.scif.merge(self.products, on='product_fk',
+                                                     how='left', suffixes=('', '_prod'))
                 denominator = scif_with_products[
                     (scif_with_products['Super Brand'] == super_brand_name) &
                     (scif_with_products['sub_category_fk'] == sub_category_pk)][facings_field].sum()
                 if denominator:
-                    result = numerator / float(denominator)
+                    numerator = self.scif[
+                        (self.scif['brand_fk'] == brand_pk) &
+                        (self.scif['sub_category_fk'] == sub_category_pk)][facings_field].sum()
+                    result = round((numerator / float(denominator)) * 100, 2)
                 if result >= each_target.threshold:
                     score = 1
                 self.common.write_to_db_result(
