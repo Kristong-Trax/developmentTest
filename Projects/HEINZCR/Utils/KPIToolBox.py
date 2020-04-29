@@ -570,7 +570,7 @@ class HEINZCRToolBox:
             if in_session:
                 if not pd.isna(row.trax_average) and row.suggested_price:
                     # if row.trax_average >= row.min_target and row.trax_average <= row.max_target:
-                    price_in_interval = 1 if row.into_interval else 0
+                    price_in_interval = 1 if row.into_interval == 1 else 0
                     if price_in_interval == 1:
                         score_value = 'Pass'
                     else:
