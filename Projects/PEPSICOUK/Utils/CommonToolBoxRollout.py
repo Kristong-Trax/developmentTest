@@ -133,23 +133,29 @@ class PEPSICOUKCommonToolBox:
         return scif, matches
 
     def calculate_displays_by_bin_bin_logic(self, scif, matches):
-        bin_bay_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
+        bin_bin_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
                                                   (self.displays_template[self.BAY_TO_SEPARATE] == 'No') &
                                                   (self.displays_template[self.BIN_TO_SEPARATE] == 'Yes')] \
             [self.DISPLAY_NAME_TEMPL].unique()
-        scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(bin_bay_displays)]
-        matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(bin_bay_displays)]
+        scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(bin_bin_displays)]
+        matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(bin_bin_displays)]
         bin_bin_scif = scif
         bin_bin_matches = matches
         if not matches.empty:
-            # scene_display =
-            scene_display = self.scene_display[self.scene_display['display_name'] == 'Top Left']
-            scene_display = scene_display.sort_values(['scene_fk', 'rect_x'])
-            scene_display = scene_display.assign(rect_x_end=scene_display.groupby('scene_fk').rect_x.shift(-1)).\
-                fillna({'rect_x_end': np.inf})
-            scene_display['bay_number'] = scene_display.groupby(['scene_fk'])['rect_x'].rank()
-
+            scene_display = self.assign_bays_to_bins()
+            # bin_bin_matches =
         return bin_bin_scif, bin_bin_matches
+
+    def place_products_to_bays(self):
+        pass
+
+    def assign_bays_to_bins(self):
+        scene_display = self.scene_display[self.scene_display['display_name'] == 'Top Left']
+        scene_display = scene_display.sort_values(['scene_fk', 'rect_x'])
+        scene_display = scene_display.assign(rect_x_end=scene_display.groupby('scene_fk').rect_x.shift(-1)). \
+            fillna({'rect_x_end': np.inf})
+        scene_display['bay_number'] = scene_display.groupby(['scene_fk'])['rect_x'].rank()
+        return scene_display
 
     #start here
     def calculate_displays_by_bin_bay_logic(self, scif, matches):
