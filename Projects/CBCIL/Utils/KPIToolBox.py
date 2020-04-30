@@ -589,7 +589,7 @@ class CBCILCBCIL_ToolBox(object):
     @kpi_runtime()
     def calculate_availability_by_sequence(self, **general_filters):
         params = general_filters['filters']
-        target = general_filters.get('Target', 0)
+        target = int(general_filters.get('Target', 0))
         if params['All']['scene_id']:
             filters = params['1'].copy()
             filters.update(params['2'])
