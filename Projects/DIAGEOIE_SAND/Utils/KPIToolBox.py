@@ -22,10 +22,10 @@ class DIAGEOIESandToolBox:
         This function calculates the KPI results.
          """
         # SOS Out Of The Box kpis
-        self.diageo_generator.activate_ootb_kpis(self.commonV2)
+        self.diageo_generator.global_sos_calculation(include_posm=True)
 
         # sos by scene type
-        self.diageo_generator.global_sos_calculation(include_posm=True)
+        self.diageo_generator.sos_by_scene_type(self.commonV2)
 
         # Global assortment kpis
         assortment_res = self.diageo_generator.diageo_global_grouping_assortment_calculation()
