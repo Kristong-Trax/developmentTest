@@ -155,6 +155,7 @@ class PEPSICOUKCommonToolBox:
         scene_display = scene_display.assign(rect_x_end=scene_display.groupby('scene_fk').rect_x.shift(-1)). \
             fillna({'rect_x_end': np.inf})
         scene_display['bay_number'] = scene_display.groupby(['scene_fk'])['rect_x'].rank()
+        scene_display.rename(columns={'rect_x': 'rect_x_start'}, inplace=True)
         return scene_display
 
     #start here
