@@ -621,10 +621,12 @@ class HEINZCRToolBox:
         results_df = self.adherence_results
         my_config_df = \
             config_df[config_df['store_type'].str.encode('utf-8') == self.store_info.store_type[0].encode('utf-8')]
+        my_config_df.reset_index(inplace=True)
         products_in_session = self.scif.drop_duplicates(subset=['product_ean_code'], keep='last')[
             'product_ean_code'].tolist()
         for product_in_session in products_in_session:
             if product_in_session:
+
                 row = my_config_df[my_config_df['ean_code'] == product_in_session]
                 if not row.empty:
                     # ean_code = row['EAN CODE'].values[0]
