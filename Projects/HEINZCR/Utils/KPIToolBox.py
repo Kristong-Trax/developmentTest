@@ -65,7 +65,7 @@ class HEINZCRToolBox:
         self.store_targets = pd.read_excel(Const.STORE_TARGETS_PATH)
         self.sub_category_weight = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='category_score')
         self.kpi_weights = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='max_weight')
-        self.targets = self.ps_data_provider.get_kpi_external_targets()
+        # self.targets = self.ps_data_provider.get_kpi_external_targets()
         self.store_assortment = PSAssortmentDataProvider(
             self.data_provider).execute(policy_name=None)
         try:
