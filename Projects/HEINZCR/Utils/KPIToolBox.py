@@ -110,10 +110,12 @@ class HEINZCRToolBox:
         if self.scif.empty:
             return
         # these function must run first
-        #  self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
-        #                                                                          sheetname="Price Adherence"))
-        compare_df_test = pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH, sheetname="Price Adherence")
-        self.adherence_results = self.heinz_global_price_adherence(self.targets)
+        dtypes = {'ean_code': str}
+        self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
+                                                                                 sheetname="Price Adherence",
+                                                                                 dtype=dtypes))
+        # compare_df_test = pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH, sheetname="Price Adherence")
+        # self.adherence_results = self.heinz_global_price_adherence(self.targets)
         self.extra_spaces_results = self.heinz_global_extra_spaces()
         self.set_relevant_sub_categories()
 
@@ -611,8 +613,8 @@ class HEINZCRToolBox:
                                               should_enter=True)
 
     def heinz_global_price_adherence(self, config_df):
-        config_df = config_df.sort_values(by=["received_time"], ascending=False).drop_duplicates(
-            subset=['start_date', 'end_date', 'ean_code', 'store_type'], keep="first")
+        # config_df = config_df.sort_values(by=["received_time"], ascending=False).drop_duplicates(
+        #     subset=['start_date', 'end_date', 'ean_code', 'store_type'], keep="first")
 
         self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'price'] = \
             self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'promotion_price']
