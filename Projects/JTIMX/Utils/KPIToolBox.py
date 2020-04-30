@@ -131,7 +131,6 @@ class ToolBox(GlobalSessionToolBox):
             scif_with_substitution_product_fk.substitution_product_fk.to_numpy())
         present_products_in_session = relevant_scif.merge(relevant_mpis, how='left', on='product_fk')
         present_products_in_session.dropna(subset=['facings'], inplace=True)
+        present_products_in_session.drop_duplicates(subset=['product_fk'], inplace=True)
 
         return present_products_in_session
-
-
