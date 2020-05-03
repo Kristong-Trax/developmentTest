@@ -78,7 +78,7 @@ class ToolBox:
         """
         if self.global_fail:
             return
-        self.template = pd.read_excel(template_path, sheetname=None)
+        self.template = pd.read_excel(template_path, sheet_name=None)
         self.competitive_brands = self.parse_comp_brands(self.competitive_brands, comp_path)
         self.adj_brands = self.parse_comp_brands(self.adj_brands, adj_path)
         # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
