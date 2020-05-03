@@ -129,13 +129,18 @@ class PEPSICOUKCommonToolBox:
 
         bin_bay_scif, bin_bay_matches = self.calculate_displays_by_bin_bay_logic(scif, matches)
         bin_bin_scif, bin_bin_matches = self.calculate_displays_by_bin_bin_logic(scif, matches)
+        bin_shelf_scif, bin_shelf_matches = self.calculate_displays_by_mix_logic(scif, matches)
 
+        return scif, matches
+
+    def calculate_displays_by_mix_logic(self, scif, matches):
         return scif, matches
 
     def calculate_displays_by_bin_bin_logic(self, scif, matches):
         bin_bin_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
                                                   (self.displays_template[self.BAY_TO_SEPARATE] == 'No') &
-                                                  (self.displays_template[self.BIN_TO_SEPARATE] == 'Yes')] \
+                                                  (self.displays_template[self.BIN_TO_SEPARATE] == 'Yes') &
+                                                  ((~self.displays_template[self.KPI_LOGIC]) == 'Mix')] \
             [self.DISPLAY_NAME_TEMPL].unique()
         scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(bin_bin_displays)]
         matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(bin_bin_displays)]
@@ -143,25 +148,45 @@ class PEPSICOUKCommonToolBox:
         bin_bin_matches = matches
         if not matches.empty:
             scene_display = self.assign_bays_to_bins()
-            # bin_bin_matches =
+            bin_bin_matches = self.place_products_to_bays(bin_bin_matches, scene_display)
+            bin_bin_scif, bin_bin_matches = self.calculate_product_length_on_display(bin_bin_scif, bin_bin_matches)
         return bin_bin_scif, bin_bin_matches
 
-    def place_products_to_bays(self):
-        pass
+    def calculate_product_length_on_display(self, scif, matches):
+        bay_sku = matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
+                                  as_index=False).agg({'facings_matches': np.sum})
+        bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
+        matches = matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER], how='left')
+        matches[MatchesConsts.WIDTH_MM_ADVANCE] = matches[self.SHELF_LEN_DISPL] / matches['unique_skus']
+
+        aggregated_matches = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]). \
+            agg({'unique_skus': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
+        scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
+        scif['facings'] = scif['updated_facings'] = scif['unique_skus']
+        scif[ScifConsts.GROSS_LEN_ADD_STACK] = scif['updated_gross_len'] = scif[
+            MatchesConsts.WIDTH_MM_ADVANCE]
+        return scif, matches
+
+    def place_products_to_bays(self, matches, scene_display):
+        matches = matches.merge(scene_display, on=ScifConsts.SCENE_FK, how='left')
+        matches.loc[(matches['rect_x'] >= matches['rect_x_start']) &
+                    (matches['rect_x'] < matches['rect_x_end']), 'bay_number'] = matches['assigned_bay_number']
+        return matches
 
     def assign_bays_to_bins(self):
         scene_display = self.scene_display[self.scene_display['display_name'] == 'Top Left']
         scene_display = scene_display.sort_values(['scene_fk', 'rect_x'])
         scene_display = scene_display.assign(rect_x_end=scene_display.groupby('scene_fk').rect_x.shift(-1)). \
             fillna({'rect_x_end': np.inf})
-        scene_display['bay_number'] = scene_display.groupby(['scene_fk'])['rect_x'].rank()
+        scene_display['assigned_bay_number'] = scene_display.groupby(['scene_fk'])['rect_x'].rank()
         scene_display.rename(columns={'rect_x': 'rect_x_start'}, inplace=True)
+        scene_display.drop('bay_number', axis=1)
         return scene_display
 
-    #start here
     def calculate_displays_by_bin_bay_logic(self, scif, matches):
         bin_bay_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
-                                                  (self.displays_template[self.BAY_TO_SEPARATE] == 'Yes')] \
+                                                  (self.displays_template[self.BAY_TO_SEPARATE] == 'Yes') &
+                                                  ((~self.displays_template[self.KPI_LOGIC]) == 'Mix')] \
             [self.DISPLAY_NAME_TEMPL].unique()
         scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(bin_bay_displays)]
         matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(bin_bay_displays)]
@@ -170,19 +195,20 @@ class PEPSICOUKCommonToolBox:
         if not matches.empty:
             bin_bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER],
                                                          keep='last')
-            bay_sku = bin_bay_matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
-                                                 as_index=False).agg({'facings_matches': np.sum})
-            bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
-            bin_bay_matches = bin_bay_matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK,
-                                                                       MatchesConsts.BAY_NUMBER], how='left')
-            bin_bay_matches[MatchesConsts.WIDTH_MM_ADVANCE] = bin_bay_matches[self.SHELF_LEN_DISPL] / \
-                                                              bin_bay_matches['unique_skus']
-
-            aggregated_matches =bin_bay_matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]).\
-                agg({'unique_skus': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
-            bin_bay_scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
-            bin_bay_scif['facings'] = bin_bay_scif['updated_facings'] = scif['unique_skus']
-            bin_bay_scif[ScifConsts.GROSS_LEN_ADD_STACK] = scif['updated_gross_len'] = bin_bay_scif[MatchesConsts.WIDTH_MM_ADVANCE]
+            bin_bay_scif, bin_bay_matches = self.calculate_product_length_on_display(bin_bay_scif, bin_bay_matches)
+            # bay_sku = bin_bay_matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
+            #                                      as_index=False).agg({'facings_matches': np.sum})
+            # bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
+            # bin_bay_matches = bin_bay_matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK,
+            #                                                            MatchesConsts.BAY_NUMBER], how='left')
+            # bin_bay_matches[MatchesConsts.WIDTH_MM_ADVANCE] = bin_bay_matches[self.SHELF_LEN_DISPL] / \
+            #                                                   bin_bay_matches['unique_skus']
+            #
+            # aggregated_matches =bin_bay_matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]).\
+            #     agg({'unique_skus': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
+            # bin_bay_scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
+            # bin_bay_scif['facings'] = bin_bay_scif['updated_facings'] = scif['unique_skus']
+            # bin_bay_scif[ScifConsts.GROSS_LEN_ADD_STACK] = scif['updated_gross_len'] = bin_bay_scif[MatchesConsts.WIDTH_MM_ADVANCE]
         return bin_bay_scif, bin_bay_matches
 
     def set_filtered_scif_and_matches_for_all_kpis_secondary(self, scif, matches):
