@@ -7,7 +7,6 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from Projects.MOLSONCOORSCA.Utils.Const import Const
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from Trax.Tools.ProfessionalServices.TemplatesLoaders.Assortment.AssortmentBase import DATA_QUERY
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.AdjacencyCalculations_v2 import Adjancency
@@ -62,7 +61,7 @@ class ToolBox:
         self.dependency_lookup = {}
         self.base_measure = None
         self.circle_kpis = {}
-        self.store_data = pd.read_sql_query(DATA_QUERY, self.common.rds_conn.db)
+        self.store_data = pd.read_sql_query(Const.DATA_QUERY, self.common.rds_conn.db)
         self.rel_store_data = self.store_data[self.store_data['pk'] == self.store_id]
         self.assortment = Assortment(self.data_provider, self.output)
         self.prev_prods = self.load_prev_prods(self.store_id, self.session_info['visit_date'].iloc[0])
@@ -252,6 +251,7 @@ class ToolBox:
                    'denominator_id': relevant_scif[main_line[level['den_col']]].iloc[0],
                    'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
         return level['end'], results
+
 
     def calculate_distribution(self, kpi_name, kpi_line, relevant_scif, level, main_line, **kwargs):
         self.assortment.scif = relevant_scif
@@ -516,7 +516,6 @@ class ToolBox:
         for k in assort.keys():
             if k not in existing_brands:
                 del assort[k]
-
         den = len(assort.keys())
         results = []
         total = 0
@@ -540,13 +539,11 @@ class ToolBox:
             })
 
             total += result
-
         result = 0
         if total == den:
             result = 1
         elif assort_template == 'Adjacencies':
             result = self.safe_divide(total, den)
-
         score = self.result_values_dict['Pass'] if result == 1 else self.result_values_dict['Fail']
         results.append({'score': score, 'result': score, 'numerator_result': total, 'denominator_result': den,
                         'numerator_id': self.manufacturer_fk,
