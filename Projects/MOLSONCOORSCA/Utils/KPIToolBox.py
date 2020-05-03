@@ -66,7 +66,7 @@ class ToolBox:
         self.assortment = Assortment(self.data_provider, self.output)
         self.prev_prods = self.load_prev_prods(self.store_id, self.session_info['visit_date'].iloc[0])
         self.mcc_cooler_fk = self.assortment.get_assortment_fk_by_name('MCC Cooler')
-        self.brands_dict = self.all_products.set_index('brand_name')[['brand_fk', 'manufacturer_fk']].drop_duplicates() \
+        self.brands_dict = self.all_products.set_index('brand_name')[['brand_fk', 'manufacturer_fk']].drop_duplicates()\
             .to_dict('index')
         self.adjacency_builder = Adjancency(self.data_provider)
 
