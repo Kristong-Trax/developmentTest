@@ -7,7 +7,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from Projects.MOLSONCOORSCA.Utils.Const import Const
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from Trax.Tools.ProfessionalServices.TemplatesLoaders.Assortment.AssortmentBase import DATA_QUERY
+# from Trax.Tools.ProfessionalServices.TemplatesLoaders.Assortment.AssortmentBase import DATA_QUERY
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.AdjacencyCalculations_v2 import Adjancency
@@ -62,7 +62,7 @@ class ToolBox:
         self.dependency_lookup = {}
         self.base_measure = None
         self.circle_kpis = {}
-        self.store_data = pd.read_sql_query(DATA_QUERY, self.common.rds_conn.db)
+        self.store_data = pd.read_sql_query(Const.DATA_QUERY, self.common.rds_conn.db)
         self.rel_store_data = self.store_data[self.store_data['pk'] == self.store_id]
         self.assortment = Assortment(self.data_provider, self.output)
         self.prev_prods = self.load_prev_prods(self.store_id, self.session_info['visit_date'].iloc[0])
