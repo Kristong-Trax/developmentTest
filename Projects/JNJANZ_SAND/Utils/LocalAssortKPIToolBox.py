@@ -441,6 +441,8 @@ class JNJToolBox:
         try:
             if self.scif.empty:
                 Log.warning('Scene item facts is empty for this session')
+                Log.warning('Unable to calculate local_msl assortment KPIs: SCIF  is empty')
+                return 0
             self.reset_scif_and_matches()
             self.filter_scif_matches_for_kpi("local_msl")
             self.local_assortment_hierarchy_per_store_calc()
