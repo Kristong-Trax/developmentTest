@@ -40,7 +40,7 @@ class LinearBrandVsBrandIndexKpi(UnifiedCalculationsScript):
             denom_num_linear, denom_denom_linear = self.util.calculate_sos(denominator_sos_filters, **general_filters)
             denominator_sos = denom_num_linear/denom_denom_linear if denom_denom_linear else 0
 
-            index = numerator_sos / denominator_sos if denominator_sos else 0
+            index = numerator_sos / denominator_sos if denominator_sos else 1
             self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
                                     numerator_result=num_num_linear, denominator_id=row.denominator_id,
                                     denominator_result=denom_num_linear, result=index, score=index,

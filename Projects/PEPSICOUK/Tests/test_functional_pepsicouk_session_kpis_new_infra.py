@@ -473,8 +473,8 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.assertEquals(len(kpi_results), 1)
         expected_list = list()
         expected_list.append({'kpi_level_2_fk': 301, 'numerator_id': 194, 'denominator_id': 183, 'numerator_result': 0,
-                              'denominator_result': 0, 'score': 0,
-                              'result': 0})
+                              'denominator_result': 0, 'score': 1,
+                              'result': 1})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
