@@ -67,7 +67,7 @@ class ToolBox:
         self.assortment = Assortment(self.data_provider, self.output)
         self.prev_prods = self.load_prev_prods(self.store_id, self.session_info['visit_date'].iloc[0])
         self.mcc_cooler_fk = self.assortment.get_assortment_fk_by_name('MCC Cooler')
-        self.brands_dict = self.all_products.set_index('brand_name')[['brand_fk', 'manufacturer_fk']].drop_duplicates() \
+        self.brands_dict = self.all_products.set_index('brand_name')[['brand_fk', 'manufacturer_fk']].drop_duplicates()\
             .to_dict('index')
         self.adjacency_builder = Adjancency(self.data_provider)
 
@@ -79,7 +79,7 @@ class ToolBox:
         """
         if self.global_fail:
             return
-        self.template = pd.read_excel(template_path, sheetname=None)
+        self.template = pd.read_excel(template_path, sheet_name=None)
         self.competitive_brands = self.parse_comp_brands(self.competitive_brands, comp_path)
         self.adj_brands = self.parse_comp_brands(self.adj_brands, adj_path)
         # self.dependencies = {key: None for key in self.template[Const.KPIS][Const.KPI_NAME]}
@@ -219,7 +219,7 @@ class ToolBox:
             return
         num_df = self.filter_df(den_df, self.get_kpi_line_filters(kpi_line))
         num_id = self.manufacturer_fk
-        if not num_df.empty:  # num_df can only be empty on kpis that iterate around the den col, all of these use molson as the num
+        if not num_df.empty:
             num_id = self.get_fk(num_df, main_line[level['num_col']])
         den = den_df[col].sum()
         num = num_df[col].sum()
@@ -253,7 +253,6 @@ class ToolBox:
                    'kpi_name': self.lvl_name(kpi_name, level['lvl'])}
         return level['end'], results
 
-
     def calculate_distribution(self, kpi_name, kpi_line, relevant_scif, level, main_line, **kwargs):
         self.assortment.scif = relevant_scif
         res_2, res_3 = [], []
@@ -269,16 +268,17 @@ class ToolBox:
             for df in [lvl3_result, lvl2_result]:
                 df['store_fk'] = self.store_id
 
-            lvl2_result['result'] = lvl2_result['passes']
-            if kpi_line['Result Metric'] == 'Cap':
-                lvl2_result['result'] = 'Pass' if lvl2_result['passes'].iloc[0] >= 1 else 'Fail'
-            elif kpi_line['Result Metric'] == 'Percent':
-                lvl2_result['result'] = lvl2_result['passes'] / lvl2_result['total']
+            if not lvl2_result.empty:
+                lvl2_result['result'] = lvl2_result['passes']
+                if kpi_line['Result Metric'] == 'Cap':
+                    lvl2_result['result'] = 'Pass' if lvl2_result['passes'].iloc[0] >= 1 else 'Fail'
+                elif kpi_line['Result Metric'] == 'Percent':
+                    lvl2_result['result'] = lvl2_result['passes'] / lvl2_result['total']
 
-            if kpi_line['Score Metric'] == 'Cap':
-                lvl2_result['score'] = 1 if lvl2_result['passes'].iloc[0] >= 1 else 0
-            elif kpi_line['Score Metric'] == 'Sum':
-                lvl2_result['score'] = lvl2_result['passes']
+                if kpi_line['Score Metric'] == 'Cap':
+                    lvl2_result['score'] = 1 if lvl2_result['passes'].iloc[0] >= 1 else 0
+                elif kpi_line['Score Metric'] == 'Sum':
+                    lvl2_result['score'] = lvl2_result['passes']
 
             num_3 = main_line['Numerator 1']
             den_3 = main_line['Denominator 1']
@@ -516,6 +516,7 @@ class ToolBox:
         for k in assort.keys():
             if k not in existing_brands:
                 del assort[k]
+
         den = len(assort.keys())
         results = []
         total = 0
@@ -527,20 +528,27 @@ class ToolBox:
                                                            comp_filter)
             score = self.result_values_dict['Fail'] if result == 0 else self.result_values_dict[
                 'Pass']
-            results.append({'score': score, 'result': score, 'numerator_result': result,
-                            'numerator_id': self.brands_dict[k][main_line[level['num_col']]],
-                            'denominator_id': self.brands_dict[v[0]][main_line[level['den_col']]],
-                            'kpi_name': self.lvl_name(kpi_name, 'Brand'),
-                            'ident_parent': self.lvl_name(kpi_name, 'Session')})
+            results.append({
+                'score': score,
+                'result': score,
+                'numerator_result': result,
+                'numerator_id': self.brands_dict[k][main_line[level['num_col']]],
+                'denominator_result': 1,
+                'denominator_id': self.brands_dict[v[0]][main_line[level['den_col']]],
+                'kpi_name': self.lvl_name(kpi_name, 'Brand'),
+                'ident_parent': self.lvl_name(kpi_name, 'Session')
+            })
 
             total += result
+
         result = 0
         if total == den:
             result = 1
         elif assort_template == 'Adjacencies':
             result = self.safe_divide(total, den)
 
-        results.append({'score': result, 'result': result, 'numerator_result': total, 'denominator_result': den,
+        score = self.result_values_dict['Pass'] if result == 1 else self.result_values_dict['Fail']
+        results.append({'score': score, 'result': score, 'numerator_result': total, 'denominator_result': den,
                         'numerator_id': self.manufacturer_fk,
                         'denominator_id': self.store_id,
                         'kpi_name': self.lvl_name(kpi_name, 'Session'),
@@ -1181,7 +1189,7 @@ class ToolBox:
         return ratio, num, den
 
     def parse_comp_brands(self, out_df, path):
-        df = pd.read_excel(path, sheetname=None, header=1)
+        df = pd.read_excel(path, sheet_name=None, header=1)
         df['Granular Groups']['Comparable Brand'] = df['Granular Groups']['Comparable Brand'].apply(lambda x:
                                                                                                     self.splitter(x))
         group = df['Granular Groups link to stores']

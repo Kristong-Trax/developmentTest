@@ -47,3 +47,4 @@ class ShareOfAssortmentByHeroTypeKpi(UnifiedCalculationsScript):
     def get_result(row):
         rv = row['numerator_result'] / row['in_store_total'] * 100 if row['in_store_total'] else 0
         return rv
+
