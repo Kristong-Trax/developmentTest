@@ -4,10 +4,10 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from KPIUtils.INBEV.INBEVToolBox import INBEVToolBox
+from KPIUtils.INBEV.INBEVToolBox_v2 import INBEVToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
-__author__ = 'urid'
+__author__ = 'ilays and urid'
 
 
 class INBEVNLINBEVBEGenerator:
@@ -33,15 +33,15 @@ class INBEVNLINBEVBEGenerator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
             return
-        self.tool_box.tools.update_templates()
-        set_names = ['Product Blocking', 'Linear Share of Shelf', 'OSA', 'Pallet Presence', 'Share of Assortment',
-                     'Product Stacking', 'Shelf Level', 'Linear Share of Shelf vs. Target', 'Shelf Impact Score',
-                     'Product Group Blocking']
-        for kpi_set_name in set_names:
-            self.tool_box.main_calculation(set_name=kpi_set_name)
-        self.tool_box.save_custom_scene_item_facts_results()
-        self.tool_box.save_linear_length_results()
-        Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
+        # self.tool_box.tools.update_templates()
+        # set_names = ['Product Blocking', 'Linear Share of Shelf', 'OSA', 'Pallet Presence', 'Share of Assortment',
+        #              'Product Stacking', 'Shelf Level', 'Linear Share of Shelf vs. Target', 'Shelf Impact Score',
+        #              'Product Group Blocking']
+        # for kpi_set_name in set_names:
+        #     self.tool_box.main_calculation(set_name=kpi_set_name)
+        # self.tool_box.save_custom_scene_item_facts_results()
+        # self.tool_box.save_linear_length_results()
+        # Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
         self.tool_box.main_calculation_poce()
         self.tool_box.commit_results_data()
         self.common.commit_results_data()
