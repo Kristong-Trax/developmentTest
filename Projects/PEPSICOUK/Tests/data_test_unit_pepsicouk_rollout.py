@@ -42,7 +42,8 @@ class DataTestUnitPEPSICOUK(object):
          {'pk': 319, 'type': 'Product Blocking'}, {'pk': 405, 'type': 'Category Full Bay'},
          {'pk': 330, 'type': 'Hero SKU Availability by Hero Type'},
          {'pk': 329, 'type': 'Share of Assortment by Hero Type'},
-         {'pk': 404, 'type': 'Hero SKU SOS of Category by Hero Type'}]
+         {'pk': 404, 'type': 'Hero SKU SOS of Category by Hero Type'},
+         {'pk': 406, 'type': 'Brand SOS of Segment'}]
     )
 
     custom_entity = pd.DataFrame.from_records(
@@ -136,8 +137,8 @@ class DataTestUnitPEPSICOUK(object):
     ])
 
     all_templates = pd.DataFrame.from_records(
-        [{'template_fk': 1, 'template_name': 'Template 1', 'location_type': 'Primary Shelf'},
-         {'template_fk': 2, 'template_name': 'Template 2', 'location_type': 'Secondary Shelf'}]
+        [{'template_fk': 1, 'template_name': 'Template 1', 'location_type': 'Primary Shelf', 'location_type_fk': 1},
+         {'template_fk': 2, 'template_name': 'Template 2', 'location_type': 'Secondary Shelf', 'location_type_fk': 2}]
     )
 
     empty_exclusion_template = pd.DataFrame(columns=['KPI', 'Action', 'Type', 'Value'])

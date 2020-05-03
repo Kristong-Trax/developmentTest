@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.PNGCN_PROD.ShareOfDisplay.ExcludeDataProvider import Fields
 from Trax.Utils.Logging.Logger import Log
@@ -101,6 +103,7 @@ class PngcnSceneKpis(object):
 
     def __init__(self, project_connector, common, scene_id, data_provider=None):
         self.scene_id = scene_id
+        self.project_name = project_connector.project_name
         self.project_connector = project_connector
         if data_provider is not None:
             self.data_provider = data_provider
@@ -118,7 +121,8 @@ class PngcnSceneKpis(object):
         self.common = common
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        if not self.scif.empty and self.scif.iloc[0]['location_type'] == 'Primary Shelf':
+        self.location_type = "" if self.scif.empty else self.scif.iloc[0]['location_type']
+        if self.location_type == 'Primary Shelf':
             self.eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider)
             eye_level_shelves = self.eye_level_df[['scene_match_fk', 'shelf_number']].copy()
             eye_level_shelves = eye_level_shelves.rename(columns={"shelf_number": "eye_level_shelf_number"})
@@ -139,9 +143,10 @@ class PngcnSceneKpis(object):
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def process_scene(self):
-        self.calculate_variant_block()
-        self.save_nlsos_to_custom_scif()
-        self.calculate_eye_level_kpi()
+        if self.location_type == 'Primary Shelf':
+            self.calculate_variant_block()
+            self.save_nlsos_to_custom_scif()
+            self.calculate_eye_level_kpi()
         self.calculate_linear_length()
         self.calculate_presize_linear_length()
         Log.debug(self.log_prefix + ' Retrieving data')
@@ -449,7 +454,9 @@ class PngcnSceneKpis(object):
                      sub_brand.encode("utf8"))]['match_product_in_probe_state_reporting_fk'].values[0]
                 df_to_append = pd.DataFrame(
                     columns=[MATCH_PRODUCT_IN_PROBE_FK, MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
-                df_to_append[MATCH_PRODUCT_IN_PROBE_FK] = custom_matches['probe_match_fk'].drop_duplicates()
+                sub_brand_df = custom_matches[custom_matches['sub_brand'].str.encode("utf8") ==
+                                              sub_brand.encode("utf8")]
+                df_to_append[MATCH_PRODUCT_IN_PROBE_FK] = sub_brand_df['probe_match_fk'].drop_duplicates()
                 df_to_append[MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = sub_brand_pk
                 self.common.match_product_in_probe_state_values = \
                     self.common.match_product_in_probe_state_values.append(df_to_append)
@@ -815,8 +822,8 @@ class PngcnSceneKpis(object):
                 select p.pk as product_fk,b.name as brand_name from static_new.product p
                 join static_new.brand b on b.pk = p.brand_fk;
                 """
-        self.project_connector.disconnect_rds()
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         res = pd.read_sql_query(query, self.project_connector.db)
         return res
 
@@ -1065,8 +1072,8 @@ class PngcnSceneKpis(object):
                     on report.display_item_facts.display_surface_fk = probedata.display_surface.pk;""",
             drop_temp_table_query
         ]
-        self.project_connector.disconnect_rds()
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.cur = self.project_connector.db.cursor()
         for query in queries:
             self.cur.execute(query)
@@ -1115,8 +1122,8 @@ class PngcnSceneKpis(object):
         return '({0}, {1}, {2})'.format(display['scene_fk'], display['display_fk'], display['display_size'])
 
     def _get_match_display_in_scene_data(self):
-        self.project_connector.disconnect_rds()
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         local_con = self.project_connector.db
         query = ''' select
                         mds.display_fk
@@ -1480,8 +1487,8 @@ class PngcnSceneKpis(object):
             LEFT JOIN static_new.category ON product_category_fk = category.pk
             WHERE scene.pk = {};""".format(scene_pk)
 
-        # Explicit connect db, otherwise db gone error will be thrown
-        self.project_connector.connect_rds()
+        if not self.project_connector.is_connected:
+            self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         df = pd.read_sql_query(query, self.project_connector.db)
         return None if df is None else df['scene_category'][0]
 

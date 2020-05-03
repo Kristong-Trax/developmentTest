@@ -98,6 +98,7 @@ class PepsicoUtil(UnifiedKPISingleton):
     BRAND_SOS = 'Brand SOS'
     SUB_BRAND_SOS = 'Sub Brand SOS'
     PEPSICO_SEGMENT_SOS = 'PepsiCo Segment SOS'
+    BRAND_SOS_OF_SEGMENT = 'Brand SOS of Segment'
 
     def __init__(self, output, data_provider):
         super(PepsicoUtil, self).__init__(data_provider)
@@ -126,6 +127,7 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.toolbox = GENERALToolBox(self.data_provider)
         self.commontools = PEPSICOUKCommonToolBox(self.data_provider, self.rds_conn)
 
+        self.all_templates = self.commontools.all_templates
         self.custom_entities = self.commontools.custom_entities
         self.on_display_products = self.commontools.on_display_products
         self.exclusion_template = self.commontools.exclusion_template
@@ -270,10 +272,10 @@ class PepsicoUtil(UnifiedKPISingleton):
 
     def get_lvl3_relevant_assortment_result(self):
         assortment_result = self.assortment.get_lvl3_relevant_ass()
-        if assortment_result.empty:
-            return assortment_result
-        products_in_session = self.filtered_scif.loc[self.filtered_scif['facings'] > 0]['product_fk'].values
-        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
+        # if assortment_result.empty:
+        #     return assortment_result
+        # products_in_session = self.filtered_scif.loc[self.filtered_scif['facings'] > 0]['product_fk'].values
+        # assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
         return assortment_result
 
     @staticmethod
@@ -313,6 +315,11 @@ class PepsicoUtil(UnifiedKPISingleton):
     def get_available_hero_sku_list(self, dependencies_df):
         hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
                                     (dependencies_df['numerator_result'] == 1)]['numerator_id'].unique().tolist()
+        return hero_list
+
+    def get_unavailable_hero_sku_list(self, dependencies_df):
+        hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
+                                    (dependencies_df['numerator_result'] == 0)]['numerator_id'].unique().tolist()
         return hero_list
 
     def get_hero_type_custom_entity_df(self):

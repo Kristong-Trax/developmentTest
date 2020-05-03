@@ -1,6 +1,5 @@
 import os
 
-import MySQLdb
 
 from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -48,7 +47,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def _assert_kpi_results_filled(self):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
         cursor.execute("""
         SELECT * FROM report.kpi_results
         """)
@@ -58,7 +57,7 @@ class TestKEngineOutOfTheBox(TestFunctionalCase):
 
     def _assert_table_row_count(self, table, row_count):
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
         cursor.execute("""SELECT * FROM {table}""".format(table=table))
         self.assertEquals(cursor.rowcount, row_count)
 

@@ -1,6 +1,7 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 
 
 class LinearBrandVsBrandIndexKpi(UnifiedCalculationsScript):
@@ -27,6 +28,8 @@ class LinearBrandVsBrandIndexKpi(UnifiedCalculationsScript):
                                                                            self.util.common.get_dictionary(
                                                                                kpi_fk=int(float(x))))
         index_targets = index_targets[index_targets['type'] == self._config_params['kpi_type']]
+        location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
+            [ScifConsts.LOCATION_TYPE_FK].values[0]
         for i, row in index_targets.iterrows():
             general_filters = {row['additional_filter_type_1']: row['additional_filter_value_1']}
             numerator_sos_filters = {row['numerator_type']: row['numerator_value']}
@@ -37,10 +40,15 @@ class LinearBrandVsBrandIndexKpi(UnifiedCalculationsScript):
             denom_num_linear, denom_denom_linear = self.util.calculate_sos(denominator_sos_filters, **general_filters)
             denominator_sos = denom_num_linear/denom_denom_linear if denom_denom_linear else 0
 
-            index = numerator_sos / denominator_sos if denominator_sos else 0
+            if denominator_sos == 0:
+                index = 0 if numerator_sos == 0 else 1
+            else:
+                index = numerator_sos / denominator_sos
+
             self.write_to_db_result(fk=row.kpi_level_2_fk, numerator_id=row.numerator_id,
                                     numerator_result=num_num_linear, denominator_id=row.denominator_id,
-                                    denominator_result=denom_num_linear, result=index, score=index)
+                                    denominator_result=denom_num_linear, result=index, score=index,
+                                    context_id=location_type_fk)
             self.util.add_kpi_result_to_kpi_results_df([row.kpi_level_2_fk, row.numerator_id, row.denominator_id, index,
                                                         index, None])
 

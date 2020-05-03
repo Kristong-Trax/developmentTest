@@ -1,5 +1,6 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 import numpy as np
 import pandas as pd
 from Trax.Utils.Logging.Logger import Log
@@ -23,12 +24,20 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
         pass
 
     def calculate_kpi_for_main_shelf(self):
-        for i, result in self.util.lvl3_ass_result.iterrows():
+        location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
+            [ScifConsts.LOCATION_TYPE_FK].values[0]
+        lvl3_ass_res = self.util.lvl3_ass_result
+        if lvl3_ass_res.empty:
+            return
+        products_in_session = self.util.filtered_scif.loc[self.util.filtered_scif['facings'] > 0]['product_fk'].values
+        lvl3_ass_res.loc[lvl3_ass_res['product_fk'].isin(products_in_session), 'in_store'] = 1
+        for i, result in lvl3_ass_res.iterrows():
             score = result.in_store * 100
             custom_res = self.util.commontools.get_yes_no_result(score)
             self.write_to_db_result(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
                                     numerator_result=result.in_store, result=custom_res,
-                                    denominator_id=self.util.own_manuf_fk, denominator_result=1, score=score)
+                                    denominator_id=self.util.own_manuf_fk, denominator_result=1, score=score,
+                                    context_id=location_type_fk)
             self.util.add_kpi_result_to_kpi_results_df(
                 [result['kpi_fk_lvl3'], result['product_fk'], self.util.store_id, custom_res,
                  score, None])
