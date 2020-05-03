@@ -119,9 +119,9 @@ class DIAGEOTWToolBox:
         assortment_res_dict_v3 = self.diageo_generator.diageo_global_assortment_function_v3()
         self.commonV2.save_json_to_new_tables(assortment_res_dict_v3)
 
-        # Global menu calculation
-        menus_res_dict = self.diageo_generator.diageo_global_new_share_of_menu_function()
-        self.commonV2.save_json_to_new_tables(menus_res_dict)
+        # # Global menu calculation
+        # menus_res_dict = self.diageo_generator.diageo_global_new_share_of_menu_function()
+        # self.commonV2.save_json_to_new_tables(menus_res_dict)
 
         for set_name in set_names:
             # if set_name not in self.tools.KPI_SETS_WITHOUT_A_TEMPLATE and set_name not in self.set_templates_data.keys():
