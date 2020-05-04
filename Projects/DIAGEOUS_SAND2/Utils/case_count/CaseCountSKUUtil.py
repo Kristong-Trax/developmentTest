@@ -5,7 +5,7 @@ from Trax.Cloud.Services.Connector.Logger import Log
 from Projects.DIAGEOUS_SAND2.Data.LocalConsts import CaseCountConsts as Ccc
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts as Pc, ScifConsts as Sc
+from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts as Mc, ProductsConsts as Pc, ScifConsts as Sc
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts as Src
 from consts import Consts
 
@@ -31,15 +31,11 @@ class CaseCountCalculator(GlobalSessionToolBox):
             return
         try:
             self._prepare_data_for_calculation()
-            total_facings_res = self._calculate_total_bottler_and_carton_facings()
+            total_facings_res = self._calculate_display_size_facings()
             cases_per_sku_res = self._count_number_of_cases()
             unshoppable_cases_res = self._non_shoppable_case_kpi()
             implied_shoppable_res = self._implied_shoppable_cases_kpi()
             total_cases_res = self._calculate_and_total_cases(cases_per_sku_res + implied_shoppable_res)
-            results = [(total_facings_res, Consts.FACINGS_KPI), (cases_per_sku_res, Consts.SHOPPABLE_CASES_KPI),
-                       (unshoppable_cases_res, Consts.NON_SHOPPABLE_CASES_KPI),
-                       (implied_shoppable_res, Consts.IMPLIED_SHOPPABLE_CASES_KPI),
-                       (total_cases_res, Consts.TOTAL_CASES_KPI)]
             # self._save_results_to_db(total_cases_res, Ccc.TOTAL_CASES_KPI, should_enter=False)
         except Exception as err:
             Log.error("DiageoUS Case Count calculation failed due to the following error: {}".format(err))
@@ -71,30 +67,43 @@ class CaseCountCalculator(GlobalSessionToolBox):
     def _prepare_data_for_calculation(self):
         """This method prepares the data for the case count calculation. Connection between the display
         data and the tagging data."""
-        self._add_displays_the_closet_product_fk()
-        self._add_matches_the_closet_match_display_in_scene_fk(self.matches)
+        closest_tag_to_display_df = self._calculate_closest_product_to_display()
+        self._add_displays_the_closet_product_fk(closest_tag_to_display_df)
+        self._add_matches_the_closet_match_display_in_scene_fk(closest_tag_to_display_df)
         mdis = self.filtered_mdis[['pk', 'rect_x', 'rect_y', 'display_name', Consts.DISPLAY_SKU]]
         mdis.rename({'rect_x': 'display_rect_x', 'rect_y': 'display_rect_y', 'pk': Consts.DISPLAY_IN_SCENE_FK},
-                    inplace=True, axis=1)
+                    inplace=True, axis=1)  # todo delete
         self.matches = self.matches.merge(mdis, on=Consts.DISPLAY_IN_SCENE_FK, how='left')
 
-    def _calculate_total_bottler_and_carton_facings(self):
-        """This method calculates the number of facings for 'Bottler' SKU Type per brand in scenes that
-        have displays"""
-        cols_to_save = [Pc.PRODUCT_FK, Sc.TAGGED]
+    def _calculate_closest_product_to_display(self):
+        """This method calculates the closest tag for each display and returns a DataFrame with the results"""
+        matches = self.matches[Consts.RLV_FIELDS_FOR_MATCHES_CLOSET_DISPLAY_CALC]
+        mdis = self.filtered_mdis[Consts.RLV_FIELDS_FOR_DISPLAY_IN_SCENE_CLOSET_TAG_CALC]
+        mdis[Mc.SCENE_MATCH_FK] = mdis.apply(
+            lambda row: self._apply_closet_point_logic_on_row(row, matches, Mc.SCENE_MATCH_FK), axis=1)
+        mdis.rename({'rect_x': 'display_rect_x', 'rect_y': 'display_rect_y', 'pk': Consts.DISPLAY_IN_SCENE_FK}, axis=1,
+                    inplace=True)
+        return mdis
+
+
+    def _calculate_display_size_facings(self):
+        """This method calculates the number of facings for SKUs with the relevant SKU Type
+        only in scenes that have displays"""
         filtered_scif = self.filtered_scif.loc[(self.filtered_scif[Sc.SKU_TYPE].isin(Consts.FACINGS_SKU_TYPES))]
-        results_df = filtered_scif[cols_to_save].groupby(Pc.PRODUCT_FK, as_index=False).sum()
-        results_df.rename({Sc.TAGGED: Src.RESULT}, axis=1, inplace=True)
+        filtered_scif = filtered_scif.loc[filtered_scif[Sc.TAGGED] > 0][[Pc.PRODUCT_FK, Sc.TAGGED]]
+        results_df = filtered_scif.groupby(Pc.PRODUCT_FK, as_index=False).sum().rename({Sc.TAGGED: Src.RESULT}, axis=1)
+        results_df = results_df.assign(fk=self.get_kpi_fk_by_kpi_type(Consts.FACINGS_KPI))
         return results_df.to_dict('records')
 
     def _count_number_of_cases(self):
-        """This method counts the number of cases per brand.
-        It identify the closest brand tag to every case and using it to define the case's brand
+        """This method counts the number of cases per SKU.
+        It identify the closest SKU tag to every case and using it to define the case's brand
         """
-        mdis = self.filtered_mdis.groupby(Consts.DISPLAY_SKU, as_index=False)[Consts.DISPLAY_SKU].agg(
+        results_df = self.filtered_mdis.groupby(Consts.DISPLAY_SKU, as_index=False)[Consts.DISPLAY_SKU].agg(
             {'result': 'count'})
-        mdis.rename({Consts.DISPLAY_SKU: Pc.PRODUCT_FK}, axis=1, inplace=True)
-        return mdis.to_dict('records')
+        results_df.rename({Consts.DISPLAY_SKU: Pc.PRODUCT_FK}, axis=1, inplace=True)
+        results_df = results_df.assign(fk=self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI))
+        return results_df.to_dict('records')
 
     def _implied_shoppable_cases_kpi(self):
         """
@@ -123,17 +132,18 @@ class CaseCountCalculator(GlobalSessionToolBox):
         return new_results
 
     def _non_shoppable_case_kpi(self):
-        """ This method calculates the number of unshoppable cases per brand.
-        A brand is considered unshoppable if there are only 'case' SKU Type without bottler or carton.
-        If a brand is unshoppable it will get a result of 1."""
-        unshoppable_brands_results = []
+        """ This method calculates the number of unshoppable SKUs.
+        SKU is considered non shoppable if there are only 'case' SKU Type without any facings' relevant one.
+        Please note that if SKU is unshoppable it will get a result of 100!!"""
+        unshoppable_results = []
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.NON_SHOPPABLE_CASES_KPI)
         grouped_scif = self.filtered_scif.groupby([Pc.PRODUCT_FK, Sc.SKU_TYPE], as_index=False)[Sc.TAGGED].sum()
         grouped_scif = grouped_scif.loc[grouped_scif.tagged > 0]
         grouped_scif_dict = grouped_scif.groupby(Pc.PRODUCT_FK)[Sc.SKU_TYPE].apply(list).to_dict()
         for product_fk, sku_types in grouped_scif_dict.iteritems():
             res = 100 if len(sku_types) == 1 and sku_types[0].lower() == 'case' else 0
-            unshoppable_brands_results.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: res})
-        return unshoppable_brands_results
+            unshoppable_results.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: res, 'fk': kpi_fk})
+        return unshoppable_results
 
     @staticmethod
     def get_closest_point(origin_point, other_points_df):
@@ -176,14 +186,17 @@ class CaseCountCalculator(GlobalSessionToolBox):
             lambda row: self._apply_closet_point_logic_on_row(row, self.filtered_mdis),
             axis=1)
 
-    def _add_displays_the_closet_product_fk(self):
+    def _add_displays_the_closet_product_fk(self, closest_tag_to_display_df):
         """
         This method calculates the closets match_display_in_scene tag per row and adds
         it to Match Product in Scene DataFrame
         """
-        self.filtered_mdis[Consts.DISPLAY_SKU] = self.filtered_mdis.apply(
-            lambda row: self._apply_closet_point_logic_on_row(row, self.matches, Pc.PRODUCT_FK),
-            axis=1)
+        temp_matches = self.matches[[Mc.SCENE_MATCH_FK, Mc.PRODUCT_FK]]
+        temp_display_with_closest_sku = closest_tag_to_display_df.merge(temp_matches, how='left', on=Mc.SCENE_MATCH_FK)
+        temp_display_with_closest_sku.rename({Mc.PRODUCT_FK: Consts.DISPLAY_SKU}, axis=1, inplace=True)
+        self.filtered_mdis = self.filtered_mdis.merge(
+            temp_display_with_closest_sku[[Consts.DISPLAY_IN_SCENE_FK, Consts.DISPLAY_SKU]],
+            right_on=Consts.DISPLAY_IN_SCENE_FK, left_on='pk', how='left')
 
     def _get_scenes_with_relevant_displays(self):
         """This method returns only scene with "Open" or "Close" display tags"""
