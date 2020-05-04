@@ -69,22 +69,15 @@ class CaseCountCalculator(GlobalSessionToolBox):
         data and the tagging data."""
         closest_tag_to_display_df = self._calculate_closest_product_to_display()
         self._add_displays_the_closet_product_fk(closest_tag_to_display_df)
-        self._add_matches_the_closet_match_display_in_scene_fk(closest_tag_to_display_df)
-        mdis = self.filtered_mdis[['pk', 'rect_x', 'rect_y', 'display_name', Consts.DISPLAY_SKU]]
-        mdis.rename({'rect_x': 'display_rect_x', 'rect_y': 'display_rect_y', 'pk': Consts.DISPLAY_IN_SCENE_FK},
-                    inplace=True, axis=1)  # todo delete
-        self.matches = self.matches.merge(mdis, on=Consts.DISPLAY_IN_SCENE_FK, how='left')
+        self._add_matches_display_data(closest_tag_to_display_df)
 
     def _calculate_closest_product_to_display(self):
         """This method calculates the closest tag for each display and returns a DataFrame with the results"""
         matches = self.matches[Consts.RLV_FIELDS_FOR_MATCHES_CLOSET_DISPLAY_CALC]
         mdis = self.filtered_mdis[Consts.RLV_FIELDS_FOR_DISPLAY_IN_SCENE_CLOSET_TAG_CALC]
-        mdis[Mc.SCENE_MATCH_FK] = mdis.apply(
-            lambda row: self._apply_closet_point_logic_on_row(row, matches, Mc.SCENE_MATCH_FK), axis=1)
-        mdis.rename({'rect_x': 'display_rect_x', 'rect_y': 'display_rect_y', 'pk': Consts.DISPLAY_IN_SCENE_FK}, axis=1,
-                    inplace=True)
-        return mdis
-
+        matches[Consts.DISPLAY_IN_SCENE_FK] = matches.apply(
+            lambda row: self._apply_closet_point_logic_on_row(row, mdis, 'pk'), axis=1)
+        return matches[[Mc.SCENE_MATCH_FK, Consts.DISPLAY_IN_SCENE_FK]]
 
     def _calculate_display_size_facings(self):
         """This method calculates the number of facings for SKUs with the relevant SKU Type
@@ -177,14 +170,20 @@ class CaseCountCalculator(GlobalSessionToolBox):
             return closet_point.iloc[0][value_to_return]
         return -1
 
-    def _add_matches_the_closet_match_display_in_scene_fk(self, filtered_matches):
+    def _add_matches_display_data(self, closest_tag_to_display_df):
         """
-        This method calculates the closets match_display_in_scene tag per row and addes
+        This method calculates the closets match_display_in_scene tag per row and adds
         it to Match Product in Scene DataFrame
         """
-        filtered_matches[Consts.DISPLAY_IN_SCENE_FK] = filtered_matches.apply(
-            lambda row: self._apply_closet_point_logic_on_row(row, self.filtered_mdis),
-            axis=1)
+        mdis = self.filtered_mdis[[Consts.DISPLAY_IN_SCENE_FK, 'rect_x', 'rect_y', 'display_name', Consts.DISPLAY_SKU]]
+        mdis = mdis.merge(closest_tag_to_display_df, how='left', on=Consts.DISPLAY_IN_SCENE_FK)
+        mdis.rename({'rect_x': 'display_rect_x', 'rect_y': 'display_rect_y'}, inplace=True, axis=1)
+        # todo finish the jon
+        self.matches = self.matches.merge(mdis, on=Consts.DISPLAY_IN_SCENE_FK, how='left')
+        # self.matches = self.matches.merge(closest_tag_to_display_df, on=[Mc.SCENE_MATCH_FK, Mc.SCENE_FK], how='left')
+        # filtered_matches[Consts.DISPLAY_IN_SCENE_FK] = filtered_matches.apply(
+        #     lambda row: self._apply_closet_point_logic_on_row(row, self.filtered_mdis),
+        #     axis=1)
 
     def _add_displays_the_closet_product_fk(self, closest_tag_to_display_df):
         """
@@ -343,6 +342,21 @@ if __name__ == '__main__':
     for session in sessions:
         print(session)
         data_provider.load_session_data(session_uid=session)
+        # data_provider.load_scene_data(session_uid='10A57E97-BFE0-4295-8905-675603CFBF40', scene_id=4720834)
+        # data_provider.load_scene_data(session_uid='4590C8B2-CD2E-4679-9BC7-CD31FA9FEF3D', scene_id=3851296)
+        # data_provider.load_scene_data(session_uid='E53E363F-E824-45E5-BE05-A528BAF54E0B', scene_id=4575034)
+        # data_provider.load_scene_data(session_uid='25434CF3-24EB-4E3E-BED8-DAFC9593031B', scene_id=4270665)
+        # data_provider.load_scene_data(session_uid='25d12ef4-ff53-449e-87df-317f8d4db068', scene_id=3977871)
+        # data_provider.load_scene_data(session_uid='c8f7ad4a-3867-4ffa-9bb2-80c4afa8daae', scene_id=3214683)
+        # data_provider.load_scene_data(session_uid='10A57E97-BFE0-4295-8905-675603CFBF40', scene_id=4720826)
+        # data_provider.load_scene_data(session_uid='10A57E97-BFE0-4295-8905-675603CFBF40', scene_id=4720871)
+        # data_provider.load_scene_data(session_uid='E53E363F-E824-45E5-BE05-A528BAF54E0B', scene_id=4574982)
+        # data_provider.load_scene_data(session_uid='6D8E1FF0-193E-414A-BCA6-1B5BBDE7681C', scene_id=3350018)
+        # data_provider.load_scene_data(session_uid='EAEF7FE8-9C46-4794-B97B-507794912875', scene_id=4245012)
+        # data_provider.load_scene_data(session_uid='E53E363F-E824-45E5-BE05-A528BAF54E0B', scene_id=4575166)
+        # data_provider.load_scene_data(session_uid='C4465263-56B2-4A1D-B16B-D7F7C954ED6F', scene_id=4357090)
+        # data_provider.load_scene_data(session_uid='E53E363F-E824-45E5-BE05-A528BAF54E0B', scene_id=4575212)
+        # data_provider.load_scene_data(session_uid='F7FBF132-60A6-4B74-A25A-F9A3C19327EE', scene_id=4840195)
         common = Common(data_provider)
         case_counter_calculator = CaseCountCalculator(data_provider, common)
         case_counter_calculator.main_case_count_calculations()

@@ -14,4 +14,4 @@ class Consts(object):
     DISPLAY_IN_SCENE_FK = 'display_in_scene_fk'
     FACINGS_SKU_TYPES = ['Bottle', 'Carton', 'Pouch', 'VAP']
     RLV_FIELDS_FOR_MATCHES_CLOSET_DISPLAY_CALC = ['scene_match_fk', 'rect_x', 'rect_y', 'scene_fk']
-    RLV_FIELDS_FOR_DISPLAY_IN_SCENE_CLOSET_TAG_CALC = ['pk', 'rect_x', 'rect_y', 'scene_fk', 'display_name']
+    RLV_FIELDS_FOR_DISPLAY_IN_SCENE_CLOSET_TAG_CALC = ['pk', 'rect_x', 'rect_y', 'scene_fk']
