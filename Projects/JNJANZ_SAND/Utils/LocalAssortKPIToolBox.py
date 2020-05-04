@@ -432,6 +432,33 @@ class JNJToolBox:
                                                    denominator_result=1,
                                                    identifier_parent="MSL_Local_subcat_" + str(int(sub_category)),
                                                    should_enter=True)
+                # Saving MSL
+                # Add the New Products found in Session for the subcat,cat from same manufacturer into MSL
+
+                # Filter products in session based on sub_cat and category
+                # extra_products_in_scene = set(products_in_session) - set(self.products_in_ass)
+                # for sku in extra_products_in_scene:
+
+                relevant_products_in_session = list(set(products_in_session) & set(products_in_sub_cat))
+                extra_products_in_scene = set(relevant_products_in_session) - set(relevant_for_ass)
+                for sku in extra_products_in_scene:
+                    # Filter scif by own_manufacturer & product_type = 'SKU'
+                    own_manufacturer_skus = self.scif[
+                        (self.scif.manufacturer_fk == self.own_manuf_fk)
+                        & (self.scif.product_type == "SKU")
+                        & (self.scif["facings"] > 0)
+                        ]['item_id'].tolist()
+
+                    if sku in own_manufacturer_skus:
+                        result = self.result_value_pk(self.EXTRA)  # Extra
+                        result_num = 1
+                        self.common.write_to_db_result(fk=msl_cat_subcat_sku_kpi_fk, result=result, score=result,
+                                                       numerator_id=sku, numerator_result=result_num,
+                                                       denominator_id=sub_category,
+                                                       denominator_result=1,
+                                                       identifier_parent="MSL_Local_subcat_" + str(
+                                                           int(sub_category)),
+                                                       should_enter=True)
 
 
         Log.debug("finishing assortment_per_category")
