@@ -131,6 +131,13 @@ class PEPSICOUKCommonToolBox:
         bin_bay_scif, bin_bay_matches = self.calculate_displays_by_bin_bay_logic(scif, matches)
         bin_bin_scif, bin_bin_matches = self.calculate_displays_by_bin_bin_logic(scif, matches)
         bin_shelf_scif, bin_shelf_matches = self.calculate_displays_by_mix_logic(scif, matches)
+
+        scif = bin_bay_scif.append(bin_bin_scif)
+        scif = scif.append(bin_shelf_scif)
+
+        matches = bin_bay_matches.append(bin_bin_matches)
+        matches = matches.append(bin_shelf_matches)
+
         return scif, matches
 
     def calculate_displays_by_mix_logic(self, scif, matches):
@@ -145,20 +152,21 @@ class PEPSICOUKCommonToolBox:
             display_matches = mix_matches[mix_matches[MatchesConsts.SHELF_NUMBER] == bottom_shelf]
             shelf_matches = mix_matches[~(mix_matches[MatchesConsts.SHELF_NUMBER] == bottom_shelf)]
             bin_bin_scenes = self.scene_display[ScifConsts.SCENE_FK].unique()
-            shelf_bin_matches = shelf_matches[shelf_matches[ScifConsts.SCENE_FK].isin(bin_bin_scenes)]
-            shelf_bay_matches = shelf_matches[~shelf_matches[ScifConsts.SCENE_FK].isin(bin_bin_scenes)]
 
             bin_bin_matches, bin_bay_matches = self.allocate_matches_to_logic(display_matches, bin_bin_scenes)
+            bin_bin_matches = self.place_products_to_bays(bin_bin_matches, self.scene_display)
+            display_matches = bin_bin_matches.append(bin_bay_matches)
+            display_matches = self.calculate_product_length_in_matches_on_display(display_matches)
 
-            bin_bin_matches = self.calculate_product_length_in_matches_on_display(bin_bin_matches)
-            bin_bay_matches = self.calculate_product_length_in_matches_on_display(bin_bay_matches)
+            mix_matches = shelf_matches.append(display_matches)
+            mix_matches_agg = mix_matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]). \
+                                            agg({'facings_matches': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
+            mix_scif = mix_scif.merge(mix_matches_agg, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
+            mix_scif['facings'] = mix_scif['updated_facings'] = mix_scif['facings_matches']
+            mix_scif[ScifConsts.GROSS_LEN_ADD_STACK] = mix_scif['updated_gross_len'] = mix_scif[
+                MatchesConsts.WIDTH_MM_ADVANCE]
 
-            mix_bin_matches = shelf_bin_matches.append(bin_bin_matches)
-            mix_bay_matches = shelf_bay_matches.append(bin_bay_matches)
-
-
-
-        return scif, matches
+        return mix_scif, mix_matches
 
     def allocate_matches_to_logic(self, matches, bin_bin_scenes):
         bin_bin_matches = matches[matches[ScifConsts.SCENE_FK].isin(bin_bin_scenes)]
