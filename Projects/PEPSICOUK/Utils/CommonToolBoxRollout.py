@@ -101,14 +101,15 @@ class PEPSICOUKCommonToolBox:
         self.kpi_score_values = self.get_kpi_score_values_df()
 
         self.displays_template = self.get_display_parameters()
+        self.scene_display = self.get_match_display_in_scene()
+        self.assign_bays_to_bins()
         self.filtered_scif_secondary = self.get_initial_secondary_scif()
         self.filtered_matches_secondary = self.get_initial_secondary_matches()
         self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
                                                                   self.filtered_matches_secondary)
-        self.scene_display = self.get_match_display_in_scene()
 
     def get_match_display_in_scene(self):
-        query = PEPSICOUK_Queries.get_match_display()
+        query = PEPSICOUK_Queries.get_match_display(self.session_uid)
         query_result = pd.read_sql_query(query, self.rds_conn.db)
         return query_result
 
@@ -130,39 +131,77 @@ class PEPSICOUKCommonToolBox:
         bin_bay_scif, bin_bay_matches = self.calculate_displays_by_bin_bay_logic(scif, matches)
         bin_bin_scif, bin_bin_matches = self.calculate_displays_by_bin_bin_logic(scif, matches)
         bin_shelf_scif, bin_shelf_matches = self.calculate_displays_by_mix_logic(scif, matches)
-
         return scif, matches
 
     def calculate_displays_by_mix_logic(self, scif, matches):
+        mix_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Mix')] \
+            [self.DISPLAY_NAME_TEMPL].unique()
+        scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(mix_displays)]
+        matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(mix_displays)]
+        mix_scif = scif
+        mix_matches = matches
+        if not matches.empty:
+            bottom_shelf = matches[MatchesConsts.SHELF_NUMBER].max()
+            display_matches = mix_matches[mix_matches[MatchesConsts.SHELF_NUMBER] == bottom_shelf]
+            shelf_matches = mix_matches[~(mix_matches[MatchesConsts.SHELF_NUMBER] == bottom_shelf)]
+            bin_bin_scenes = self.scene_display[ScifConsts.SCENE_FK].unique()
+            shelf_bin_matches = shelf_matches[shelf_matches[ScifConsts.SCENE_FK].isin(bin_bin_scenes)]
+            shelf_bay_matches = shelf_matches[~shelf_matches[ScifConsts.SCENE_FK].isin(bin_bin_scenes)]
+
+            bin_bin_matches, bin_bay_matches = self.allocate_matches_to_logic(display_matches, bin_bin_scenes)
+
+            bin_bin_matches = self.calculate_product_length_in_matches_on_display(bin_bin_matches)
+            bin_bay_matches = self.calculate_product_length_in_matches_on_display(bin_bay_matches)
+
+            mix_bin_matches = shelf_bin_matches.append(bin_bin_matches)
+            mix_bay_matches = shelf_bay_matches.append(bin_bay_matches)
+
+
+
         return scif, matches
+
+    def allocate_matches_to_logic(self, matches, bin_bin_scenes):
+        bin_bin_matches = matches[matches[ScifConsts.SCENE_FK].isin(bin_bin_scenes)]
+        bin_bay_matches = matches[(~matches[ScifConsts.SCENE_FK].isin(bin_bin_scenes))]
+        return bin_bin_matches, bin_bay_matches
 
     def calculate_displays_by_bin_bin_logic(self, scif, matches):
         bin_bin_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
                                                   (self.displays_template[self.BAY_TO_SEPARATE] == 'No') &
-                                                  (self.displays_template[self.BIN_TO_SEPARATE] == 'Yes') &
-                                                  ((~self.displays_template[self.KPI_LOGIC]) == 'Mix')] \
+                                                  (self.displays_template[self.BIN_TO_SEPARATE] == 'Yes')] \
             [self.DISPLAY_NAME_TEMPL].unique()
         scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(bin_bin_displays)]
         matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(bin_bin_displays)]
         bin_bin_scif = scif
         bin_bin_matches = matches
         if not matches.empty:
-            scene_display = self.assign_bays_to_bins()
-            bin_bin_matches = self.place_products_to_bays(bin_bin_matches, scene_display)
+            # scene_display = self.assign_bays_to_bins()
+            bin_bin_matches = self.place_products_to_bays(bin_bin_matches, self.scene_display)
             bin_bin_scif, bin_bin_matches = self.calculate_product_length_on_display(bin_bin_scif, bin_bin_matches)
         return bin_bin_scif, bin_bin_matches
 
-    def calculate_product_length_on_display(self, scif, matches):
+    def calculate_product_length_in_matches_on_display(self, matches):
+        matches = matches.drop_duplicates(
+            subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])
         bay_sku = matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
                                   as_index=False).agg({'facings_matches': np.sum})
         bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
         matches = matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER], how='left')
         matches[MatchesConsts.WIDTH_MM_ADVANCE] = matches[self.SHELF_LEN_DISPL] / matches['unique_skus']
+        return matches
 
+    def calculate_product_length_on_display(self, scif, matches):
+        matches = self.calculate_product_length_in_matches_on_display(matches)
+        # bay_sku = matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
+        #                           as_index=False).agg({'facings_matches': np.sum})
+        # bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
+        # matches = matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER], how='left')
+        # matches[MatchesConsts.WIDTH_MM_ADVANCE] = matches[self.SHELF_LEN_DISPL] / matches['unique_skus']
+        #
         aggregated_matches = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]). \
-            agg({'unique_skus': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
+            agg({'facings_matches': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
         scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
-        scif['facings'] = scif['updated_facings'] = scif['unique_skus']
+        scif['facings'] = scif['updated_facings'] = scif['facings_matches']
         scif[ScifConsts.GROSS_LEN_ADD_STACK] = scif['updated_gross_len'] = scif[
             MatchesConsts.WIDTH_MM_ADVANCE]
         return scif, matches
@@ -170,23 +209,26 @@ class PEPSICOUKCommonToolBox:
     def place_products_to_bays(self, matches, scene_display):
         matches = matches.merge(scene_display, on=ScifConsts.SCENE_FK, how='left')
         matches.loc[(matches['rect_x'] >= matches['rect_x_start']) &
-                    (matches['rect_x'] < matches['rect_x_end']), 'bay_number'] = matches['assigned_bay_number']
+                    (matches['rect_x'] < matches['rect_x_end']), 'new_bay_number'] = matches['assigned_bay_number']
+        matches = matches[~(matches['new_bay_number'].isnull())]
+        matches['bay_number'] = matches['new_bay_number']
+        matches = matches.drop('new_bay_number', axis=1)
         return matches
 
     def assign_bays_to_bins(self):
-        scene_display = self.scene_display[self.scene_display['display_name'] == 'Top Left']
-        scene_display = scene_display.sort_values(['scene_fk', 'rect_x'])
-        scene_display = scene_display.assign(rect_x_end=scene_display.groupby('scene_fk').rect_x.shift(-1)). \
-            fillna({'rect_x_end': np.inf})
-        scene_display['assigned_bay_number'] = scene_display.groupby(['scene_fk'])['rect_x'].rank()
-        scene_display.rename(columns={'rect_x': 'rect_x_start'}, inplace=True)
-        scene_display.drop('bay_number', axis=1)
-        return scene_display
+        if not self.scene_display.empty:
+            scene_display = self.scene_display[self.scene_display['display_name'] == 'Top Left']
+            scene_display = scene_display.sort_values(['scene_fk', 'rect_x'])
+            scene_display = scene_display.assign(rect_x_end=scene_display.groupby('scene_fk').rect_x.shift(-1)). \
+                fillna({'rect_x_end': np.inf})
+            scene_display['assigned_bay_number'] = scene_display.groupby(['scene_fk'])['rect_x'].rank()
+            scene_display.rename(columns={'rect_x': 'rect_x_start'}, inplace=True)
+            scene_display.drop('bay_number', axis=1)
+            self.scene_display = scene_display
 
     def calculate_displays_by_bin_bay_logic(self, scif, matches):
         bin_bay_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
-                                                  (self.displays_template[self.BAY_TO_SEPARATE] == 'Yes') &
-                                                  ((~self.displays_template[self.KPI_LOGIC]) == 'Mix')] \
+                                                  (self.displays_template[self.BAY_TO_SEPARATE] == 'Yes')] \
             [self.DISPLAY_NAME_TEMPL].unique()
         scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(bin_bay_displays)]
         matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(bin_bay_displays)]
