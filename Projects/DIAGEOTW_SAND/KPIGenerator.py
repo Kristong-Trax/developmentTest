@@ -6,12 +6,12 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.DIAGEOTW_SAND.Utils.KPIToolBox import DIAGEOTW_SANDToolBox, log_runtime
+from Projects.DIAGEOTW.Utils.KPIToolBox import DIAGEOTWToolBox, log_runtime
 
 __author__ = 'Nimrod'
 
 
-class DIAGEOTW_SANDGenerator:
+class DIAGEOTWGenerator:
 
     def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
@@ -23,7 +23,7 @@ class DIAGEOTW_SANDGenerator:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
-        self.tool_box = DIAGEOTW_SANDToolBox(self.data_provider, self.output)
+        self.tool_box = DIAGEOTWToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -33,11 +33,13 @@ class DIAGEOTW_SANDGenerator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
+        log_runtime('Updating templates')(self.tool_box.tools.update_templates)()
         set_names = self.tool_box.kpi_static_data['kpi_set_name'].unique().tolist()
         calculate_activation_standard = False
         if self.tool_box.ACTIVATION_STANDARD in set_names:
             set_names.remove(self.tool_box.ACTIVATION_STANDARD)
-            calculate_activation_standard = True
-
+            # calculate_activation_standard = True
         self.tool_box.main_calculation(set_names=set_names)
+        if calculate_activation_standard:
+            self.tool_box.calculate_activation_standard()
         self.tool_box.commit_results_data()

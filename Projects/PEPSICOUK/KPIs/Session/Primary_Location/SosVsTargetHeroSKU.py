@@ -16,13 +16,10 @@ class SosVsTargetHeroSkuKpi(UnifiedCalculationsScript):
         pass
 
     def calculate(self):
-        # sos_targets = self.util.sos_vs_target_targets.copy()
-        # sos_targets = sos_targets[sos_targets['type'] == self._config_params['kpi_type']]
         self.util.filtered_scif, self.util.filtered_matches = \
             self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
                                                                                  self.util.filtered_matches,
                                                                                  self.util.HERO_SKU_SOS)
-        # self.calculate_hero_sku_sos_vs_target(sos_targets)
         self.calculate_hero_sku_sos()
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 

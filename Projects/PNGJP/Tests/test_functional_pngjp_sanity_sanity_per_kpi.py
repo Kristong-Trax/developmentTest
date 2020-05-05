@@ -1,5 +1,4 @@
 import os
-import MySQLdb
 
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Testing.SeedNew import Seeder
@@ -70,11 +69,11 @@ class TestPngjpSanityPerKPI(TestFunctionalCase):
     def get_kpi_actual_results_from_seed():
         """get results from seed"""
         connector = PSProjectConnector(TestProjectsNames().TEST_PROJECT_1, DbUsers.Docker)
-        cursor = connector.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = connector.db.cursor()
         cursor.execute('''SELECT * FROM report.kpi_results''')
         temp = cursor.fetchall()
         # save results to df
-        df = pd.DataFrame(temp)
+        df = pd.DataFrame(list(temp), columns=[col[0] for col in cursor.description])
         # filter unneeded columns
         df_filtered = df[['kps_name', 'kpi_fk', 'result']]
         # copy kpi_fk in-order to count the fks

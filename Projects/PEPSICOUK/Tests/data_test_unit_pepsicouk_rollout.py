@@ -42,7 +42,8 @@ class DataTestUnitPEPSICOUK(object):
          {'pk': 319, 'type': 'Product Blocking'}, {'pk': 405, 'type': 'Category Full Bay'},
          {'pk': 330, 'type': 'Hero SKU Availability by Hero Type'},
          {'pk': 329, 'type': 'Share of Assortment by Hero Type'},
-         {'pk': 404, 'type': 'Hero SKU SOS of Category by Hero Type'}]
+         {'pk': 404, 'type': 'Hero SKU SOS of Category by Hero Type'},
+         {'pk': 406, 'type': 'Brand SOS of Segment'}]
     )
 
     custom_entity = pd.DataFrame.from_records(

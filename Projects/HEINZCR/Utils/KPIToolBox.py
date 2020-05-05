@@ -65,7 +65,7 @@ class HEINZCRToolBox:
         self.store_targets = pd.read_excel(Const.STORE_TARGETS_PATH)
         self.sub_category_weight = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='category_score')
         self.kpi_weights = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='max_weight')
-        self.targets = self.ps_data_provider.get_kpi_external_targets()
+        # self.targets = self.ps_data_provider.get_kpi_external_targets()
         self.store_assortment = PSAssortmentDataProvider(
             self.data_provider).execute(policy_name=None)
         try:
@@ -110,10 +110,12 @@ class HEINZCRToolBox:
         if self.scif.empty:
             return
         # these function must run first
-        #  self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
-        #                                                                          sheetname="Price Adherence"))
-        compare_df_test = pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH, sheetname="Price Adherence")
-        self.adherence_results = self.heinz_global_price_adherence(self.targets)
+        dtypes = {'ean_code': str}
+        self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
+                                                                                 sheetname="Price Adherence",
+                                                                                 dtype=dtypes))
+        # compare_df_test = pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH, sheetname="Price Adherence")
+        # self.adherence_results = self.heinz_global_price_adherence(self.targets)
         self.extra_spaces_results = self.heinz_global_extra_spaces()
         self.set_relevant_sub_categories()
 
@@ -564,7 +566,21 @@ class HEINZCRToolBox:
         for row in results.itertuples():
             parent_dict = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
                                                         sub_category_fk=row.sub_category_fk)
-            score = 1 if row.into_interval else 0
+
+            score_value = 'Not Present'
+            in_session = row.in_session
+            if in_session:
+                if not pd.isna(row.trax_average) and row.suggested_price:
+                    # if row.trax_average >= row.min_target and row.trax_average <= row.max_target:
+                    price_in_interval = 1 if row.into_interval == 1 else 0
+                    if price_in_interval == 1:
+                        score_value = 'Pass'
+                    else:
+                        score_value = 'Fail'
+                else:
+                    score_value = 'No Price'
+
+            score = Const.PRESENCE_PRICE_VALUES[score_value]
             self.common_v2.write_to_db_result(adherence_kpi_fk, numerator_id=row.product_fk,
                                               denominator_id=row.sub_category_fk, result=row.trax_average,
                                               score=score, target=row.suggested_price, numerator_result=row.min_target,
@@ -577,7 +593,6 @@ class HEINZCRToolBox:
             columns={'product_fk': 'product_count'})
         aggregated_results['percent_complete'] = \
             aggregated_results.loc[:, 'into_interval'] / aggregated_results.loc[:, 'product_count']
-
 
         for row in aggregated_results.itertuples():
             identifier_result = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
@@ -598,9 +613,8 @@ class HEINZCRToolBox:
                                               should_enter=True)
 
     def heinz_global_price_adherence(self, config_df):
-
-        config_df = config_df.sort_values(by=["received_time"], ascending=False).drop_duplicates(
-            subset=['start_date', 'end_date', 'ean_code', 'store_type'], keep="first")
+        # config_df = config_df.sort_values(by=["received_time"], ascending=False).drop_duplicates(
+        #     subset=['start_date', 'end_date', 'ean_code', 'store_type'], keep="first")
 
         self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'price'] = \
             self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'promotion_price']
@@ -608,101 +622,72 @@ class HEINZCRToolBox:
         results_df = self.adherence_results
         my_config_df = \
             config_df[config_df['store_type'].str.encode('utf-8') == self.store_info.store_type[0].encode('utf-8')]
-        products_in_session = self.scif.drop_duplicates(subset=['product_ean_code'], keep='last')[
-            'product_ean_code'].tolist()
-        for product_in_session in products_in_session:
-            if product_in_session:
-                row = my_config_df[my_config_df['ean_code'] == int(product_in_session)]
-                if not row.empty:
-                    # ean_code = row['EAN CODE'].values[0]
-                    # product_pk = self.labels[self.labels['ean_code'] == product_in_session]['pk'].values[0]
-                    product_pk = \
-                        self.all_products[self.all_products['product_ean_code']
-                                          == product_in_session]['product_fk'].iloc[0]
 
-                    print(product_pk)
-                    # product_in_session_df = self.scif[self.scif['product_ean_code'] == ean_code]
-                    mpisc_df_price = \
-                        self.match_product_in_scene[(self.match_product_in_scene['product_fk'] == product_pk) |
-                                                    (self.match_product_in_scene[
-                                                         'substitution_product_fk'] == product_pk)]['price']
-                    try:
-                        suggested_price = row['suggested_price'].values[0]
-                    except Exception as e:
-                        Log.error("Product with ean_code {} is not in the configuration file for customer type {}"
-                                  .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
-                        break
-                    upper_percentage = (100 + row['percentage_weight'].values[0]) / float(100)
-                    lower_percentage = (100 - row['percentage_weight'].values[0]) / float(100)
-                    min_price = suggested_price * lower_percentage
-                    max_price = suggested_price * upper_percentage
-                    percentage_sku = row['percentage_weight'].values[0]
-                    into_interval = 0
-                    prices_sum = 0
-                    count = 0
-                    trax_average = None
-                    for price in mpisc_df_price:
-                        if price and pd.notna(price):
-                            prices_sum += price
-                            count += 1
+        products_in_session = self.scif['product_ean_code'].unique().tolist()
+        products_in_session = [ean for ean in products_in_session if ean is not pd.np.nan and ean is not None]
 
-                    if prices_sum > 0:
-                        trax_average = prices_sum / count
-                        into_interval = 0
+        my_config_df = my_config_df[my_config_df['ean_code'].isin(products_in_session)]
 
-                    if not np.isnan(suggested_price):
-                        if min_price <= trax_average <= max_price:
-                            into_interval = 100
+        for row in my_config_df.itertuples():
+            product_pk = \
+                self.all_products[self.all_products['product_ean_code']
+                                  == row.ean_code]['product_fk'].iloc[0]
 
-                    results_df.loc[len(results_df)] = [product_pk, trax_average,
-                                                       suggested_price, into_interval / 100, min_price, max_price, percentage_sku ]
+            mpisc_df_price = \
+                self.match_product_in_scene[(self.match_product_in_scene['product_fk'] == product_pk) |
+                                            (self.match_product_in_scene[
+                                                 'substitution_product_fk'] == product_pk)]['price']
+            try:
+                suggested_price = float(row.suggested_price)
+            except Exception as e:
+                Log.error("Product with ean_code {} is not in the configuration file for customer type {}"
+                          .format(row.ean_code, self.store_info.store_type[0].encode('utf-8')))
+                break
+            percentage_weight = int(row.percentage_weight)
+            upper_percentage = (100 + percentage_weight) / float(100)
+            lower_percentage = (100 - percentage_weight) / float(100)
+            min_price = suggested_price * lower_percentage
+            max_price = suggested_price * upper_percentage
+            percentage_sku = percentage_weight
+            into_interval = 0
+            prices_sum = 0
+            count = 0
+            trax_average = None
+            for price in mpisc_df_price:
+                if price and pd.notna(price):
+                    prices_sum += price
+                    count += 1
 
-                    # self.common.write_to_db_result_new_tables(fk=10,
-                    #                                           numerator_id=product_pk,
-                    #                                           numerator_result=suggested_price,
-                    #                                           denominator_id=product_pk,
-                    #                                           denominator_result=trax_average,
-                    #                                           result=row['PERCENTAGE'].values[0],
-                    #                                           score=into_interval)
-                    self.common_v2.write_to_db_result(10, numerator_id=product_pk,
-                                                      numerator_result=suggested_price,
-                                                      denominator_id=product_pk,
-                                                      denominator_result=trax_average,
-                                                      result=row['percentage_weight'].values[0],
-                                                      score=into_interval)
-                    if trax_average:
-                        mark_up = (np.divide(np.divide(float(trax_average), float(1.13)),
-                                             float(suggested_price)) - 1) * 100
-                        # self.common.write_to_db_result_new_tables(fk=11,
-                        #                                           numerator_id=product_pk,
-                        #                                           numerator_result=suggested_price,
-                        #                                           denominator_id=product_pk,
-                        #                                           denominator_result=trax_average,
-                        #                                           score=mark_up,
-                        #                                           result=mark_up)
-                        self.common_v2.write_to_db_result(11, numerator_id=product_pk,
-                                                          numerator_result=suggested_price,
-                                                          denominator_id=product_pk,
-                                                          denominator_result=trax_average,
-                                                          score=mark_up,
-                                                          result=mark_up)
-                else:
-                    continue
-                    # Log.warning("Product with ean_code {} is not in the configuration file for customer type {}"
-                    #             .format(product_in_session, self.store_info.store_type[0].encode('utf-8')))
+            if prices_sum > 0:
+                trax_average = prices_sum / count
+                into_interval = 0
 
-        results_df = self.keep_latest_targets(results_df)
+            if not np.isnan(suggested_price):
+                if min_price <= trax_average <= max_price:
+                    into_interval = 100
+
+            results_df.loc[len(results_df)] = [product_pk, trax_average,
+                                               suggested_price, into_interval / 100, min_price, max_price,
+                                               percentage_sku]
+
+            self.common_v2.write_to_db_result(10, numerator_id=product_pk,
+                                              numerator_result=suggested_price,
+                                              denominator_id=product_pk,
+                                              denominator_result=trax_average,
+                                              result=row.percentage_weight,
+                                              score=into_interval)
+            if trax_average:
+                mark_up = (np.divide(np.divide(float(trax_average), float(1.13)),
+                                     float(suggested_price)) - 1) * 100
+
+                self.common_v2.write_to_db_result(11, numerator_id=product_pk,
+                                                  numerator_result=suggested_price,
+                                                  denominator_id=product_pk,
+                                                  denominator_result=trax_average,
+                                                  score=mark_up,
+                                                  result=mark_up)
+
         return results_df
-
-    def keep_latest_targets(self, df):
-
-        if df.empty:
-            pass
-        else:
-            pass
-
-
-        return df
 
     def calculate_perfect_store_extra_spaces(self):
         extra_spaces_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
