@@ -65,7 +65,7 @@ class HEINZCRToolBox:
         self.store_targets = pd.read_excel(Const.STORE_TARGETS_PATH)
         self.sub_category_weight = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='category_score')
         self.kpi_weights = pd.read_excel(Const.SUB_CATEGORY_TARGET_PATH, sheetname='max_weight')
-        # self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.targets = self.ps_data_provider.get_kpi_external_targets()
         self.store_assortment = PSAssortmentDataProvider(
             self.data_provider).execute(policy_name=None)
         try:
@@ -110,12 +110,10 @@ class HEINZCRToolBox:
         if self.scif.empty:
             return
         # these function must run first
-        dtypes = {'ean_code': str}
-        self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
-                                                                                 sheetname="Price Adherence",
-                                                                                 dtype=dtypes))
-        # compare_df_test = pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH, sheetname="Price Adherence")
-        # self.adherence_results = self.heinz_global_price_adherence(self.targets)
+        #  self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
+        #                                                                          sheetname="Price Adherence"))
+        compare_df_test = pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH, sheetname="Price Adherence")
+        self.adherence_results = self.heinz_global_price_adherence(self.targets)
         self.extra_spaces_results = self.heinz_global_extra_spaces()
         self.set_relevant_sub_categories()
 
@@ -613,8 +611,8 @@ class HEINZCRToolBox:
                                               should_enter=True)
 
     def heinz_global_price_adherence(self, config_df):
-        # config_df = config_df.sort_values(by=["received_time"], ascending=False).drop_duplicates(
-        #     subset=['start_date', 'end_date', 'ean_code', 'store_type'], keep="first")
+        config_df = config_df.sort_values(by=["received_time"], ascending=False).drop_duplicates(
+            subset=['start_date', 'end_date', 'ean_code', 'store_type'], keep="first")
 
         self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'price'] = \
             self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'promotion_price']
