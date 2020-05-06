@@ -48,6 +48,7 @@ P2_MOBILE_FULFILMENT = 'Mobile Price Fulfillment'
 P2_EFFICIENCY = 'Price-Monitoring efficiency (Trax)'
 P2_RAW_DATA = 'Raw Data'
 P2_SET_PRICE = 'Price Monitoring'
+P2_SET_MENU = 'Menu Monitoring'
 P2_SET_DATE = 'Date Monitoring'
 P4_API_SET = 'POSM Status Raw Data'
 BAT = 'BAT'
@@ -55,6 +56,10 @@ ENTRY_TEMPLATE_GROUP = u'1. На входе'
 EXIT_TEMPLATE_GROUP = u'2. На выходе'
 EXIT_TEMPLATE_NAME = u'Выход'
 EXIT_STOCK_NAME = u'Сток на выходе (выдвинутая полка)'
+EFFICIENCY_TEMPLATE_NAME = u'Дата производства'
+MENU_TEMPLATE_NAME = u'Key Account_Ценообразование'
+RECOMMENDED_PRICE = 'Recommended price'
+MENU_PRICE = 'Menu Price'
 SK = 'SK'
 SK_RAW_DATA = 'SK Raw Data'
 SAS = 'SAS'
@@ -67,7 +72,6 @@ ASSORTMENT_DISTRIBUTION_EXIT_FOR_API = 'Assortment Distribution Raw Data - Exit'
 ASSORTMENT_DISTRIBUTION_ENTRY_FOR_API = 'Assortment Distribution Raw Data - Entry'
 ASSORTMENT_DISTRIBUTION_AGGREGATION_ENTRY = 'Assortment Distribution Aggregations - Entry'
 ASSORTMENT_DISTRIBUTION_AGGREGATION_EXIT = 'Assortment Distribution Aggregations - Exit'
-EFFICIENCY_TEMPLATE_NAME = u'Дата производства'
 ATTRIBUTE_3 = 'store_attribute_3'
 ATTRIBUTE_11 = 'store_attribute_11'
 BUNDLE2LEAD = "bundle>lead"
@@ -161,24 +165,18 @@ class BATRUToolBox:
         self.products = self.products\
             .merge(self.products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
-        self.products.loc[self.products['product_fk_lead'].isnull(
-        ), 'product_ean_code_lead'] = self.products['product_ean_code']
-        self.products.loc[self.products['product_fk_lead'].isnull(
-        ), 'product_name_lead'] = self.products['product_name']
-        self.products.loc[self.products['product_fk_lead'].isnull(
-        ), 'product_fk_lead'] = self.products['product_fk']
+        self.products.loc[self.products['product_fk_lead'].isnull(), 'product_ean_code_lead'] = self.products['product_ean_code']
+        self.products.loc[self.products['product_fk_lead'].isnull(), 'product_name_lead'] = self.products['product_name']
+        self.products.loc[self.products['product_fk_lead'].isnull(), 'product_fk_lead'] = self.products['product_fk']
 
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.all_products.loc[self.all_products['substitution_product_fk'].isnull(), 'substitution_product_fk'] = np.nan
         self.all_products = self.all_products\
             .merge(self.all_products[['product_fk', 'product_ean_code', 'product_name']],
                    how='left', left_on='substitution_product_fk', right_on='product_fk', suffixes=['', '_lead'])
-        self.all_products.loc[self.all_products['product_fk_lead'].isnull(
-        ), 'product_ean_code_lead'] = self.all_products['product_ean_code']
-        self.all_products.loc[self.all_products['product_fk_lead'].isnull(
-        ), 'product_name_lead'] = self.all_products['product_name']
-        self.all_products.loc[self.all_products['product_fk_lead'].isnull(
-        ), 'product_fk_lead'] = self.all_products['product_fk']
+        self.all_products.loc[self.all_products['product_fk_lead'].isnull(), 'product_ean_code_lead'] = self.all_products['product_ean_code']
+        self.all_products.loc[self.all_products['product_fk_lead'].isnull(), 'product_name_lead'] = self.all_products['product_name']
+        self.all_products.loc[self.all_products['product_fk_lead'].isnull(), 'product_fk_lead'] = self.all_products['product_fk']
 
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.templates['template_name'] = self.templates['template_name']\
@@ -291,7 +289,7 @@ class BATRUToolBox:
     def update_custom_entity(self, custom_entity_df, update_list, entity_type):
         ent_type_fk = self.kpi_entity[self.kpi_entity['name'] == entity_type]['pk'].values[0]
         relevant_ce_values = custom_entity_df['name'].unique().tolist()
-        update_list = filter(lambda x: x not in relevant_ce_values, update_list)
+        update_list = filter(lambda x: x.decode('utf-8') not in relevant_ce_values, update_list)
         self.connect_rds_if_disconnected()
         cur = self.rds_conn.db.cursor()
         for value in update_list:
@@ -857,13 +855,15 @@ class BATRUToolBox:
         """
         This gets the date table and create a valid date string so we can use it later in agregation
         """
+        empty = pd.NaT
         if not pd.isnull(row['date_value']):
             try:
                 f_date = pd.datetime.strftime(row['date_value'], '%Y.%m.%d')
             except ValueError:
                 Log.error("The date {} is not possible".format(row['date_value']))
-                return "2018.01.01"
-            return datetime.strptime(f_date, '%Y.%m.%d')
+                return empty
+            else:
+                return datetime.strptime(f_date, '%Y.%m.%d')
         if row['original_value']:
             date_field = row['original_value']
             if self._is_date_valid(row['original_value']):
@@ -881,9 +881,9 @@ class BATRUToolBox:
                     try:
                         f_date = datetime.strptime(date, '%y.%m.%d')
                     except:
-                        return
+                        return empty
                 return f_date
-        return
+        return empty
 
     def get_additional_product_data(self):
         #####
@@ -893,22 +893,23 @@ class BATRUToolBox:
         price_query = \
             """
             SELECT 
-                    p.scene_fk as scene_fk,
-                    mpip.product_fk as product_fk,
-                    COALESCE(pr.substitution_product_fk, mpip.product_fk) as substitution_product_fk,
-                    mpn.match_product_in_probe_fk as probe_match_fk,
-                    mpn.value as price_value,
-                    mpas.state as number_attribute_state
+                    p.scene_fk AS scene_fk,
+                    mpip.product_fk AS product_fk,
+                    COALESCE(pr.substitution_product_fk, mpip.product_fk) AS substitution_product_fk,
+                    mpn.match_product_in_probe_fk AS probe_match_fk,
+                    mpn.value AS price_value,
+                    mpas.state AS number_attribute_state,
+                    1 AS price_tag
             FROM
                     probedata.match_product_in_probe_number_attribute_value mpn
-                    LEFT JOIN static.number_attribute_brands_scene_types mpna on mpn.number_attribute_fk = mpna.pk
+                    LEFT JOIN static.match_product_in_probe_number_attribute mpna ON mpn.number_attribute_fk = mpna.pk
                     LEFT JOIN static.match_product_in_probe_attributes_state mpas ON mpn.attribute_state_fk = mpas.pk
                     JOIN probedata.match_product_in_probe mpip ON mpn.match_product_in_probe_fk = mpip.pk
                     JOIN probedata.probe p ON p.pk = mpip.probe_fk
                     JOIN static_new.product pr ON pr.pk = mpip.product_fk
             WHERE
-                    p.session_uid = "{0}"
-            """.format(self.session_uid)
+                    mpna.name = "{0}" AND p.session_uid = "{1}"
+            """.format(RECOMMENDED_PRICE, self.session_uid)
 
         date_query = \
             """
@@ -919,7 +920,8 @@ class BATRUToolBox:
                     mpd.match_product_in_probe_fk as probe_match_fk,
                     mpd.value as date_value,
                     mpd.original_value,
-                    mpas.state as date_attribute_state
+                    mpas.state as date_attribute_state,
+                    1 AS date_tag
             FROM
                     probedata.match_product_in_probe_date_attribute_value mpd
                     LEFT JOIN static.date_attribute_brands_scene_types mpda ON mpd.date_attribute_fk = mpda.pk
@@ -931,29 +933,57 @@ class BATRUToolBox:
                     p.session_uid = "{0}"
             """.format(self.session_uid)
 
+        menu_query = \
+            """
+            SELECT 
+                    p.scene_fk AS scene_fk,
+                    mpip.product_fk AS product_fk,
+                    COALESCE(pr.substitution_product_fk, mpip.product_fk) AS substitution_product_fk,
+                    mpn.match_product_in_probe_fk AS probe_match_fk,
+                    mpn.value AS menu_value,
+                    mpas.state AS number_attribute_state,
+                    1 AS menu_tag
+            FROM
+                    probedata.match_product_in_probe_number_attribute_value mpn
+                    LEFT JOIN static.match_product_in_probe_number_attribute mpna ON mpn.number_attribute_fk = mpna.pk
+                    LEFT JOIN static.match_product_in_probe_attributes_state mpas ON mpn.attribute_state_fk = mpas.pk
+                    JOIN probedata.match_product_in_probe mpip ON mpn.match_product_in_probe_fk = mpip.pk
+                    JOIN probedata.probe p ON p.pk = mpip.probe_fk
+                    JOIN static_new.product pr ON pr.pk = mpip.product_fk
+            WHERE
+                    mpna.name = "{0}" AND p.session_uid = "{1}"
+            """.format(MENU_PRICE, self.session_uid)
+
         price_attr = pd.read_sql_query(price_query, self.rds_conn.db)
         date_attr = pd.read_sql_query(date_query, self.rds_conn.db)
+        menu_attr = pd.read_sql_query(menu_query, self.rds_conn.db)
+
         matches = self.data_provider[Data.MATCHES]
         session_scenes = matches['scene_fk'].unique().tolist()
+
         price_attr = price_attr[price_attr['scene_fk'].isin(session_scenes)]
         date_attr = date_attr[date_attr['scene_fk'].isin(session_scenes)]
+        menu_attr = menu_attr[menu_attr['scene_fk'].isin(session_scenes)]
 
         merged_pricing_data = price_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
                                                on=['probe_match_fk', 'product_fk', 'scene_fk'])
         merged_dates_data = date_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
                                             on=['probe_match_fk', 'product_fk', 'scene_fk'])
+        merged_menu_data = menu_attr.merge(matches[['scene_fk', 'product_fk', 'probe_match_fk']],
+                                           on=['probe_match_fk', 'product_fk', 'scene_fk'])
 
         merged_pricing_data.dropna(subset=['price_value'], inplace=True)
-        merged_dates_data.dropna(subset=['original_value'], inplace=True)
+        merged_dates_data.dropna(subset=['original_value', 'date_value'], how='all', inplace=True)
+        merged_menu_data.dropna(subset=['menu_value'], inplace=True)
 
         if not merged_pricing_data.empty:
             try:
                 merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'substitution_product_fk'],
-                                                                  as_index=False)[['price_value']].first()
+                                                                  as_index=False)[['price_value', 'price_tag']].first()
             except Exception as e:
                 merged_pricing_data['price_value'] = 0
                 merged_pricing_data = merged_pricing_data.groupby(['scene_fk', 'substitution_product_fk'],
-                                                                  as_index=False)[['price_value']].first()
+                                                                  as_index=False)[['price_value', 'price_tag']].first()
                 Log.debug('There are missing numeric values: {}'.format(e))
 
         if not merged_dates_data.empty:
@@ -961,26 +991,39 @@ class BATRUToolBox:
                 lambda row: self._get_formate_date(row), axis=1)
             try:
                 merged_dates_data = merged_dates_data.groupby(['scene_fk', 'substitution_product_fk'],
-                                                              as_index=False)[['fixed_date']].first()
+                                                              as_index=False)[['fixed_date', 'date_tag']].first()
             except Exception as e:
                 merged_dates_data = merged_dates_data.groupby(['scene_fk', 'substitution_product_fk'],
-                                                              as_index=False)[['fixed_date']].first()
+                                                              as_index=False)[['fixed_date', 'date_tag']].first()
                 Log.debug('There is a dates integrity issue: {}'.format(e))
         else:
-            merged_dates_data['fixed_date'] = None
+            merged_dates_data['fixed_date'] = pd.NaT
 
-        merged_additional_data = self.scif\
+        if not merged_menu_data.empty:
+            try:
+                merged_menu_data = merged_menu_data.groupby(['scene_fk', 'substitution_product_fk'],
+                                                            as_index=False)[['menu_value', 'menu_tag']].first()
+            except Exception as e:
+                merged_menu_data['menu_value'] = 0
+                merged_menu_data = merged_menu_data.groupby(['scene_fk', 'substitution_product_fk'],
+                                                            as_index=False)[['menu_value', 'menu_tag']].first()
+                Log.debug('There are missing numeric values: {}'.format(e))
+
+        merged_additional_data = self.scif \
             .merge(merged_pricing_data, how='left',
                    left_on=['scene_id', 'item_id'],
-                   right_on=['scene_fk', 'substitution_product_fk'])\
+                   right_on=['scene_fk', 'substitution_product_fk']) \
             .merge(merged_dates_data, how='left',
                    left_on=['scene_id', 'item_id'],
-                   right_on=['scene_fk', 'substitution_product_fk'])\
+                   right_on=['scene_fk', 'substitution_product_fk']) \
+            .merge(merged_menu_data, how='left',
+                   left_on=['scene_id', 'item_id'],
+                   right_on=['scene_fk', 'substitution_product_fk']) \
             .merge(self.all_products, how='left',
                    left_on='item_id',
                    right_on='product_fk',
                    suffixes=['', '_all_products'])\
-            .dropna(subset=['fixed_date', 'price_value'],
+            .dropna(subset=['fixed_date', 'price_value', 'menu_value'],
                     how='all')
 
         return merged_additional_data
@@ -1003,7 +1046,8 @@ class BATRUToolBox:
             cur.execute(level3_query)
         self.rds_conn.db.commit()
 
-    def _get_empty_assortment(self):
+    @staticmethod
+    def _get_empty_assortment():
         return pd.DataFrame(columns=['product_fk', 'product_ean_code'])
 
     def get_products_distributed_in_sessions(self, session_ids, template_group=None):
@@ -1058,7 +1102,8 @@ class BATRUToolBox:
         monitored_sku = self.get_sku_monitored(self.state)
         if not self.merged_additional_data.empty:
             self.merged_additional_data = self.merged_additional_data.loc[
-                self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')]
+                self.merged_additional_data['template_name'].isin([EFFICIENCY_TEMPLATE_NAME.encode('utf-8'),
+                                                                   MENU_TEMPLATE_NAME.encode('utf-8')])]
             if not self.merged_additional_data.empty:
                 price_top_kpi = self.common.get_kpi_fk_by_kpi_type(self.PRICING_MR)
                 identifier_parent_top_kpi = self.common.get_dictionary(kpi_fk=price_top_kpi)
@@ -1071,8 +1116,8 @@ class BATRUToolBox:
                 # self.set_p2_sku_mobile_results(monitored_sku)
                 dates_in_session = self.get_raw_data()
                 self.update_result_values_with_new_dates(dates_in_session)
-                self.set_p2_sku_mobile_results(monitored_sku, identifier_parent_mob_price_monitor)
-                if score or score == 0:
+                mobile_results = self.set_p2_sku_mobile_results(monitored_sku, identifier_parent_mob_price_monitor)
+                if score or score == 0 or mobile_results:
                     self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
                     self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
                                             score_2=format(efficiency_score, '.2f'))
@@ -1124,22 +1169,25 @@ class BATRUToolBox:
             monitored_skus = monitored_skus.append(
                 {'product_ean_code_lead': product_ean_code_lead}, ignore_index=True)
         monitored_skus = monitored_skus.drop_duplicates(
-            subset=['product_ean_code_lead'], keep='last')
+            subset=['product_ean_code_lead'], keep='last')['product_ean_code_lead'].tolist()
+        monitored_skus = self.all_products[self.all_products['product_ean_code'].isin(monitored_skus)][
+            ['product_ean_code_lead', 'product_ean_code', 'product_name_lead', 'product_name']]
         if monitored_skus.empty:
             Log.warning('Monitored SKU are not defined in the P2 template')
         return monitored_skus
 
-    def is_relevant_bundle(self, product_sku, bundle_sku):
-        """
-        This function checks if the bundle product needs to be added to the monitored_sku Data Frame.
-        Logic: If the product doesn't exist in the store and the bundle product does, add it.
-        :return: 1 in case of we need to add the bundle.
-        """
-        filtered_scif = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME)]
-        if filtered_scif.loc[filtered_scif['product_ean_code'] == product_sku].empty:
-            if not filtered_scif.loc[filtered_scif['product_ean_code'] == bundle_sku].empty:
-                return 1
-        return 0
+    # def is_relevant_bundle(self, product_sku, bundle_sku):
+    #     """
+    #     This function checks if the bundle product needs to be added to the monitored_sku Data Frame.
+    #     Logic: If the product doesn't exist in the store and the bundle product does, add it.
+    #     :return: 1 in case of we need to add the bundle.
+    #     """
+    #     filtered_scif = self.scif[(self.scif['template_name'].isin([EFFICIENCY_TEMPLATE_NAME.encode('utf-8'),
+    #                                                                 MENU_TEMPLATE_NAME.encode('utf-8')]))]
+    #     if filtered_scif.loc[filtered_scif['product_ean_code'] == product_sku].empty:
+    #         if not filtered_scif.loc[filtered_scif['product_ean_code'] == bundle_sku].empty:
+    #             return 1
+    #     return 0
 
     def calculate_fulfilment(self, monitored_products):
         kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name']
@@ -1199,51 +1247,84 @@ class BATRUToolBox:
                 (self.merged_additional_data['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')) &
                 (~self.merged_additional_data['fixed_date'].isnull())][
                 'product_ean_code_lead'].unique().tolist()
-        facing_of_recognized = self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')) &
-                                         (self.scif['product_ean_code'].isin(products_eans_with_leads))]['facings'].sum()
+        facing_of_recognized = \
+            self.scif[(self.scif['template_name'] == EFFICIENCY_TEMPLATE_NAME.encode('utf-8')) &
+                      (self.scif['product_ean_code'].isin(products_eans_with_leads))]['facings'].sum()
         return (facing_of_recognized / float(facing_of_all)) * 100 if facing_of_all else 0
 
     def get_raw_data(self):
         dates_in_session = set()
+        count_prices = 0
+        count_menus = 0
         for index in xrange(len(self.merged_additional_data)):
             row = self.merged_additional_data.iloc[index]
+
             product_for_db = row['product_ean_code_lead']
-            if product_for_db is None:
-                continue
+            product_name = row['product_name_lead']
 
-            if pd.isnull(row['price_value']):  # None
-                price_value_for_db = 0
-            else:
-                price_value_for_db = format(row['price_value'], '.2f')
+            if product_for_db and (pd.notnull(row['price_tag']) or pd.notnull(row['date_tag'])):
+                if pd.isnull(row['price_value']):  # None
+                    price_value_for_db = 0
+                else:
+                    price_value_for_db = format(row['price_value'], '.2f')
+                if pd.isnull(row['fixed_date']):  # None
+                    formatted_date_for_db = '0'
+                else:
+                    formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
+                dates_in_session.add('date: {}'.format(formatted_date_for_db))
+                self.write_to_db_result_for_api(score=price_value_for_db, level=self.LEVEL3, level3_score=None,
+                                                kpi_set_name=P2_SET_PRICE,
+                                                kpi_name=P2_RAW_DATA,
+                                                atomic_kpi_name=product_for_db)
+                self.write_to_db_result_for_api(score=formatted_date_for_db, level=self.LEVEL3, level3_score=None,
+                                                kpi_set_name=P2_SET_DATE,
+                                                kpi_name=P2_RAW_DATA,
+                                                atomic_kpi_name=product_for_db)
+                count_prices += 1
 
-            if pd.isnull(row['fixed_date']):  # None
-                formatted_date_for_db = '0'
-            else:
-                formatted_date_for_db = row['fixed_date'].strftime('%m.%Y')
-            dates_in_session.add('date: {}'.format(formatted_date_for_db))
-
-            self.write_to_db_result_for_api(score=price_value_for_db, level=self.LEVEL3, level3_score=None,
-                                            kpi_set_name=P2_SET_PRICE,
-                                            kpi_name=P2_RAW_DATA,
-                                            atomic_kpi_name=product_for_db)
-            self.write_to_db_result_for_api(score=formatted_date_for_db, level=self.LEVEL3, level3_score=None,
-                                            kpi_set_name=P2_SET_DATE,
-                                            kpi_name=P2_RAW_DATA,
-                                            atomic_kpi_name=product_for_db)
+            if not product_for_db and pd.notnull(row['menu_tag']):
+                product_eans = self.all_products[(self.all_products['product_type'] == 'SKU') &
+                                                 (self.all_products['product_name'] == product_name) &
+                                                 (self.all_products['product_ean_code'].notnull())][
+                                                 'product_ean_code_lead'].tolist()
+                product_for_db = product_eans[0] if product_eans else None
+                if product_for_db and 'POS_' not in product_for_db:
+                    product_for_db = 'POS_' + product_for_db
+                if product_for_db:
+                    if pd.isnull(row['menu_value']):  # None
+                        menu_value_for_db = 0
+                    else:
+                        menu_value_for_db = format(row['menu_value'], '.2f')
+                    if menu_value_for_db:
+                        self.write_to_db_result_for_api(score=menu_value_for_db, level=self.LEVEL3, level3_score=None,
+                                                        kpi_set_name=P2_SET_MENU,
+                                                        kpi_name=P2_RAW_DATA,
+                                                        atomic_kpi_name=product_for_db + '#' + product_name)
+                        count_menus += 1
 
         # using P4 save function to save None without problems so will add set name to api.
-        self.write_to_db_result_for_api(score=None, level=self.LEVEL1,
-                                        level3_score=None, kpi_set_name=P2_SET_DATE)
+        if count_prices:
+            self.write_to_db_result_for_api(score=None, level=self.LEVEL1,
+                                            level3_score=None, kpi_set_name=P2_SET_PRICE)
+            self.write_to_db_result_for_api(score=None, level=self.LEVEL1,
+                                            level3_score=None, kpi_set_name=P2_SET_DATE)
+
+        if count_menus:
+            self.write_to_db_result_for_api(score=None, level=self.LEVEL1,
+                                            level3_score=None, kpi_set_name=P2_SET_MENU)
         return dates_in_session
 
     def set_p2_sku_mobile_results(self, monitored_sku, identifier_parent):
         new_products = False
+        mobile_results = False
         set_name = MOBILE_PRICE_MONITORING
         kpi_fk = MOBILE_PRICE_MONITORING_KPI_FK
         price_sku_fk = self.common.get_kpi_fk_by_kpi_type(self.PRICE_SKU)
         try:
-            existing_skus = self.all_products[(self.all_products['product_type'].isin([OTHER, SKU, POSM])) &
-                                              (self.all_products['product_ean_code'].isin(monitored_sku['product_ean_code_lead'].values))]
+            existing_skus = \
+                self.all_products[(self.all_products['product_type'].isin([OTHER, SKU, POSM])) &
+                                  (self.all_products['product_ean_code'].isin(monitored_sku[
+                                                                                  'product_ean_code_lead'].values))]
             set_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name']
                                             == set_name]['atomic_kpi_name'].unique().tolist()
             not_in_db_products = existing_skus[~existing_skus['product_short_name'].isin(set_data)]
@@ -1261,9 +1342,11 @@ class BATRUToolBox:
         for index in xrange(len(monitored_sku)):
             row = monitored_sku.iloc[index]
             try:
-                product_name = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
+                product_name = self.all_products[(self.all_products['product_type'] == 'SKU') &
+                                                 (self.all_products['product_ean_code'] == row.product_ean_code_lead)][
                     'product_short_name'].drop_duplicates().values[0]
-                product_fk = self.all_products[self.all_products['product_ean_code'] == row.product_ean_code_lead][
+                product_fk = self.all_products[(self.all_products['product_type'] == 'SKU') &
+                                               (self.all_products['product_ean_code'] == row.product_ean_code_lead)][
                     'product_fk'].drop_duplicates().values[0]
             except Exception as e:
                 Log.debug('Product ean {} is not defined in the DB'.format(row.product_ean_code))
@@ -1277,8 +1360,9 @@ class BATRUToolBox:
                     'product_ean_code_lead'] == row.product_ean_code_lead]\
                     .empty else 1
 
-                result = self.merged_additional_data[self.merged_additional_data[
-                    'product_ean_code_lead'] == row.product_ean_code_lead][
+                result = self.merged_additional_data[
+                    (self.merged_additional_data['product_type'] == 'SKU') &
+                    (self.merged_additional_data['product_ean_code_lead'] == row.product_ean_code_lead)][
                     'price_value']
                 if result.empty:
                     result = 0
@@ -1287,8 +1371,9 @@ class BATRUToolBox:
                 else:
                     result = format(result.values[0], '.2f')
 
-                result2 = self.merged_additional_data[self.merged_additional_data[
-                    'product_ean_code_lead'] == row.product_ean_code_lead][
+                result2 = self.merged_additional_data[
+                    (self.merged_additional_data['product_type'] == 'SKU') &
+                    (self.merged_additional_data['product_ean_code_lead'] == row.product_ean_code_lead)][
                     'fixed_date']
                 if result2.empty:
                     result2 = '0'
@@ -1297,16 +1382,43 @@ class BATRUToolBox:
                 else:
                     result2 = pd.to_datetime(str(result2.values[0])).strftime('%m.%Y')
 
+                menu_lookup = 'POS_' + row.product_ean_code_lead  # Correspondence by POS_EAN
+                result3 = self.merged_additional_data[
+                          (self.merged_additional_data['product_type'] == 'POS') &
+                          (self.merged_additional_data['product_ean_code_lead'] == menu_lookup)]['menu_value']
+                if result3.empty:
+                    menu_lookup = row.product_ean_code_lead   # Correspondence by SKU_EAN
+                    result3 = self.merged_additional_data[
+                        (self.merged_additional_data['product_type'] == 'POS') &
+                        (self.merged_additional_data['product_ean_code_lead'] == menu_lookup)]['menu_value']
+                if result3.empty:
+                    menu_lookup = row.product_name_lead.encode('utf-8')   # Correspondence by SKU_NAME
+                    result3 = self.merged_additional_data[
+                        (self.merged_additional_data['product_type'] == 'POS') &
+                        (self.merged_additional_data['product_name_lead'] == menu_lookup)]['menu_value']
+
+                if result3.empty:
+                    result3 = 0
+                elif pd.isnull(result3.values[0]):  # None
+                    result3 = 0
+                else:
+                    result3 = format(result3.values[0], '.2f')
+
                 self.write_to_db_result(fk=kpi_fk, result=result,
                                         level=self.LEVEL3, score=score, result_2=result2)
                 # new tables - lvl 3
                 custom_score = self.kpi_score_values[self.CUSTOM_DATE]['date: {}'.format(result2)] if result2 != '0' \
                     else 0
                 self.common.write_to_db_result(fk=price_sku_fk, numerator_id=product_fk, denominator_id=self.store_id,
-                                               numerator_result=score, score=custom_score, result=result,
+                                               numerator_result=score, score=custom_score,
+                                               result=result, target=result3,
                                                identifier_parent=identifier_parent, should_enter=True)
+                if not (result == 0 and result2 == '0' and result3 == 0):
+                    mobile_results |= True
             except Exception as e:
                 Log.error('{}'.format(e))
+
+        return mobile_results
 
     @staticmethod
     def get_relevant_section_products(raw_data, section, state_for_calculation, fixture, attribute_3, attribute_11):
