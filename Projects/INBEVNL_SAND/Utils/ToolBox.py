@@ -7,8 +7,8 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.INBEVNL_SAND.Utils.PositionGraph import INBEVNL_SANDINBEVBEPositionGraphs
-from Projects.INBEVNL_SAND.Utils.GeneralToolBox import INBEVNL_SANDINBEVBEGENERALToolBox
+from Projects.INBEVNL_SAND.Utils.PositionGraph import INBEVNLINBEVBEPositionGraphs
+from Projects.INBEVNL_SAND.Utils.GeneralToolBox import INBEVNLINBEVBEGENERALToolBox
 
 __author__ = 'Nimrod'
 
@@ -24,7 +24,7 @@ UPDATED_DATE_FILE = 'LastUpdated'
 UPDATED_DATE_FORMAT = '%Y-%m-%d'
 
 
-class INBEVNL_SANDINBEVBEINBEVToolBox:
+class INBEVNLINBEVBEINBEVToolBox:
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
     EXCLUDE_EMPTY = 0
@@ -95,7 +95,7 @@ class INBEVNL_SANDINBEVBEINBEVToolBox:
         self.survey_response = self.data_provider[Data.SURVEY_RESPONSES]
         self.kpi_static_data = data.get('kpi_static_data')
         self.match_display_in_scene = data.get('match_display_in_scene')
-        self.general_tools = INBEVNL_SANDINBEVBEGENERALToolBox(data_provider, output,
+        self.general_tools = INBEVNLINBEVBEGENERALToolBox(data_provider, output,
                                                                kpi_static_data=self.kpi_static_data)
         self.amz_conn = StorageFactory.get_connector(BUCKET)
         self.templates_path = self.TEMPLATES_PATH + self.project_name + '/'
@@ -105,7 +105,7 @@ class INBEVNL_SANDINBEVBEINBEVToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = INBEVNL_SANDINBEVBEPositionGraphs(self.data_provider)
+            self._position_graphs = INBEVNLINBEVBEPositionGraphs(self.data_provider)
         return self._position_graphs
 
     @property
@@ -154,7 +154,7 @@ class INBEVNL_SANDINBEVBEINBEVToolBox:
         """
         return self.general_tools.calculate_availability(**filters)
 
-    def calculate_assortment(self, assortment_entity='product_ean_code', minimum_assortment_for_entity=1, **filters):
+    def calculate_assortment(self, assortment_entity='product_ean_code', minimum_assortment_for_entity=1,  oos_products=None,**filters):
         """
         :param assortment_entity: This is the entity on which the assortment is calculated.
         :param minimum_assortment_for_entity: This is the number of assortment per each unique entity in order for it
@@ -166,6 +166,8 @@ class INBEVNL_SANDINBEVBEINBEVToolBox:
             filtered_df = self.match_product_in_scene[self.get_filter_condition(self.match_product_in_scene, **filters)]
         else:
             filtered_df = self.scif[self.get_filter_condition(self.scif, **filters)]
+        if oos_products is not None:
+            filtered_df = filtered_df[~filtered_df['product_fk'].isin(oos_products)]
         if minimum_assortment_for_entity == 1:
             assortment = len(filtered_df[assortment_entity].unique())
         else:
