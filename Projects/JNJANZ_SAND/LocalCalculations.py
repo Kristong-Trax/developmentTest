@@ -24,7 +24,13 @@ if __name__ == '__main__':
 
         # New test sessions
         # 'b5b2469e-3487-4012-ad36-e3b90510e0e3',
-        '0ca6910d-cff7-41e0-8dc4-2aef898efcf5' # previous session - have issues
+        #'0ca6910d-cff7-41e0-8dc4-2aef898efcf5' # previous session - have issues
+
+        # '4b68d2d7-1de4-4430-b9bd-f15324369adb',
+        # '640bb7ff-91ba-4a67-b124-1b7fcb9d531e' #prev session
+
+        'e7f1c2f6-e80b-4365-a0d6-b93ad8008929',
+        #'4b68d2d7-1de4-4430-b9bd-f15324369adb' #prev session
 
         # '558802f2-f42e-4ce3-9b80-41ed3a7d0c0f',
         # 'ba2da77f-d0b9-409a-ae8a-2f357aedb844' # previous
