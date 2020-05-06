@@ -1,16 +1,18 @@
 import numpy as np
 import networkx as nx
+from consts import Consts
 from collections import Counter
 from Trax.Cloud.Services.Connector.Logger import Log
-from Projects.DIAGEOUS_SAND2.Data.LocalConsts import CaseCountConsts as Ccc
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts as Src
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
 from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts as Mc, ProductsConsts as Pc, ScifConsts as Sc
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts as Src
-from consts import Consts
 
 
 class CaseCountCalculator(GlobalSessionToolBox):
+    """This class calculates the Case Count SKU KPI set.
+    It uses display tags and sub-products in order to calculate results per target and sum
+    all of them in order to calculate the main Case Count"""
 
     def __init__(self, data_provider, common):
         GlobalSessionToolBox.__init__(self, data_provider, None)
@@ -27,38 +29,38 @@ class CaseCountCalculator(GlobalSessionToolBox):
 
     def main_case_count_calculations(self):
         """This method calculates the entire Case Count KPIs set."""
-        if self.filtered_mdis.empty or self.filtered_scif.empty:
-            return
-        try:
-            self._prepare_data_for_calculation()
-            total_facings_res = self._calculate_display_size_facings()
-            cases_per_sku_res = self._count_number_of_cases()
-            unshoppable_cases_res = self._non_shoppable_case_kpi()
-            implied_shoppable_res = self._implied_shoppable_cases_kpi()
-            total_cases_res = self._calculate_and_total_cases(cases_per_sku_res + implied_shoppable_res)
-            # self._save_results_to_db(total_cases_res, Ccc.TOTAL_CASES_KPI, should_enter=False)
-        except Exception as err:
-            Log.error("DiageoUS Case Count calculation failed due to the following error: {}".format(err))
+        if not (self.filtered_mdis.empty or self.filtered_scif.empty):
+            try:
+                self._prepare_data_for_calculation()
+                facings_res = self._calculate_display_size_facings()
+                sku_cases_res = self._count_number_of_cases()
+                unshoppable_cases_res = self._non_shoppable_case_kpi()
+                implied_cases_res = self._implied_shoppable_cases_kpi()
+                total_res = self._calculate_and_total_cases(sku_cases_res + implied_cases_res + unshoppable_cases_res)
+                self._save_results_to_db(facings_res+sku_cases_res+unshoppable_cases_res+implied_cases_res+total_res)
+            except Exception as err:
+                Log.error("DiageoUS Case Count calculation failed due to the following error: {}".format(err))
 
-    @staticmethod
-    def _calculate_and_total_cases(kpi_results):
+    def _calculate_and_total_cases(self, kpi_results):
         """ This method sums # of cases per brand and Implied Shoppable Cases KPIs
         and saves the main result to the DB"""
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_KPI)
         total_results_per_sku, results_list = Counter(), list()
         for res in kpi_results:
             total_results_per_sku[res[Pc.PRODUCT_FK]] += res[Src.RESULT]
         for product_fk, result in total_results_per_sku.iteritems():
-            kpi_id = '{}_{}'.format(product_fk, Ccc.TOTAL_CASES_KPI)
-            results_list.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: result, 'kpi_id': kpi_id})
+            results_list.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk})
         return results_list
 
-    def _save_results_to_db(self, results_list, kpi_name, result_key=Src.RESULT, should_enter=True):
+    def _save_results_to_db(self, results_list):
         """This method saves the KPI results to DB"""
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        total_cases_fk = int(self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_KPI))
         for res in results_list:
-            kpi_id = res.get('kpi_id', None)
-            parent_id = '{}_{}'.format(res[Pc.PRODUCT_FK], Ccc.TOTAL_CASES_KPI) if should_enter else None
-            result = res[result_key]
+            kpi_fk = int(res.get('fk'))
+            parent_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]), total_cases_fk) if kpi_fk != total_cases_fk else None
+            kpi_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]), total_cases_fk) if kpi_fk == total_cases_fk else None
+            should_enter = kpi_fk != total_cases_fk
+            result = res.get(Src.RESULT)
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=res[Pc.PRODUCT_FK],
                                            numerator_result=result, result=result, denominator_id=self.store_id,
                                            denominator_result=0, score=result, identifier_result=kpi_id,
@@ -93,7 +95,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         It identify the closest SKU tag to every case and using it to define the case's brand
         """
         results_df = self.filtered_mdis.groupby(Consts.DISPLAY_SKU, as_index=False)[Consts.DISPLAY_SKU].agg(
-            {'result': 'count'})
+            {Src.RESULT: 'count'})
         results_df.rename({Consts.DISPLAY_SKU: Pc.PRODUCT_FK}, axis=1, inplace=True)
         results_df = results_df.assign(fk=self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI))
         return results_df.to_dict('records')
@@ -104,6 +106,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         iterates paths over the cases pile and count the number of hidden cases.
         """
         results = []
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.IMPLIED_SHOPPABLE_CASES_KPI)
         scenes_to_calculate = self.matches.scene_fk.unique().tolist()
         total_score_per_sku = Counter()
         for scene_fk in scenes_to_calculate:
@@ -111,7 +114,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
             paths = self._get_relevant_path_for_calculation(adj_g)
             total_score_per_sku += self._calculate_case_count(adj_g, paths)
         for k, v in total_score_per_sku.iteritems():
-            results.append({Pc.PRODUCT_FK: k, 'result': v})
+            results.append({Pc.PRODUCT_FK: k, Src.RESULT: v, 'fk': kpi_fk})
         results += self._add_results_for_brands_without_hidden_displays(results)
         return results
 
@@ -130,11 +133,12 @@ class CaseCountCalculator(GlobalSessionToolBox):
         Please note that if SKU is unshoppable it will get a result of 100!!"""
         unshoppable_results = []
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.NON_SHOPPABLE_CASES_KPI)
-        grouped_scif = self.filtered_scif.groupby([Pc.PRODUCT_FK, Sc.SKU_TYPE], as_index=False)[Sc.TAGGED].sum()
-        grouped_scif = grouped_scif.loc[grouped_scif.tagged > 0]
+        grouped_scif = self.filtered_scif.groupby([Sc.SUBSTITUTION_PRODUCT_FK, Sc.SKU_TYPE], as_index=False)[
+            Sc.TAGGED].sum().rename({Sc.SUBSTITUTION_PRODUCT_FK: Sc.PRODUCT_FK}, axis=1)
+        grouped_scif = grouped_scif.loc[grouped_scif[Sc.TAGGED] > 0]
         grouped_scif_dict = grouped_scif.groupby(Pc.PRODUCT_FK)[Sc.SKU_TYPE].apply(list).to_dict()
         for product_fk, sku_types in grouped_scif_dict.iteritems():
-            res = 100 if len(sku_types) == 1 and sku_types[0].lower() == 'case' else 0
+            res = 1 if len(sku_types) == 1 and sku_types[0].lower() == 'case' else 0
             unshoppable_results.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: res, 'fk': kpi_fk})
         return unshoppable_results
 
@@ -176,30 +180,21 @@ class CaseCountCalculator(GlobalSessionToolBox):
         it to Match Product in Scene DataFrame
         """
         mdis = self.filtered_mdis[[Consts.DISPLAY_IN_SCENE_FK, 'rect_x', 'rect_y', 'display_name', Consts.DISPLAY_SKU]]
-        mdis = mdis.merge(closest_tag_to_display_df, how='left', on=Consts.DISPLAY_IN_SCENE_FK)
+        mdis = mdis.merge(closest_tag_to_display_df, how='right', on=Consts.DISPLAY_IN_SCENE_FK)
         mdis.rename({'rect_x': 'display_rect_x', 'rect_y': 'display_rect_y'}, inplace=True, axis=1)
-        # todo finish the jon
-        self.matches = self.matches.merge(mdis, on=Consts.DISPLAY_IN_SCENE_FK, how='left')
-        # self.matches = self.matches.merge(closest_tag_to_display_df, on=[Mc.SCENE_MATCH_FK, Mc.SCENE_FK], how='left')
-        # filtered_matches[Consts.DISPLAY_IN_SCENE_FK] = filtered_matches.apply(
-        #     lambda row: self._apply_closet_point_logic_on_row(row, self.filtered_mdis),
-        #     axis=1)
+        self.matches = self.matches.merge(mdis, on=Mc.SCENE_MATCH_FK, how='left')
 
     def _add_displays_the_closet_product_fk(self, closest_tag_to_display_df):
         """
         This method calculates the closets match_display_in_scene tag per row and adds
         it to Match Product in Scene DataFrame
         """
-        temp_matches = self.matches[[Mc.SCENE_MATCH_FK, Mc.PRODUCT_FK]]
+        temp_matches = self.matches[[Mc.SCENE_MATCH_FK, 'substitution_product_fk']]
         temp_display_with_closest_sku = closest_tag_to_display_df.merge(temp_matches, how='left', on=Mc.SCENE_MATCH_FK)
-        temp_display_with_closest_sku.rename({Mc.PRODUCT_FK: Consts.DISPLAY_SKU}, axis=1, inplace=True)
+        temp_display_with_closest_sku.rename({'substitution_product_fk': Consts.DISPLAY_SKU}, axis=1, inplace=True)
         self.filtered_mdis = self.filtered_mdis.merge(
             temp_display_with_closest_sku[[Consts.DISPLAY_IN_SCENE_FK, Consts.DISPLAY_SKU]],
             right_on=Consts.DISPLAY_IN_SCENE_FK, left_on='pk', how='left')
-
-    def _get_scenes_with_relevant_displays(self):
-        """This method returns only scene with "Open" or "Close" display tags"""
-        return self.filtered_mdis.scene_fk.unique().tolist()
 
     def get_filtered_matches(self):
         """ This method filters and merges Match Product In Scene and Match Display In Scene DataFrames"""
@@ -258,16 +253,15 @@ class CaseCountCalculator(GlobalSessionToolBox):
     def _create_adjacency_graph_per_scene(self, scene_fk):
         """ This method creates the graph for the case count calculation"""
         filtered_matches = self._prepare_matches_for_graph_creation(scene_fk)
-        if filtered_matches.empty:
-            return None
-        maskings = AdjacencyGraphBuilder._load_maskings(self.project_name, scene_fk)
-        add_node_attr = [Consts.DISPLAY_IN_SCENE_FK, 'display_rect_x', 'display_rect_y', 'display_name', Consts.DISPLAY_SKU]
-        adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches,
-                                                                  maskings, add_node_attr, use_masking_only=True)
-        adj_g = AdjacencyGraphBuilder.condense_graph_by_level(Consts.DISPLAY_IN_SCENE_FK, adj_g)
-        filtered_adj_g = adj_g.edge_subgraph(self._filter_edges_by_degree(adj_g, requested_direction='UP'))
-        filtered_adj_g = adj_g.edge_subgraph(self._filter_redundant_edges(filtered_adj_g))
-        return filtered_adj_g
+        if not filtered_matches.empty:
+            maskings = AdjacencyGraphBuilder._load_maskings(self.project_name, scene_fk)
+            add_node_attr = [Consts.DISPLAY_IN_SCENE_FK, 'display_rect_x', 'display_rect_y', 'display_name']
+            adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches,
+                                                                      maskings, add_node_attr, use_masking_only=True)
+            adj_g = AdjacencyGraphBuilder.condense_graph_by_level(Consts.DISPLAY_IN_SCENE_FK, adj_g)
+            filtered_adj_g = adj_g.edge_subgraph(self._filter_edges_by_degree(adj_g, requested_direction='UP'))
+            filtered_adj_g = adj_g.edge_subgraph(self._filter_redundant_edges(filtered_adj_g))
+            return filtered_adj_g
 
     def _prepare_matches_for_graph_creation(self, scene_fk):
         """ This method prepares the Matches DataFrame for the Adjacency Graph creation.
@@ -309,11 +303,22 @@ class CaseCountCalculator(GlobalSessionToolBox):
                     continue  # Closed case
                 else:
                     if open_detection_indicator:
-                        current_sku = list(adj_g.nodes[node][Consts.DISPLAY_SKU])[0]
-                        case_count_score[current_sku] += stacking_layer
+                        case_count_score += self._divide_score_among_skus(node, stacking_layer)
                     else:
                         open_detection_indicator = True
         return case_count_score
+
+    def _divide_score_among_skus(self, node, stacking_layer):
+        """In the new Case Count SKU logic, the score is being divided among the SKUs the close to the display.
+        So if there 2nd open case in in the 5th layer and it has 3 different SKUs on top of it, each of them will get
+        1.67 points"""
+        results = Counter()
+        match_product_in_scene_fks = node.get('match_fk')
+        relevant_skus = self.matches.loc[self.matches.scene_match_fk.isin(match_product_in_scene_fks)][
+            Sc.SUBSTITUTION_PRODUCT_FK].values
+        for sku in relevant_skus:
+            results[sku] += stacking_layer / float(len(relevant_skus))
+        return results
 
     @staticmethod
     def _get_case_status(node_data):
@@ -329,36 +334,24 @@ class CaseCountCalculator(GlobalSessionToolBox):
         scif = self.data_provider.scene_item_facts.loc[
             self.data_provider.scene_item_facts.scene_fk.isin(scenes_with_display) & ~(
                 self.data_provider.scene_item_facts[Sc.SKU_TYPE].isna())]
+        scif[Sc.SUBSTITUTION_PRODUCT_FK] = scif.apply(
+            lambda row: int(row[Sc.PRODUCT_FK]) if str(row[Sc.SUBSTITUTION_PRODUCT_FK]) in ['nan', 'None', ''] else
+            int(row[Sc.SUBSTITUTION_PRODUCT_FK]), axis=1)
         return scif
 
+    def _get_scenes_with_relevant_displays(self):
+        """This method returns only scene with "Open" or "Close" display tags"""
+        return self.filtered_mdis.scene_fk.unique().tolist()
 
-from KPIUtils_v2.DB.CommonV2 import Common
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
+
 if __name__ == '__main__':
+    from KPIUtils_v2.DB.CommonV2 import Common
+    from Trax.Utils.Conf.Configuration import Config
+    from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
     Config.init('')
-    data_provider = KEngineDataProvider('diageous-sand2')
-    sessions = ['566FD433-FD02-4C23-95F8-CD26D8BA1A61']
-    for session in sessions:
-        print(session)
-        data_provider.load_session_data(session_uid=session)
-        # data_provider.load_scene_data(session_uid='10A57E97-BFE0-4295-8905-675603CFBF40', scene_id=4720834)
-        # data_provider.load_scene_data(session_uid='4590C8B2-CD2E-4679-9BC7-CD31FA9FEF3D', scene_id=3851296)
-        # data_provider.load_scene_data(session_uid='E53E363F-E824-45E5-BE05-A528BAF54E0B', scene_id=4575034)
-        # data_provider.load_scene_data(session_uid='25434CF3-24EB-4E3E-BED8-DAFC9593031B', scene_id=4270665)
-        # data_provider.load_scene_data(session_uid='25d12ef4-ff53-449e-87df-317f8d4db068', scene_id=3977871)
-        # data_provider.load_scene_data(session_uid='c8f7ad4a-3867-4ffa-9bb2-80c4afa8daae', scene_id=3214683)
-        # data_provider.load_scene_data(session_uid='10A57E97-BFE0-4295-8905-675603CFBF40', scene_id=4720826)
-        # data_provider.load_scene_data(session_uid='10A57E97-BFE0-4295-8905-675603CFBF40', scene_id=4720871)
-        # data_provider.load_scene_data(session_uid='E53E363F-E824-45E5-BE05-A528BAF54E0B', scene_id=4574982)
-        # data_provider.load_scene_data(session_uid='6D8E1FF0-193E-414A-BCA6-1B5BBDE7681C', scene_id=3350018)
-        # data_provider.load_scene_data(session_uid='EAEF7FE8-9C46-4794-B97B-507794912875', scene_id=4245012)
-        # data_provider.load_scene_data(session_uid='E53E363F-E824-45E5-BE05-A528BAF54E0B', scene_id=4575166)
-        # data_provider.load_scene_data(session_uid='C4465263-56B2-4A1D-B16B-D7F7C954ED6F', scene_id=4357090)
-        # data_provider.load_scene_data(session_uid='E53E363F-E824-45E5-BE05-A528BAF54E0B', scene_id=4575212)
-        # data_provider.load_scene_data(session_uid='F7FBF132-60A6-4B74-A25A-F9A3C19327EE', scene_id=4840195)
-        common = Common(data_provider)
-        case_counter_calculator = CaseCountCalculator(data_provider, common)
-        case_counter_calculator.main_case_count_calculations()
-        common.commit_results_data()
-
+    test_data_provider = KEngineDataProvider('diageous-sand2')
+    test_data_provider.load_session_data(session_uid='b5ed407a-e3a5-48cb-bdff-ff28f82a34a8')
+    test_common = Common(test_data_provider)
+    case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
+    case_counter_calculator.main_case_count_calculations()
+    test_common.commit_results_data()
