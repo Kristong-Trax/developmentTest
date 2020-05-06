@@ -60,8 +60,13 @@ class JNJToolBox:
     ASSORTMENT_SUPER_GROUP_FK = 'assortment_super_group_fk'
 
     # local_msl availability
-    LOCAL_MSL_AVAILABILITY = 'local_msl'
-    LOCAL_MSL_AVAILABILITY_SKU = 'local_msl - SKU'
+    # LOCAL_MSL_AVAILABILITY = 'local_msl'
+    # LOCAL_MSL_AVAILABILITY_SKU = 'local_msl - SKU'
+
+    # TODO: change this
+    # local_msl availability
+    LOCAL_MSL_AVAILABILITY = 'Distribution'
+    LOCAL_MSL_AVAILABILITY_SKU = 'Distribution - SKU'
 
     # jnjanz local msl/oos KPIs
 
@@ -244,10 +249,10 @@ class JNJToolBox:
         local_msl_ass_sku_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name'] ==
                                                   self.LOCAL_MSL_AVAILABILITY_SKU]['pk'].drop_duplicates().values[0]
         if lvl3_assortment.empty:
-            return
+            return [], pd.DataFrame()
         lvl3_assortment = lvl3_assortment[lvl3_assortment['kpi_fk_lvl3'] == local_msl_ass_sku_fk]
         if lvl3_assortment.empty:
-            return
+            return [], pd.DataFrame()
 
         assortments = lvl3_assortment['assortment_group_fk'].unique()
         products_in_ass = []
@@ -266,11 +271,15 @@ class JNJToolBox:
     @kpi_runtime()
     def local_assortment_hierarchy_per_store_calc(self):
         Log.debug("starting local_assortment calc")
+
         self.products_in_ass, lvl3_assortment = self.fetch_local_assortment_products()
         self.products_in_ass = np.unique(self.products_in_ass)
-        if len(self.products_in_ass) == 0:
-            Log.warning("No assortment products were found the requested session")
+
+        if lvl3_assortment.empty or len(self.products_in_ass) == 0:
+            Log.warning("Assortment list is empty for store_fk {} in the requested session : {} - visit_date: {}"
+                        .format(self.store_id, self.session_id, self.session_info.get('visit_date').iloc[0]))
             return
+
         self.local_assortment_hierarchy_per_category_and_subcategory()
 
         oos_per_product_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name'] ==
@@ -471,7 +480,7 @@ class JNJToolBox:
                 Log.warning('Unable to calculate local_msl assortment KPIs: SCIF  is empty')
                 return 0
             self.reset_scif_and_matches()
-            self.filter_scif_matches_for_kpi("local_msl")
+            self.filter_scif_matches_for_kpi("Distribution") #changed from local_msl to Distribution
             self.local_assortment_hierarchy_per_store_calc()
         except Exception as e:
             Log.error("Error: {}".format(e))

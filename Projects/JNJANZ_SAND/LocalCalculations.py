@@ -16,12 +16,18 @@ if __name__ == '__main__':
         # '91f4e691-6195-43c8-9874-304a9661abc8' # prev session
 
         # bulk re-calc
-        '09d53186-1b6d-425e-bd6b-deded5a73b2a',
-        '0dab27f9-15b5-4b13-8bf6-3c453245c059',
-        '1246c2aa-e157-42a8-881d-6f0706afd714',
-        '16b06374-26d9-40cd-8e66-d6a22d7c6e51',
-        '16ea48e7-d41f-44b1-b29f-68d586448332',
+        # '09d53186-1b6d-425e-bd6b-deded5a73b2a',
+        # '0dab27f9-15b5-4b13-8bf6-3c453245c059',
+        # '1246c2aa-e157-42a8-881d-6f0706afd714',
+        # '16b06374-26d9-40cd-8e66-d6a22d7c6e51',
+        # '16ea48e7-d41f-44b1-b29f-68d586448332',
 
+        # New test sessions
+        # 'b5b2469e-3487-4012-ad36-e3b90510e0e3',
+        '0ca6910d-cff7-41e0-8dc4-2aef898efcf5' # previous session - have issues
+
+        # '558802f2-f42e-4ce3-9b80-41ed3a7d0c0f',
+        # 'ba2da77f-d0b9-409a-ae8a-2f357aedb844' # previous
         ]
     # 'CE9BD14E-DBF1-4F82-BEE4-E1D61F0B211F'
     for session in sessions:
