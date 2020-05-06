@@ -22,7 +22,8 @@ class DIAGEOIESandToolBox:
         This function calculates the KPI results.
          """
         # SOS Out Of The Box kpis
-        self.diageo_generator.global_sos_calculation(include_posm=True)
+        sos_res = self.diageo_generator.global_sos_calculation(include_posm=True)
+        self.commonV2.save_json_to_new_tables(sos_res)
 
         # sos by scene type
         self.diageo_generator.sos_by_scene_type(self.commonV2)
