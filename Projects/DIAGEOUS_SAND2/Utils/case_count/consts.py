@@ -3,7 +3,8 @@
 class Consts(object):
 
     # KPI Names
-    TOTAL_CASES_KPI = 'Display Size Total Cases'
+    TOTAL_CASES_STORE_KPI = 'Display Size'
+    TOTAL_CASES_SKU_KPI = 'Display Size Total Cases'
     FACINGS_KPI = 'Display Size Facings'
     SHOPPABLE_CASES_KPI = 'Display Size Shoppable Cases'
     IMPLIED_SHOPPABLE_CASES_KPI = 'Display Size Implied Shoppable Cases'
@@ -15,3 +16,5 @@ class Consts(object):
     FACINGS_SKU_TYPES = ['Bottle', 'Carton', 'Pouch', 'VAP']
     RLV_FIELDS_FOR_MATCHES_CLOSET_DISPLAY_CALC = ['scene_match_fk', 'rect_x', 'rect_y', 'scene_fk']
     RLV_FIELDS_FOR_DISPLAY_IN_SCENE_CLOSET_TAG_CALC = ['pk', 'rect_x', 'rect_y', 'scene_fk']
+
+    MIN_DIST = 'minimum_distance'

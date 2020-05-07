@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import networkx as nx
 from consts import Consts
 from collections import Counter
@@ -38,13 +39,24 @@ class CaseCountCalculator(GlobalSessionToolBox):
                 implied_cases_res = self._implied_shoppable_cases_kpi()
                 total_res = self._calculate_and_total_cases(sku_cases_res + implied_cases_res + unshoppable_cases_res)
                 self._save_results_to_db(facings_res+sku_cases_res+unshoppable_cases_res+implied_cases_res+total_res)
+                self._calculate_total_score_level_res(total_res)
             except Exception as err:
                 Log.error("DiageoUS Case Count calculation failed due to the following error: {}".format(err))
+
+    def _calculate_total_score_level_res(self, total_res_sku_level_results):
+        """This method gets the Total Cases SKU level results and aggregates them in order to create the
+        mobile store level result"""
+        result, kpi_fk = 0, self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_STORE_KPI)
+        for res in total_res_sku_level_results:
+            result += res.get(Src.RESULT, 0)
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=int(self.manufacturer_fk),
+                                       numerator_result=result, result=result, denominator_id=self.store_id,
+                                       denominator_result=0, score=result, identifier_result=kpi_fk)
 
     def _calculate_and_total_cases(self, kpi_results):
         """ This method sums # of cases per brand and Implied Shoppable Cases KPIs
         and saves the main result to the DB"""
-        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_KPI)
+        kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_SKU_KPI)
         total_results_per_sku, results_list = Counter(), list()
         for res in kpi_results:
             total_results_per_sku[res[Pc.PRODUCT_FK]] += res[Src.RESULT]
@@ -54,17 +66,18 @@ class CaseCountCalculator(GlobalSessionToolBox):
 
     def _save_results_to_db(self, results_list):
         """This method saves the KPI results to DB"""
-        total_cases_fk = int(self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_KPI))
+        total_cases_sku_fk = int(self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_SKU_KPI))
+        total_cases_store_fk = int(self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_STORE_KPI))
         for res in results_list:
             kpi_fk = int(res.get('fk'))
-            parent_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]), total_cases_fk) if kpi_fk != total_cases_fk else None
-            kpi_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]), total_cases_fk) if kpi_fk == total_cases_fk else None
-            should_enter = kpi_fk != total_cases_fk
+            parent_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]),
+                                       total_cases_sku_fk) if kpi_fk != total_cases_sku_fk else total_cases_store_fk
+            kpi_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]), kpi_fk)
             result = res.get(Src.RESULT)
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=res[Pc.PRODUCT_FK],
                                            numerator_result=result, result=result, denominator_id=self.store_id,
                                            denominator_result=0, score=result, identifier_result=kpi_id,
-                                           identifier_parent=parent_id, should_enter=should_enter)
+                                           identifier_parent=parent_id, should_enter=True)
 
     def _prepare_data_for_calculation(self):
         """This method prepares the data for the case count calculation. Connection between the display
@@ -77,9 +90,9 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method calculates the closest tag for each display and returns a DataFrame with the results"""
         matches = self.matches[Consts.RLV_FIELDS_FOR_MATCHES_CLOSET_DISPLAY_CALC]
         mdis = self.filtered_mdis[Consts.RLV_FIELDS_FOR_DISPLAY_IN_SCENE_CLOSET_TAG_CALC]
-        matches[Consts.DISPLAY_IN_SCENE_FK] = matches.apply(
-            lambda row: self._apply_closet_point_logic_on_row(row, mdis, 'pk'), axis=1)
-        return matches[[Mc.SCENE_MATCH_FK, Consts.DISPLAY_IN_SCENE_FK]]
+        closest_display_data = matches.apply(lambda row: self._apply_closet_point_logic_on_row(row, mdis, 'pk'), axis=1)
+        closest_display_data = pd.DataFrame(closest_display_data.values.tolist())
+        return closest_display_data
 
     def _calculate_display_size_facings(self):
         """This method calculates the number of facings for SKUs with the relevant SKU Type
@@ -94,11 +107,15 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method counts the number of cases per SKU.
         It identify the closest SKU tag to every case and using it to define the case's brand
         """
-        results_df = self.filtered_mdis.groupby(Consts.DISPLAY_SKU, as_index=False)[Consts.DISPLAY_SKU].agg(
-            {Src.RESULT: 'count'})
-        results_df.rename({Consts.DISPLAY_SKU: Pc.PRODUCT_FK}, axis=1, inplace=True)
-        results_df = results_df.assign(fk=self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI))
-        return results_df.to_dict('records')
+        total_res, results_for_db, kpi_fk = Counter(), list(), self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI)
+        results = self.matches.groupby(Consts.DISPLAY_IN_SCENE_FK, as_index=False)[Sc.SUBSTITUTION_PRODUCT_FK].apply(
+            list).values
+        for res in results:
+            for sku in res:
+                total_res[sku] += (1/float(len(res)))
+        for product_fk, result in total_res.iteritems():
+                results_for_db.append({Sc.PRODUCT_FK: product_fk, Src.RESULT: round(result, 2), 'fk': kpi_fk})
+        return results_for_db
 
     def _implied_shoppable_cases_kpi(self):
         """
@@ -115,16 +132,16 @@ class CaseCountCalculator(GlobalSessionToolBox):
             total_score_per_sku += self._calculate_case_count(adj_g, paths)
         for k, v in total_score_per_sku.iteritems():
             results.append({Pc.PRODUCT_FK: k, Src.RESULT: v, 'fk': kpi_fk})
-        results += self._add_results_for_brands_without_hidden_displays(results)
+        results += self._add_results_for_skus_without_hidden_displays(results, kpi_fk)
         return results
 
-    def _add_results_for_brands_without_hidden_displays(self, results):
-        """ This method gets the _implied_shoppable_cases_kpi and adds all of the brand that has displays assigned
+    def _add_results_for_skus_without_hidden_displays(self, results, kpi_fk):
+        """ This method gets the _implied_shoppable_cases_kpi and adds all of the Skus that has displays assigned
         to them, however there aren't any hidden displays at all (result should be 0)"""
         products_with_results = [res[Pc.PRODUCT_FK] for res in results]
         total_products_with_displays = self.filtered_mdis[Consts.DISPLAY_SKU].dropna().unique().tolist()
         missing_products = set(total_products_with_displays).difference(products_with_results)
-        new_results = [{Pc.PRODUCT_FK: product, Src.RESULT: 0} for product in missing_products]
+        new_results = [{Pc.PRODUCT_FK: product, Src.RESULT: 0, 'fk': kpi_fk} for product in missing_products]
         return new_results
 
     def _non_shoppable_case_kpi(self):
@@ -156,11 +173,12 @@ class CaseCountCalculator(GlobalSessionToolBox):
         # get the shortest hypotenuse
         try:
             closest_point = other_points[np.argmin(distances)]
+            min_distance = min(distances)
         except ValueError:
             Log.error('Unable to find a matching opposite point for supplied anchor!')
             return other_points_df
-        return other_points_df[
-            (other_points_df['rect_x'] == closest_point[0]) & (other_points_df['rect_y'] == closest_point[1])]
+        return other_points_df[(other_points_df['rect_x'] == closest_point[0]) & (
+                other_points_df['rect_y'] == closest_point[1])], min_distance
 
     def _apply_closet_point_logic_on_row(self, row, mdis, value_to_return='pk'):
         """
@@ -169,10 +187,11 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """
         current_point = (row['rect_x'], row['rect_y'])
         relevant_mdis = mdis.loc[(mdis.scene_fk == row[Sc.SCENE_FK])]
-        closet_point = self.get_closest_point(current_point, relevant_mdis)
+        closet_point, min_distance = self.get_closest_point(current_point, relevant_mdis)
         if not closet_point.empty:
-            return closet_point.iloc[0][value_to_return]
-        return -1
+            return {Consts.DISPLAY_IN_SCENE_FK: closet_point.iloc[0][value_to_return], Consts.MIN_DIST: min_distance,
+                    Mc.SCENE_MATCH_FK: row[Mc.SCENE_MATCH_FK]}
+        return {}
 
     def _add_matches_display_data(self, closest_tag_to_display_df):
         """
@@ -190,10 +209,12 @@ class CaseCountCalculator(GlobalSessionToolBox):
         it to Match Product in Scene DataFrame
         """
         temp_matches = self.matches[[Mc.SCENE_MATCH_FK, 'substitution_product_fk']]
-        temp_display_with_closest_sku = closest_tag_to_display_df.merge(temp_matches, how='left', on=Mc.SCENE_MATCH_FK)
-        temp_display_with_closest_sku.rename({'substitution_product_fk': Consts.DISPLAY_SKU}, axis=1, inplace=True)
+        display_with_closest_sku = closest_tag_to_display_df.merge(temp_matches, how='left', on=Mc.SCENE_MATCH_FK)
+        display_with_closest_sku.rename({'substitution_product_fk': Consts.DISPLAY_SKU}, axis=1, inplace=True)
+        display_with_closest_sku = display_with_closest_sku.sort_values(
+            [Consts.DISPLAY_IN_SCENE_FK, Consts.MIN_DIST]).drop_duplicates(Consts.DISPLAY_IN_SCENE_FK)
         self.filtered_mdis = self.filtered_mdis.merge(
-            temp_display_with_closest_sku[[Consts.DISPLAY_IN_SCENE_FK, Consts.DISPLAY_SKU]],
+            display_with_closest_sku[[Consts.DISPLAY_IN_SCENE_FK, Consts.DISPLAY_SKU]],
             right_on=Consts.DISPLAY_IN_SCENE_FK, left_on='pk', how='left')
 
     def get_filtered_matches(self):
@@ -303,7 +324,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
                     continue  # Closed case
                 else:
                     if open_detection_indicator:
-                        case_count_score += self._divide_score_among_skus(node, stacking_layer)
+                        case_count_score += self._divide_score_among_skus(adj_g.nodes[node], stacking_layer)
                     else:
                         open_detection_indicator = True
         return case_count_score
@@ -317,7 +338,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         relevant_skus = self.matches.loc[self.matches.scene_match_fk.isin(match_product_in_scene_fks)][
             Sc.SUBSTITUTION_PRODUCT_FK].values
         for sku in relevant_skus:
-            results[sku] += stacking_layer / float(len(relevant_skus))
+            results[sku] += round(stacking_layer / float(len(relevant_skus)), 2)
         return results
 
     @staticmethod
@@ -350,8 +371,50 @@ if __name__ == '__main__':
     from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
     Config.init('')
     test_data_provider = KEngineDataProvider('diageous-sand2')
-    test_data_provider.load_session_data(session_uid='b5ed407a-e3a5-48cb-bdff-ff28f82a34a8')
-    test_common = Common(test_data_provider)
-    case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
-    case_counter_calculator.main_case_count_calculations()
-    test_common.commit_results_data()
+    sessions = ['F689DF3A-D3C5-4AF2-A308-938177320871',
+                'EBCFCD1C-5431-49D0-A779-EB564FB62A45',
+                'E6A4B736-872B-4883-87C6-4C0132A99712',
+                'D81924B8-AA00-46D1-B14C-02A17B091DAE',
+                'D1B7046B-8358-4DFE-A737-0C6879BB11DA',
+                'C23F451F-919A-4BF7-9909-78A802FB266C',
+                'BE70CAE7-BD5B-4D3A-ADE3-9CA25C896DC6',
+                'BE38F2B9-C9B3-4DC3-AD01-BE7FD65F7C98',
+                'BA9765D1-B206-46F4-9741-B87982BF1578',
+                'B825ED73-B033-4CB1-B524-DF5A27DE0229',
+                'AE4F1C9B-276D-4662-A6F1-14C8F7362914',
+                'ADCA36F7-308F-4423-A252-8D8E84FA03AF',
+                'AB69FF78-E0AD-4FD8-A720-8DE441B000C1',
+                'A769D4F8-FC39-4E86-A218-1B74562759ED',
+                '978895CD-3AF7-4660-BDBE-9557F7C6320E',
+                '96BD6355-F03B-4322-9C89-737AC7B39A11',
+                '947DDF1F-EBE6-41C7-84F5-A75A3DCD9FAE',
+                '941B3B34-D43D-4FF7-985C-1F41ADF4A119',
+                '8F0E9D9B-6593-410A-95B7-F55103194065',
+                '8843DB0F-DFB7-42BD-A376-A8843C9BB3CF',
+                '858409B1-3273-4E44-82FC-275CF8C51981',
+                '8542E7C3-4903-4A5F-A19D-9280DFF4D4DD',
+                '733A500F-27A4-48EF-98D7-FB07E00B9A10',
+                '66608981-16C0-4364-9C2B-FAF752C7F009',
+                '50FC12A5-3BCE-4CCC-8F8F-2412D8446762',
+                '4B1D294F-E220-4C6F-893E-5C361BCA7823',
+                '4B0395FA-0390-4B6E-B96D-EC5A1CCD8797',
+                '440FF677-FB33-48BE-B6A2-B43E6089ED0F',
+                '3A693488-31A3-4675-AA5C-5636FD62DC44',
+                '2F9C5E14-94AD-4303-AB92-92AE17E8203A',
+                '2AAD922F-0F56-4E0E-96A3-CCC8B651E991',
+                '2435C6CD-FE43-4E8E-A93D-341CB6D21BC1',
+                '1D962EFD-D723-47DA-91B3-D2504809178E',
+                '195D0E0D-5860-4ABF-AEB2-56BC96E1F218',
+                '175578F8-AEC4-40DC-B033-3C5A65D9DEA9',
+                '162D6BCC-0628-498A-A68E-FAB8E688F07B',
+                '117384E5-F36F-4877-97DD-65259422A161',
+                '0EA99A38-5EB9-4B8E-B69D-FE2F27BE5AA5',
+                '063843F4-657F-416C-AE15-463F0653CF4F',
+                '022C4BD1-7254-4350-BD26-76C05737F7A3']
+    for session in sessions:
+        test_data_provider.load_session_data(session_uid=session)
+        test_common = Common(test_data_provider)
+        case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
+        case_counter_calculator.main_case_count_calculations()
+        test_common.commit_results_data()
+        break
