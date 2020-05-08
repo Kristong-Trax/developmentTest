@@ -5,14 +5,14 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 
-__author__ = 'Hunter'
+__author__ = 'NicolasKeeton'
 
 
 TOP_LEFT_CORNER = 'Top Left Corner'
 BOTTOM_RIGHT_CORNER = 'Bottom Right Corner'
 
 
-class AltriaDataProvider:
+class HenkelDataProvider:
 
     def __init__(self, data_provider):
         self.data_provider = data_provider
