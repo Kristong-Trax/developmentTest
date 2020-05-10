@@ -5,6 +5,7 @@ from consts import Consts
 from collections import Counter
 from Trax.Cloud.Services.Connector.Logger import Log
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts as Src
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
 from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts as Mc, ProductsConsts as Pc, ScifConsts as Sc
@@ -18,9 +19,21 @@ class CaseCountCalculator(GlobalSessionToolBox):
     def __init__(self, data_provider, common):
         GlobalSessionToolBox.__init__(self, data_provider, None)
         self.filtered_mdis = self._get_filtered_match_display_in_scene()
+        self.store_number_1 = self.store_info.store_number_1[0]
         self.filtered_scif = self._get_filtered_scif()
+        self.ps_data_provider = PsDataProvider(data_provider)
+        self.target = self._get_case_count_targets()
         self.matches = self.get_filtered_matches()
         self.common = common
+
+    def _get_case_count_targets(self):
+        """
+        This method fetches the relevant targets for the case count
+        """
+        case_count_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_STORE_KPI)
+        targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[case_count_kpi_fk])
+        targets = targets.loc[targets.store_number_1 == self.store_number_1][[Pc.PRODUCT_FK, Src.TARGET]]
+        return dict(zip(targets[Pc.PRODUCT_FK], targets[Src.TARGET]))
 
     def _get_filtered_match_display_in_scene(self):
         """ This method filters match display in scene - it saves only "close" and "open" tags"""
@@ -30,14 +43,14 @@ class CaseCountCalculator(GlobalSessionToolBox):
 
     def main_case_count_calculations(self):
         """This method calculates the entire Case Count KPIs set."""
-        if not (self.filtered_mdis.empty or self.filtered_scif.empty):
+        if not (self.filtered_mdis.empty or self.filtered_scif.empty or not self.target or self.matches.empty):
             try:
                 self._prepare_data_for_calculation()
                 facings_res = self._calculate_display_size_facings()
                 sku_cases_res = self._count_number_of_cases()
                 unshoppable_cases_res = self._non_shoppable_case_kpi()
                 implied_cases_res = self._implied_shoppable_cases_kpi()
-                total_res = self._calculate_and_total_cases(sku_cases_res + implied_cases_res + unshoppable_cases_res)
+                total_res = self._calculate_total_cases(sku_cases_res + implied_cases_res + unshoppable_cases_res)
                 self._save_results_to_db(facings_res+sku_cases_res+unshoppable_cases_res+implied_cases_res+total_res)
                 self._calculate_total_score_level_res(total_res)
             except Exception as err:
@@ -49,19 +62,19 @@ class CaseCountCalculator(GlobalSessionToolBox):
         result, kpi_fk = 0, self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_STORE_KPI)
         for res in total_res_sku_level_results:
             result += res.get(Src.RESULT, 0)
-        self.common.write_to_db_result(fk=kpi_fk, numerator_id=int(self.manufacturer_fk),
-                                       numerator_result=result, result=result, denominator_id=self.store_id,
-                                       denominator_result=0, score=result, identifier_result=kpi_fk)
+        self.common.write_to_db_result(fk=kpi_fk, numerator_id=int(self.manufacturer_fk), result=result,
+                                       denominator_id=self.store_id, identifier_result=kpi_fk)
 
-    def _calculate_and_total_cases(self, kpi_results):
+    def _calculate_total_cases(self, kpi_results):
         """ This method sums # of cases per brand and Implied Shoppable Cases KPIs
         and saves the main result to the DB"""
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_SKU_KPI)
         total_results_per_sku, results_list = Counter(), list()
         for res in kpi_results:
             total_results_per_sku[res[Pc.PRODUCT_FK]] += res[Src.RESULT]
-        for product_fk, result in total_results_per_sku.iteritems():
-            results_list.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk})
+        for product_fk, target in self.target.iteritems():
+            result = total_results_per_sku.get(product_fk, 0)
+            results_list.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk, Src.TARGET: target})
         return results_list
 
     def _save_results_to_db(self, results_list):
@@ -73,11 +86,11 @@ class CaseCountCalculator(GlobalSessionToolBox):
             parent_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]),
                                        total_cases_sku_fk) if kpi_fk != total_cases_sku_fk else total_cases_store_fk
             kpi_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]), kpi_fk)
-            result = res.get(Src.RESULT)
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=res[Pc.PRODUCT_FK],
-                                           numerator_result=result, result=result, denominator_id=self.store_id,
-                                           denominator_result=0, score=result, identifier_result=kpi_id,
-                                           identifier_parent=parent_id, should_enter=True)
+            result, target = res.get(Src.RESULT), res.get(Src.TARGET)
+            score = 1 if result >= target else 0
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=res[Pc.PRODUCT_FK],result=result, score=score,
+                                           target=target, identifier_result=kpi_id, identifier_parent=parent_id,
+                                           should_enter=True)
 
     def _prepare_data_for_calculation(self):
         """This method prepares the data for the case count calculation. Connection between the display
@@ -98,9 +111,12 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method calculates the number of facings for SKUs with the relevant SKU Type
         only in scenes that have displays"""
         filtered_scif = self.filtered_scif.loc[(self.filtered_scif[Sc.SKU_TYPE].isin(Consts.FACINGS_SKU_TYPES))]
-        filtered_scif = filtered_scif.loc[filtered_scif[Sc.TAGGED] > 0][[Pc.PRODUCT_FK, Sc.TAGGED]]
-        results_df = filtered_scif.groupby(Pc.PRODUCT_FK, as_index=False).sum().rename({Sc.TAGGED: Src.RESULT}, axis=1)
+        filtered_scif = filtered_scif.loc[filtered_scif[Sc.TAGGED] > 0][[Pc.SUBSTITUTION_PRODUCT_FK, Sc.TAGGED]]
+        results_df = filtered_scif.groupby(Pc.SUBSTITUTION_PRODUCT_FK, as_index=False).sum().rename(
+            {Sc.TAGGED: Src.RESULT, Sc.SUBSTITUTION_PRODUCT_FK: Sc.PRODUCT_FK}, axis=1)
+        results_df = results_df.merge(pd.DataFrame({Pc.PRODUCT_FK: self.target.keys()}), how='right', on=Pc.PRODUCT_FK)
         results_df = results_df.assign(fk=self.get_kpi_fk_by_kpi_type(Consts.FACINGS_KPI))
+        results_df = results_df.fillna(0)
         return results_df.to_dict('records')
 
     def _count_number_of_cases(self):
@@ -112,9 +128,10 @@ class CaseCountCalculator(GlobalSessionToolBox):
             list).values
         for res in results:
             for sku in res:
-                total_res[sku] += (1/float(len(res)))
-        for product_fk, result in total_res.iteritems():
-                results_for_db.append({Sc.PRODUCT_FK: product_fk, Src.RESULT: round(result, 2), 'fk': kpi_fk})
+                total_res[int(sku)] += (1/float(len(res)))
+        for product_fk in self.target.keys():
+            result = round(total_res.get(product_fk, 0), 2)
+            results_for_db.append({Sc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk})
         return results_for_db
 
     def _implied_shoppable_cases_kpi(self):
@@ -130,19 +147,10 @@ class CaseCountCalculator(GlobalSessionToolBox):
             adj_g = self._create_adjacency_graph_per_scene(scene_fk)
             paths = self._get_relevant_path_for_calculation(adj_g)
             total_score_per_sku += self._calculate_case_count(adj_g, paths)
-        for k, v in total_score_per_sku.iteritems():
-            results.append({Pc.PRODUCT_FK: k, Src.RESULT: v, 'fk': kpi_fk})
-        results += self._add_results_for_skus_without_hidden_displays(results, kpi_fk)
+        for product_fk in self.target.keys():
+            result = total_score_per_sku.get(product_fk, 0)
+            results.append({Sc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk})
         return results
-
-    def _add_results_for_skus_without_hidden_displays(self, results, kpi_fk):
-        """ This method gets the _implied_shoppable_cases_kpi and adds all of the Skus that has displays assigned
-        to them, however there aren't any hidden displays at all (result should be 0)"""
-        products_with_results = [res[Pc.PRODUCT_FK] for res in results]
-        total_products_with_displays = self.filtered_mdis[Consts.DISPLAY_SKU].dropna().unique().tolist()
-        missing_products = set(total_products_with_displays).difference(products_with_results)
-        new_results = [{Pc.PRODUCT_FK: product, Src.RESULT: 0, 'fk': kpi_fk} for product in missing_products]
-        return new_results
 
     def _non_shoppable_case_kpi(self):
         """ This method calculates the number of unshoppable SKUs.
@@ -154,7 +162,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
             Sc.TAGGED].sum().rename({Sc.SUBSTITUTION_PRODUCT_FK: Sc.PRODUCT_FK}, axis=1)
         grouped_scif = grouped_scif.loc[grouped_scif[Sc.TAGGED] > 0]
         grouped_scif_dict = grouped_scif.groupby(Pc.PRODUCT_FK)[Sc.SKU_TYPE].apply(list).to_dict()
-        for product_fk, sku_types in grouped_scif_dict.iteritems():
+        for product_fk in self.target.keys():
+            sku_types = grouped_scif_dict.get(product_fk, [])
             res = 1 if len(sku_types) == 1 and sku_types[0].lower() == 'case' else 0
             unshoppable_results.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: res, 'fk': kpi_fk})
         return unshoppable_results
@@ -355,9 +364,10 @@ class CaseCountCalculator(GlobalSessionToolBox):
         scif = self.data_provider.scene_item_facts.loc[
             self.data_provider.scene_item_facts.scene_fk.isin(scenes_with_display) & ~(
                 self.data_provider.scene_item_facts[Sc.SKU_TYPE].isna())]
-        scif[Sc.SUBSTITUTION_PRODUCT_FK] = scif.apply(
-            lambda row: int(row[Sc.PRODUCT_FK]) if str(row[Sc.SUBSTITUTION_PRODUCT_FK]) in ['nan', 'None', ''] else
-            int(row[Sc.SUBSTITUTION_PRODUCT_FK]), axis=1)
+        if not scif.empty:
+            scif[Sc.SUBSTITUTION_PRODUCT_FK] = scif.apply(
+                lambda row: int(row[Sc.PRODUCT_FK]) if str(row[Sc.SUBSTITUTION_PRODUCT_FK]) in ['nan', 'None', ''] else
+                int(row[Sc.SUBSTITUTION_PRODUCT_FK]), axis=1)
         return scif
 
     def _get_scenes_with_relevant_displays(self):
@@ -412,9 +422,9 @@ if __name__ == '__main__':
                 '063843F4-657F-416C-AE15-463F0653CF4F',
                 '022C4BD1-7254-4350-BD26-76C05737F7A3']
     for session in sessions:
+        print(session)
         test_data_provider.load_session_data(session_uid=session)
         test_common = Common(test_data_provider)
         case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
         case_counter_calculator.main_case_count_calculations()
         test_common.commit_results_data()
-        break
