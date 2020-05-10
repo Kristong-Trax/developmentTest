@@ -25,7 +25,7 @@ class HeroSKUAvailabilityByHeroTypeKpi(UnifiedCalculationsScript):
             lvl3_ass_res_df['count'] = 1
             kpi_res_df = lvl3_ass_res_df.groupby([self.util.HERO_SKU_LABEL, 'entity_fk'],
                                                  as_index=False).agg({'numerator_result': np.sum, 'count': np.sum})
-            kpi_res_df['result'] =kpi_res_df['numerator_result'] / kpi_res_df['count'] * 100
+            kpi_res_df['result'] = kpi_res_df['numerator_result'] / kpi_res_df['count'] * 100
             kpi_res_df['score'] = kpi_res_df['result'].apply(lambda x: 100 if x >= 100 else 0)
             for i, res in kpi_res_df.iterrows():
                 self.write_to_db_result(fk=self.kpi_name, numerator_id=res['entity_fk'],
