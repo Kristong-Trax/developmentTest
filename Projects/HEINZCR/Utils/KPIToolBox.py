@@ -112,7 +112,6 @@ class HEINZCRToolBox:
         # these function must run first
         #  self.adherence_results = self.heinz_global_price_adherence(pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH,
         #                                                                          sheetname="Price Adherence"))
-        compare_df_test = pd.read_excel(Const.PRICE_ADHERENCE_TEMPLATE_PATH, sheetname="Price Adherence")
         self.adherence_results = self.heinz_global_price_adherence(self.targets)
         self.extra_spaces_results = self.heinz_global_extra_spaces()
         self.set_relevant_sub_categories()
@@ -121,7 +120,6 @@ class HEINZCRToolBox:
         self.heinz_global_distribution_per_category()
         self.calculate_assortment()
 
-        perfect_store_score = 0
         self.calculate_powersku_assortment()
         self.main_sos_calculation()
         self.calculate_powersku_price_adherence()
@@ -129,22 +127,6 @@ class HEINZCRToolBox:
         self.check_bonus_question()
 
         self.calculate_perfect_sub_category()
-
-        # relevant_target_df = \
-        #     self.store_targets[self.store_targets['Country'].str.encode('utf-8') == self.country.encode('utf-8')]
-        # if not relevant_target_df.empty:
-        #     target = relevant_target_df['Store Execution Score'].iloc[0]
-        # else:
-        #     target = 0
-        #
-        # result = 1 if perfect_store_score >= target else 0
-        #
-        # perfect_store_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE)
-        # self.common_v2.write_to_db_result(perfect_store_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-        #                                   denominator_id=self.store_id,
-        #                                   result=result, target=target,
-        #                                   score=perfect_store_score, identifier_result=Const.PERFECT_STORE)
-        # return
 
     def calculate_assortment(self):
         if self.store_assortment_without_powerskus.empty:
@@ -200,9 +182,6 @@ class HEINZCRToolBox:
         if self.sub_category_assortment.empty:
             return 0
 
-        total_presense_sku = 0
-        parent_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.PERFECT_STORE_SUB_CATEGORY)
-        total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_TOTAL)
         sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_SUB_CATEGORY)
         sku_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU)
         target_kpi_weight = float(
@@ -242,15 +221,8 @@ class HEINZCRToolBox:
             aggregated_results.loc[:, 'in_session'] / aggregated_results.loc[:, 'product_count']
         aggregated_results['result'] = aggregated_results['percent_complete']
         for sub_category in aggregated_results.itertuples():
-            # parent_dict = self.common_v2.get_dictionary(kpi_fk=total_kpi_fk)
             identifier_dict = self.common_v2.get_dictionary(kpi_fk=sub_category_kpi_fk,
                                                             sub_category_fk=sub_category.sub_category_fk)
-            weight_percent = 0
-            if self.country in self.sub_category_assortment.columns.to_list():
-                weight_value = self.sub_category_assortment[self.country][
-                    (self.sub_category_assortment.sub_category_fk == sub_category.sub_category_fk)].iloc[0]
-                if not pd.isna(weight_value):
-                    weight_percent = weight_value * .01
 
             result = sub_category.result
             score = result * kpi_weight
@@ -291,7 +263,6 @@ class HEINZCRToolBox:
             denominator_key = sos_policy[self.DENOMINATOR].keys()[0]
             numerator_val = sos_policy[self.NUMERATOR][numerator_key]
             denominator_val = sos_policy[self.DENOMINATOR][denominator_key]
-            kpi_fk = row.kpi
             target = row.target * 100
             if numerator_key == 'manufacturer':
                 numerator_key = numerator_key + '_name'
@@ -379,7 +350,6 @@ class HEINZCRToolBox:
                                           should_enter=True)
 
     def main_sos_calculation(self):
-        number_of_passing_sub_categories = 0
         relevant_stores = pd.DataFrame(columns=self.store_sos_policies.columns)
         for row in self.store_sos_policies.itertuples():
             policies = json.loads(row.store_policy)
@@ -407,8 +377,6 @@ class HEINZCRToolBox:
         results_df = pd.DataFrame(columns=['sub_category', 'sub_category_fk', 'score'])
 
         sos_sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.SOS_SUB_CATEGORY)
-        total_sos_sub_category_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
-            Const.SOS_SUB_CATEGORY_TOTAL)
 
         for row in relevant_stores.itertuples():
             sos_policy = json.loads(row.sos_policy)
@@ -485,12 +453,6 @@ class HEINZCRToolBox:
                     should_enter = True
 
                 manufacturer = None
-                # self.common.write_to_db_result_new_tables(fk=kpi_fk, numerator_id=numerator_id,
-                #                                           numerator_result=numerator,
-                #                                           denominator_id=denominator_id,
-                #                                           denominator_result=denominator,
-                #                                           result=target, score=sos,
-                #                                           score_after_actions=manufacturer)
                 self.common_v2.write_to_db_result(kpi_fk, numerator_id=numerator_id, numerator_result=numerator,
                                                   denominator_id=denominator_id, denominator_result=denominator,
                                                   result=target, score=sos, target=target,
@@ -504,7 +466,6 @@ class HEINZCRToolBox:
             return 0
 
         # save aggregated results for each sub category
-        total_dict = self.common_v2.get_dictionary(kpi_fk=total_sos_sub_category_kpi_fk)
         kpi_weight = self.get_kpi_weight('SOS')
         for row in results_df.itertuples():
             identifier_result = \
@@ -526,33 +487,11 @@ class HEINZCRToolBox:
                                               weight=kpi_weight,
                                               target=kpi_weight,
                                               should_enter=True)
-        #
-        # # save total score for sos sub_category
-        # number_of_passing_sub_categories = results_df['score'].sum()
-        # number_of_possible_sub_categories = len(results_df)
-        #
-        # # this ensures that this KPI doesn't return more than 3 possible points max for stores that have
-        # # multiple sub category policies
-        # store_result = (number_of_passing_sub_categories / float(number_of_possible_sub_categories)) * 3
-        #
-        # self.common_v2.write_to_db_result(total_sos_sub_category_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
-        #                                   denominator_id=self.store_id,
-        #                                   numerator_result=number_of_passing_sub_categories,
-        #                                   denominator_result=number_of_possible_sub_categories,
-        #                                   result=store_result,
-        #                                   score=store_result,
-        #                                   identifier_result=total_dict, identifier_parent=Const.PERFECT_STORE,
-        #                                   should_enter=True)
-        #
-        # return store_result
 
     def calculate_powersku_price_adherence(self):
         adherence_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE)
         adherence_sub_category_kpi_fk = \
             self.common_v2.get_kpi_fk_by_kpi_type(Const.POWER_SKU_PRICE_ADHERENCE_SUB_CATEGORY)
-        adherence_total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
-            Const.POWER_SKU_PRICE_ADHERENCE_TOTAL)
-        total_dict = self.common_v2.get_dictionary(kpi_fk=adherence_total_kpi_fk)
 
         if self.sub_category_assortment.empty:
             return False
@@ -569,7 +508,6 @@ class HEINZCRToolBox:
             in_session = row.in_session
             if in_session:
                 if not pd.isna(row.trax_average) and row.suggested_price:
-                    # if row.trax_average >= row.min_target and row.trax_average <= row.max_target:
                     price_in_interval = 1 if row.into_interval == 1 else 0
                     if price_in_interval == 1:
                         score_value = 'Pass'
@@ -596,7 +534,6 @@ class HEINZCRToolBox:
             identifier_result = self.common_v2.get_dictionary(kpi_fk=adherence_sub_category_kpi_fk,
                                                               sub_category_fk=row.sub_category_fk)
             kpi_weight = self.get_kpi_weight('PRICE')
-            sub_cat_weight = self.get_weight(row.sub_category_fk)
             result = row.percent_complete
             score = result * kpi_weight
 
@@ -613,6 +550,10 @@ class HEINZCRToolBox:
     def heinz_global_price_adherence(self, config_df):
         config_df = config_df.sort_values(by=["received_time"], ascending=False).drop_duplicates(
             subset=['start_date', 'end_date', 'ean_code', 'store_type'], keep="first")
+
+        if config_df.empty:
+            Log.warning("No external_targets data found - Price Adherence will not be calculated")
+            return self.adherence_results
 
         self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'price'] = \
             self.match_product_in_scene.loc[self.match_product_in_scene['price'].isna(), 'promotion_price']
@@ -690,9 +631,6 @@ class HEINZCRToolBox:
     def calculate_perfect_store_extra_spaces(self):
         extra_spaces_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
             Const.PERFECT_STORE_EXTRA_SPACES_SUB_CATEGORY)
-        extra_spaces_total_kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type(
-            Const.PERFECT_STORE_EXTRA_SPACES_TOTAL)
-        total_dict = self.common_v2.get_dictionary(kpi_fk=extra_spaces_total_kpi_fk)
 
         sub_cats_for_store = self.relevant_sub_categories
 
@@ -719,7 +657,6 @@ class HEINZCRToolBox:
                 relevant_sub_categories)]
         kpi_weight = self.get_kpi_weight('EXTRA')
         for row in relevant_extra_spaces.itertuples():
-            weight = self.get_weight(row.sub_category_fk)
             self.powersku_empty[row.sub_category_fk] = 1 * kpi_weight
             score = result = 1
 
@@ -794,7 +731,6 @@ class HEINZCRToolBox:
             result = 0
 
         for sub_cat_fk in sub_category_fks:
-            # sub_cat = self.sub_category_assortment['CATEGORY'][ self.sub_category_assortment['sub_category_fk']== sub_cat_fk].iloc[0]
             sub_cat_weight = self.get_weight(sub_cat_fk)
 
             score = result * sub_cat_weight
