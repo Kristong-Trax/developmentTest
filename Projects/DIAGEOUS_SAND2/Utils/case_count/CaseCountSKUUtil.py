@@ -87,7 +87,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
                                        total_cases_sku_fk) if kpi_fk != total_cases_sku_fk else total_cases_store_fk
             kpi_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]), kpi_fk)
             result, target = res.get(Src.RESULT), res.get(Src.TARGET)
-            score = 1 if result >= target else 0
+            score = 1 if target is not None and result >= target else 0
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=res[Pc.PRODUCT_FK],result=result, score=score,
                                            target=target, identifier_result=kpi_id, identifier_parent=parent_id,
                                            should_enter=True)
