@@ -71,6 +71,9 @@ GRANULAR_GROUPS = 'Granular Groups'
 GRANULAR_GROUPS_LINK_TO_STORES = 'Granular Groups link to stores'
 MERCADEO_ASSORTMENT = 'Mercadeo Assortment'
 MERCADEO_CONSTRAINTS = 'Mercadeo Constraints'
+BONUSES_AND_PENALTIES = 'Bonuses and Penalties'
+EJECUCION_SOMBRA = 'Ejecucion Sombra'
+EJECUCION_SOMBRA_PREREQUISITE = 'Ejecucion Sombra Prerequisite'
 
 # Scif Filters
 BRAND_FK = 'brand_fk'
@@ -97,7 +100,8 @@ BAY_NUMBER = 'bay_number'
 # COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
 
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION,
-          COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
+          COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS,
+          BONUSES_AND_PENALTIES, EJECUCION_SOMBRA, EJECUCION_SOMBRA_PREREQUISITE]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 ASSORTMENT_SHEETS = [GRANULAR_GROUPS, GRANULAR_GROUPS_LINK_TO_STORES]
 PORTAFOLIO_SHEETS = [ASSORTMENTS]
@@ -168,14 +172,16 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         relevant_kpi_template = self.templates[KPIS]
-        att2 = self.store_info['additional_attribute_2'].iloc[0]
         relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull()) |
                                                       (relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(
-                                                          att2))
+                                                          self.att2))
                                                       ]
+        relevant_kpi_template = relevant_kpi_template[relevant_kpi_template.template_name.isin(
+            self.scif.template_name.unique()) | relevant_kpi_template.template_name.isnull()]
+
         # [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
         #  DISTRIBUTION, SHARE_OF_EMPTY, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
-        foundation_kpi_types = [DISTRIBUTION]
+        foundation_kpi_types = [PLATFORMAS_SCORING]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
         # platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
@@ -276,6 +282,47 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_availability_combo
         elif kpi_type == NUMERO_DE_PUERTAS:
             return self.calculate_numero_de_puertas
+        elif kpi_type == BONUSES_AND_PENALTIES:
+            return self.calculate_bonus_and_penalties
+        elif kpi_type == EJECUCION_SOMBRA:
+            return self.calculate_ejecucion_sombra
+
+    def calculate_ejecucion_sombra(self, row):
+        return_holder = self._get_kpi_name_and_fk(row)
+        result = self.calculate_prereq_ejecucion()
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'result': np.nan}
+        if result:
+            brand_fk = self.all_products[self.all_products.brand_name.isin([result[0][2]])].brand_fk.iloc[0]  # denom id
+            product_fk = self.all_products[self.all_products.product_short_name.isin([result[0][1]])].product_fk.iloc[
+                0]  # num id
+            result_dict['numerator_id'] = product_fk
+            result_dict['denominator_id'] = brand_fk
+            result_dict['result'] = result[0][0]
+
+        return result_dict
+
+    def calculate_bonus_and_penalties(self, row):
+        if row['availability'] == 'Y':
+            facings_dict = self._filter_facing_targets(row)
+            result = self.logic_for_result_availability_bonus_and_penalties(self.scif, facings_dict)
+        elif row['RETORNABILIDAD'] == 'Y':
+            sum_of_bays = self.find_the_total_number_of_bays_in_relevant_scene(self.scif, self.match_product_in_scene)
+            minimum_num_of_bays_required = row['Doors Target']
+            if sum_of_bays >= minimum_num_of_bays_required:
+                all_product_df = self.all_products[['product_name', 'product_fk', 'RETORNABILIDAD']]
+                transform_retornabilidad = np.where(all_product_df.RETORNABILIDAD == 'Y', 1, 0)
+                all_product_df['RETORNABILIDAD'] = transform_retornabilidad
+                merged_mpis_all_prod = self.match_product_in_scene.merge(all_product_df, how='inner', on='product_fk')
+                grouped_merge_mpis_prod = merged_mpis_all_prod.groupby(['scene_fk', 'bay_number']).agg(
+                    {'RETORNABILIDAD': 'mean'})
+                result = 1 if 1 in grouped_merge_mpis_prod.values else 0
+        else:
+            a = 1
+            # DO THE FORTH ROW OF THE SHEET
+
+        return_holder = self._get_kpi_name_and_fk(row)
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'result': result}
+        return result_dict
 
     def calculate_numero_de_puertas(self, row):
         kpi_name = row[KPI_NAME]
@@ -310,6 +357,7 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = row[KPI_NAME]
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         relevant_platforms = self.sanitize_values(row['Platform'])
+        a = self.calculate_relevant_surnevey_result([28])
         relevant_platformas_data = \
             self.platformas_data[(self.platformas_data['Platform Name'].isin(relevant_platforms)) &
                                  (self.platformas_data['consumed'] == 'no')]
@@ -578,7 +626,9 @@ class ToolBox(GlobalSessionToolBox):
         return target_dict
 
     def calculate_assortment(self, row):
-        kpi_name = row[KPI_NAME]
+        return_holder = self._get_kpi_name_and_fk(row)
+        kpi_name = return_holder[0]
+
         external_sheet_name = self.sanitize_values(row[EXTERNAL_SHEET_NAMES])
         relevant_scif = self._filter_scif(row, self.scif)
 
@@ -598,6 +648,8 @@ class ToolBox(GlobalSessionToolBox):
             final_assortment = self.filter_assortments(assortment_sheet_name, kpi_name, filter_att2=True)
             result = self.calculate_assortment_passsed_no_constraints(final_assortment, relevant_scif)
 
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': return_holder[1], 'result': result}
+        return result_dict
 
         # kpi_name = row[KPI_NAME]
         # kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
@@ -1415,3 +1467,60 @@ class ToolBox(GlobalSessionToolBox):
                 assortment_passed = assortment_passed + 1
         result = float(assortment_passed) / len(final_assortment)
         return result
+
+    def _filter_facing_targets(self, row):
+        facings_targets = row['product_short_name:facings target']
+        facings_targets = self.sanitize_values(facings_targets)
+        container_for_facings = {}
+
+        for item in facings_targets:
+            save = item.split(':')
+            container_for_facings[save[0]] = save[1]
+
+        return container_for_facings
+
+    @staticmethod
+    def logic_for_result_availability_bonus_and_penalties(scif, facings_dict):
+        container_for_results = []
+        for prod_short_name, min_facings in facings_dict.items():
+            count_of_facings_for_prod = scif[scif.product_short_name.isin([prod_short_name])].facings.sum()
+            temporary_result = 1 if count_of_facings_for_prod >= int(min_facings) else 0
+            container_for_results.append(temporary_result)
+        result = 0 if 0 in container_for_results else 1
+        return result
+
+    def calculate_prereq_ejecucion(self):
+        prereq_ejecucion = self.templates[EJECUCION_SOMBRA_PREREQUISITE]
+        relevant_scif = self.filter_df(self.scif, {'template_name': prereq_ejecucion.scene_type.iloc[0]})
+        rival_brand_names_in_scif = relevant_scif[
+            relevant_scif.brand_name.isin(prereq_ejecucion.brand_name.unique())].brand_name.unique()
+        relevant_prereq_ejecucion = prereq_ejecucion.loc[prereq_ejecucion.brand_name.isin(rival_brand_names_in_scif)]
+
+        container_for_result = []
+        for row in relevant_prereq_ejecucion.itertuples():
+            scif_df = relevant_scif[relevant_scif.product_short_name.isin([row.product_short_name])]
+            if not scif_df.empty:
+                points = 3 if scif_df.facings.iloc[0] >= row.minimum_CC_SKU_facings_required else 0
+                rel_scif = scif_df[scif_df.product_short_name.isin([row.product_short_name_POSM])]
+                if not rel_scif.empty:
+                    points = 5 if rel_scif.facings.iloc[0] >= row.minimum_POS_facings_required else 3
+                if not container_for_result:
+                    container_for_result.append([points, row.product_short_name, row.brand_name])
+                elif container_for_result[0][0] < points:
+                    container_for_result.pop(0)
+                    container_for_result.append([points, row.product_short_name, row.brand_name])
+        return container_for_result
+
+    @staticmethod
+    def filter_df(df, filters, exclude=0):
+        cols = set(df.columns)
+        for key, val in filters.items():
+            if key not in cols:
+                return pd.DataFrame()
+            if not isinstance(val, list):
+                val = [val]
+            if exclude:
+                df = df[~df[key].isin(val)]
+            else:
+                df = df[df[key].isin(val)]
+        return df
