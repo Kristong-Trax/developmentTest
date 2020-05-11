@@ -80,7 +80,10 @@ class ToolBox(GlobalSessionToolBox):
         # store level oos and distribution
         denominator = len(product_fks)
         dis_result = self.get_result(dis_numerator, denominator)
-        oos_result = 1 - dis_result
+        if denominator == 0:
+            oos_result = 0
+        else:
+            oos_result = 1 - dis_result
         oos_numerator = denominator - dis_numerator
         self.common.write_to_db_result(fk=oos_store_kpi_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, result=oos_result, numerator_result=oos_numerator,
