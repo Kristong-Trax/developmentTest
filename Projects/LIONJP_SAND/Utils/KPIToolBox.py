@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-from KPIUtils_v2.Calculations.SequenceCalculationsV2 import Sequence
+from Projects.LIONJP_SAND.Utils.SequenceCalculationsV2 import Sequence
 from KPIUtils_v2.Calculations.CalculationsUtils.Constants import AdditionalAttr
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -136,26 +136,6 @@ class LIONJP_SANDToolBox:
                 Log.warning("KPI_NAME:{kn} not found in setup=>kpi_list sheet.".format(kn=row_data[Consts.KPI_NAME]))
 
     @staticmethod
-    def prepare_data_adjacency(kpi_config):
-        adj_config_list = []
-        for row_number, row_data in kpi_config.iterrows():
-            adj_config = {"custom_entity_fk": row_data['custom_entity_fk'],
-                          "template_fks": row_data['template_fks'],
-                          "group_entity": row_data['group_entity'],
-                          "orientation": row_data['orientation'],
-                          "minimum_tagging": row_data['minimum_tagging'],
-                          "sequence_mode": row_data['sequence_mode'],
-                          "include_stacking": row_data['include_stacking'],
-                          "include_empty": row_data['include_empty'],
-                          "include_others": row_data['include_others'],
-                          "include_irrelevant": row_data['include_irrelevant'],
-                          "include_pos": row_data['include_pos'],
-                          "entity": row_data['entity'],
-                          "entity_values": row_data['entity_values']}
-            adj_config_list.append(adj_config)
-        return adj_config_list
-
-    @staticmethod
     def exclude_and_include_filter(adj_config):
         allowed_filters = []
         exclude_filters = []
@@ -197,13 +177,16 @@ class LIONJP_SANDToolBox:
 
         return exclude_products_filters, allowed_products_filters
 
-    def build_ean_groups(self, adj_config):
+    def build_ean_groups(self, adj_config, scene_fk):
         group_entities = adj_config['group_entity']
         entity_values = adj_config['entity_values']
+
         if group_entities.upper() == "Y":
             entity_values = [[u"{}".format(g) for g in group] for group in entity_values]
         entities = {}
+
         df_entities = pd.DataFrame()
+
         if group_entities.upper() == "Y":
             for entity_key, entity_value in enumerate(entity_values):
                 if isinstance(entity_value, list):
@@ -216,39 +199,53 @@ class LIONJP_SANDToolBox:
                 entities["entity_{}".format(entity_key)] = entity_value
 
         for entity_key, entity_value in entities.items():
+            extra = [0, 1478, 1479]
             df_entity = self.data_provider.all_products[['product_fk', 'product_ean_code']].copy()
+            df_entity = df_entity[['product_fk']][(df_entity['product_ean_code'].isin(entity_value))]
+            if not df_entity.empty:
+                df_entity_extra = df_entity[['product_fk']][(df_entity['product_fk'].isin(extra))].copy()
+                df_entity = df_entity.append(df_entity_extra)
+                df_entity.reset_index(drop=True)
 
-            df_entity = df_entity[['product_fk']][df_entity['product_ean_code'].isin(entity_value)].copy()
             df_entity['entity'] = entity_key
             df_entities = df_entities.append(df_entity)
 
         df_entities = df_entities.reset_index(drop=True)
-        df_custom_matches = self.data_provider.matches.copy()
-        df_custom_matches = df_custom_matches.merge(df_entities, on="product_fk")
 
-        population = {'entity': entities.keys()}
-        exclude_filter, allowed_products_filter = self.exclude_and_include_filter(adj_config)
+        product_pks = list(df_entities['product_fk'].unique())
 
-        if adj_config['orientation'].upper() == "VERTICALLY":
-            direction = "DOWN"
-        elif adj_config['orientation'].upper() == "HORIZONTALLY":
-            direction = "RIGHT"
+        df_scene_pks = self.scif[(self.scif['scene_id'] == scene_fk) & (self.scif['item_id'].isin(product_pks))]
+
+        if df_scene_pks.empty:
+            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
         else:
-            Log.warning("Invalid direction:{}. Resetting to default orientation RIGHT".format(adj_config['orientation']))
-            direction = "RIGHT"
+            df_custom_matches = self.data_provider.matches.copy()
+            df_custom_matches = df_custom_matches.merge(df_entities, on="product_fk")
 
-        sequence_params = {AdditionalAttr.DIRECTION: direction,
-                           AdditionalAttr.EXCLUDE_FILTER: exclude_filter,
-                           AdditionalAttr.CHECK_ALL_SEQUENCES: False,
-                           AdditionalAttr.STRICT_MODE: True if adj_config['sequence_mode'] == 1 else False,
-                           AdditionalAttr.REPEATING_OCCURRENCES: True,
-                           AdditionalAttr.INCLUDE_STACKING: True if adj_config['include_stacking'] == 1 else False,
-                           AdditionalAttr.ALLOWED_PRODUCTS_FILTERS: allowed_products_filter,
-                           AdditionalAttr.MIN_TAGS_OF_ENTITY: adj_config['minimum_tagging']}
-        return population, sequence_params, df_custom_matches
+            population = {'entity': entities.keys()}
+            exclude_filter, allowed_products_filter = self.exclude_and_include_filter(adj_config)
+
+            if adj_config['orientation'].upper() == "VERTICALLY":
+                direction = "DOWN"
+            elif adj_config['orientation'].upper() == "HORIZONTALLY":
+                direction = "RIGHT"
+            else:
+                Log.warning("Invalid direction:{}. Resetting to default orientation RIGHT".format(adj_config['orientation']))
+                direction = "RIGHT"
+
+            sequence_params = {AdditionalAttr.DIRECTION: direction,
+                               AdditionalAttr.EXCLUDE_FILTER: exclude_filter,
+                               AdditionalAttr.CHECK_ALL_SEQUENCES: False,
+                               AdditionalAttr.STRICT_MODE: True if adj_config['sequence_mode'] == 'strict' else False,
+                               AdditionalAttr.REPEATING_OCCURRENCES: True,
+                               AdditionalAttr.INCLUDE_STACKING: True if adj_config['include_stacking'] == 1 else False,
+                               AdditionalAttr.ALLOWED_PRODUCTS_FILTERS: allowed_products_filter,
+                               AdditionalAttr.MIN_TAGS_OF_ENTITY: adj_config['minimum_tagging']}
+
+            return population, sequence_params, df_custom_matches
 
     def calculate_adjacency_per_scene(self, kpi_level_2_fk):
-        kpi_config = self.targets[self.targets["kpi_fk"] == kpi_level_2_fk]
+        kpi_config = self.targets[self.targets["kpi_fk"] == kpi_level_2_fk].copy()
 
         if kpi_config.empty:
             kpi_name = self.get_kpi_name(kpi_level_2_fk)
@@ -263,10 +260,11 @@ class LIONJP_SANDToolBox:
             for row_num, row_data in df_scene_template.iterrows():
                 scene_fk = row_data['scene_fk']
                 template_fk = row_data['template_fk']
+
                 if adj_config['entity'] == "ean_code":
                     location = {"scene_fk": scene_fk}
 
-                    population, sequence_params, custom_matches = self.build_ean_groups(adj_config)
+                    population, sequence_params, custom_matches = self.build_ean_groups(adj_config, scene_fk)
 
                     if custom_matches.empty:
                         print("scene_fk:{}, Custom Entities are not found in the scene.".format(scene_fk))
@@ -280,10 +278,30 @@ class LIONJP_SANDToolBox:
                     self.common.write_to_db_result(fk=kpi_level_2_fk,
                                                    numerator_id=adj_config['custom_entity_fk'],
                                                    denominator_id=template_fk,
-                                                   context_id=scene_fk,
+                                                   context_id=self.store_id,
                                                    numerator_result=result_count,
-                                                   denominator_result=0,
+                                                   denominator_result=scene_fk,
                                                    result=result,
                                                    score=score)
                 else:
                     Log.warning("Invalid entity:{}".format(adj_config['entity']))
+
+    # @staticmethod
+    # def prepare_data_adjacency(kpi_config):
+    #     adj_config_list = []
+    #     for row_number, row_data in kpi_config.iterrows():
+    #         adj_config = {"custom_entity_fk": row_data['custom_entity_fk'],
+    #                       "template_fks": row_data['template_fks'],
+    #                       "group_entity": row_data['group_entity'],
+    #                       "orientation": row_data['orientation'],
+    #                       "minimum_tagging": row_data['minimum_tagging'],
+    #                       "sequence_mode": row_data['sequence_mode'],
+    #                       "include_stacking": row_data['include_stacking'],
+    #                       "include_empty": row_data['include_empty'],
+    #                       "include_others": row_data['include_others'],
+    #                       "include_irrelevant": row_data['include_irrelevant'],
+    #                       "include_pos": row_data['include_pos'],
+    #                       "entity": row_data['entity'],
+    #                       "entity_values": row_data['entity_values']}
+    #         adj_config_list.append(adj_config)
+    #     return adj_config_list
