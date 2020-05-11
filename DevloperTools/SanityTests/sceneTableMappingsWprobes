@@ -115,3 +115,6 @@ pservice	assortment_to_product	all
 pservice	assortment_to_assortment_group	all
 pservice	policy	all
 pservice	group_names	all
+static	match_product_in_probe_number_attribute	all
+static	date_attribute_brands_scene_types	all
+static	visit_type	all
