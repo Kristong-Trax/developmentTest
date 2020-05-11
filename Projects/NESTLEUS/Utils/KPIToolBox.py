@@ -92,35 +92,32 @@ class NESTLEUSToolBox:
         # kpi_set_fk = kwargs['kpi_set_fk']
         # self.calculate_facing_count_and_linear_feet(kpi_set_fk=kpi_set_fk)
 
+        self.calculate_facing_count_and_linear_feet()
+
         if self.mpis[self.mpis['template_fk'].isin(self.water_templates.values())].empty:
-            Log.info("Session: {} contains no water products.".format(self.session_uid))
             return
 
-        self.calculate_facing_count_and_linear_feet()
         self.calculate_base_footage()
         self.calculate_facings_per_shelf_level()
         self.calculate_display_type(self.water_templates.get('Water Display'))
         self.calculate_display_type(self.water_templates.get('Water Display'), "NESTLE HOLDINGS INC")
 
-
-
     def calculate_facing_count_and_linear_feet(self):
         relevant_kpis = ['facings', 'facings_ign_stack', 'net_len_add_stack', 'net_len_ign_stack']
         relevant_kpis = {kpi: self.common.get_kpi_fk_by_kpi_name(Const.KPIs.get(kpi)['DB']) for kpi in relevant_kpis}
 
-        water_scif = self.scif[self.scif['category_fk'].isin(self.categories.values())]
-        water_scif = water_scif[water_scif['template_fk'].isin(self.water_templates.values())]
-        water_scif = water_scif.groupby(by=['template_fk', 'product_fk'], as_index=False).sum()
+        scif = self.scif
+        scif = scif.groupby(by=['template_fk', 'product_fk'], as_index=False).sum()
 
         # calculates the sum of the values for each kpi for each template
-        template_sums = water_scif.groupby(by=['template_fk']).sum()
+        template_sums = scif.groupby(by=['template_fk']).sum()
 
-        water_scif[[kpi+"_sum" for kpi in relevant_kpis.keys()]] = \
-            water_scif['template_fk'].apply(
+        scif[[kpi+"_sum" for kpi in relevant_kpis.keys()]] = \
+            scif['template_fk'].apply(
                 lambda template: pd.Series([template_sums.get_value(template, kpi) for kpi in relevant_kpis.keys()])
             )
 
-        for row in water_scif.itertuples():
+        for row in scif.itertuples():
             for kpi, fk in relevant_kpis.items():
                 numerator = getattr(row, kpi)
                 denominator = getattr(row, kpi+"_sum")

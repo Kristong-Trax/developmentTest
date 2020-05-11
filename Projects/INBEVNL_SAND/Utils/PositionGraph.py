@@ -13,7 +13,7 @@ __author__ = 'Nimrod'
 VERTEX_FK_FIELD = 'scene_match_fk'
 
 
-class INBEVNL_SANDINBEVBEPositionGraphs:
+class INBEVNLINBEVBEPositionGraphs:
     TOP = 'shelf_px_top'
     BOTTOM = 'shelf_px_bottom'
     LEFT = 'shelf_px_left'
@@ -61,8 +61,10 @@ class INBEVNL_SANDINBEVBEPositionGraphs:
         matches = matches[matches['status'] == 1]
         if not include_stacking:
             matches = matches[matches['stacking_layer'] == 1]
-        matches = matches.merge(self.get_match_product_in_scene(), how='left', on='scene_match_fk', suffixes=['', '_2'])
-        matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
+        matches = matches.merge(self.get_match_product_in_scene(), how='left',
+                                on='scene_match_fk', suffixes=['', '_2'])
+        matches = matches.merge(
+            self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
         matches = matches.merge(self.data_provider[Data.SCENE_ITEM_FACTS][['template_name', 'location_type',
                                                                            'scene_id', 'scene_fk']],
                                 how='left', on='scene_fk', suffixes=['', '_4'])
@@ -106,7 +108,8 @@ class INBEVNL_SANDINBEVBEPositionGraphs:
             scenes = self.match_product_in_scene['scene_fk'].unique()
         for scene in scenes:
             matches = self.match_product_in_scene[self.match_product_in_scene['scene_fk'] == scene]
-            matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - matches['facing_sequence_number']
+            matches['distance_from_end_of_shelf'] = matches['n_shelf_items'] - \
+                matches['facing_sequence_number']
             scene_graph = igraph.Graph(directed=True)
             edges = []
             for f in xrange(len(matches)):
@@ -128,7 +131,8 @@ class INBEVNL_SANDINBEVBEPositionGraphs:
 
             self.position_graphs[scene] = scene_graph
         calc_finish_time = datetime.datetime.utcnow()
-        Log.info('Creation of position graphs for scenes {} took {}'.format(scenes, calc_finish_time - calc_start_time))
+        Log.info('Creation of position graphs for scenes {} took {}'.format(
+            scenes, calc_finish_time - calc_start_time))
 
     def get_surrounding_products(self, anchor, matches):
         """
@@ -169,11 +173,13 @@ class INBEVNL_SANDINBEVBEPositionGraphs:
         if anchor_shelf_number == 1:
             surrounding_top = []
         else:
-            surrounding_top = filtered_matches[matches['shelf_number'] == anchor_shelf_number - 1][VERTEX_FK_FIELD]
+            surrounding_top = filtered_matches[matches['shelf_number']
+                                               == anchor_shelf_number - 1][VERTEX_FK_FIELD]
         if anchor_shelf_number_from_bottom == 1:
             surrounding_bottom = []
         else:
-            surrounding_bottom = filtered_matches[matches['shelf_number'] == anchor_shelf_number + 1][VERTEX_FK_FIELD]
+            surrounding_bottom = filtered_matches[matches['shelf_number']
+                                                  == anchor_shelf_number + 1][VERTEX_FK_FIELD]
 
         # checking left & right
         filtered_matches = matches[(matches['shelf_number'] == anchor_shelf_number) &
@@ -188,7 +194,8 @@ class INBEVNL_SANDINBEVBEPositionGraphs:
                                (matches['distance_from_end_of_shelf'] == 0)]
 
             if self.proximity_mode == self.STRICT_MODE:
-                surrounding_left = left_bay[(left_bay[self.TOP] < anchor_y) & (left_bay[self.BOTTOM] > anchor_y)]
+                surrounding_left = left_bay[(left_bay[self.TOP] < anchor_y)
+                                            & (left_bay[self.BOTTOM] > anchor_y)]
             else:
                 surrounding_left = left_bay[(left_bay[self.TOP].between(anchor_top, anchor_bottom) |
                                              left_bay[self.BOTTOM].between(anchor_top, anchor_bottom) |
@@ -252,4 +259,3 @@ class INBEVNL_SANDINBEVBEPositionGraphs:
                 row[y] = graph.vs[index][entity]
             matrix[i] = row
         return matrix
-

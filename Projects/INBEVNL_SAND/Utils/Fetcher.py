@@ -2,7 +2,7 @@
 __author__ = 'urid'
 
 
-class INBEVNL_SANDINBEVBEQueries:
+class Queries:
 
     def __init__(self):
         pass
@@ -41,32 +41,47 @@ class INBEVNL_SANDINBEVBEQueries:
             join probedata.scene s on s.pk = m.scene_fk
             join static.display d on d.pk = m.display_fk
             join static.display_brand sdb on sdb.pk=d.display_brand_fk
+            join (
+            select scene_fk, max(match_display_in_scene_info_fk) as max_match_display
+            from probedata.match_display_in_scene m
+            group by scene_fk
+            ) temp on temp.max_match_display=m.match_display_in_scene_info_fk
             where s.session_uid = '{}'
         """.format(session_uid)
 
     @staticmethod
-    def get_oos_messages(session_uid):
+    def get_oos_messages(store_fk, session_uid):
         return """
             SELECT * FROM probedata.oos_exclude oe
             join static.oos_message om on om.pk=oe.oos_message_fk
             join static.oos_message_type omt on omt.pk=om.type
-            where oe.session_uid = '{}';
+            where session_uid = '{}';
         """.format(session_uid)
 
     @staticmethod
-    def get_osa_table(store_fk):
-        return """
-            SELECT * FROM pservice.custom_osa
-            WHERE store_fk = {} AND is_current = 1
-        """.format(store_fk)
+    def get_osa_table(store_fk, visit_date, current_date, status):
+        if str(status) == "Completed":
+            return """
+                SELECT * FROM pservice.custom_osa
+                WHERE store_fk = {} 
+                AND '{}' between IFNULL(start_date, '{}') and IFNULL(end_date, '{}') 
+            """.format(store_fk, visit_date, current_date, current_date)
+        else:
+
+            return """
+                SELECT * FROM pservice.custom_osa
+                WHERE store_fk = {} AND is_current = 1
+            """.format(store_fk)
 
     @staticmethod
-    def get_delete_osa_records_query(product_fk, store_fk, delete_time):
+    def get_delete_osa_records_query(product_fk, store_fk, delete_time, visit_date, current_date):
         return """
             UPDATE pservice.custom_osa
-            SET end_date = '{}', is_current=0
+            SET end_date = '{}', is_current=NULL
             WHERE product_fk = {} AND store_fk = {}
-        """.format(delete_time, product_fk, store_fk)
+            AND '{}' >= IFNULL(start_date, '{}')
+            AND is_current = 1
+        """.format(delete_time, product_fk, store_fk, visit_date, current_date, current_date)
 
     @staticmethod
     def get_delete_scif_records_query(product_fk, session_fk):

@@ -1,21 +1,17 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import SessionInfo, BaseCalculationsGroup
-
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.INBEVNL_SAND.Utils.KPIToolBox import INBEVNL_SANDINBEVBEToolBox
-from KPIUtils.INBEV.INBEVToolBox import INBEVToolBox
+from KPIUtils.INBEV.INBEVToolBox_v2 import INBEVToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
-__author__ = 'urid'
+__author__ = 'ilays and urid'
 
 
-class INBEVNL_SANDINBEVBEGenerator:
-
-    def __init__(self, data_provider, output, template=None):
+class INBEVNLINBEVBEGenerator:
+    def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.data_provider = data_provider
         self.project_name = data_provider.project_name
@@ -26,8 +22,7 @@ class INBEVNL_SANDINBEVBEGenerator:
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.common = Common(self.data_provider)
-        self.tool_box = INBEVToolBox(self.data_provider, self.output, template, common=self.common)
-
+        self.tool_box = INBEVToolBox(self.data_provider, self.output, common=self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -37,18 +32,17 @@ class INBEVNL_SANDINBEVBEGenerator:
         """
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
-        self.tool_box.tools.update_templates()
-        set_names = ['Product Blocking', 'Linear Share of Shelf',
-                     'OSA', 'Pallet Presence', 'Share of Assortment', 'Product Stacking',
-                     'Product Group Blocking']
-        for kpi_set_name in set_names:
-            self.tool_box.main_calculation(set_name=kpi_set_name)
-        self.tool_box.main_calculation(set_name='Shelf Level')
-        self.tool_box.main_calculation(set_name='Linear Share of Shelf vs. Target')
-        self.tool_box.main_calculation(set_name='Shelf Impact Score')
-        self.tool_box.save_custom_scene_item_facts_results()
-        self.tool_box.save_linear_length_results()
-        Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
+            return
+        # self.tool_box.tools.update_templates()
+        # set_names = ['Product Blocking', 'Linear Share of Shelf', 'OSA', 'Pallet Presence', 'Share of Assortment',
+        #              'Product Stacking', 'Shelf Level', 'Linear Share of Shelf vs. Target', 'Shelf Impact Score',
+        #              'Product Group Blocking']
+        # for kpi_set_name in set_names:
+        #     self.tool_box.main_calculation(set_name=kpi_set_name)
+        # self.tool_box.save_custom_scene_item_facts_results()
+        # self.tool_box.save_linear_length_results()
+        # Log.info('Downloading templates took {}'.format(self.tool_box.download_time))
+        self.tool_box.main_calculation_poce()
         self.tool_box.commit_results_data()
         self.common.commit_results_data()
-        # self.tool_box.main_calculation_poce()
+

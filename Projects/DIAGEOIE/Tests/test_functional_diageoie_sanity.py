@@ -8,7 +8,7 @@ from Projects.DIAGEOIE.Tests.Data.kpi_results import DIAGEOIEKpiResults
 # import os
 # import json
 
-__author__ = 'ilays'
+__author__ = 'idanr'
 
 
 class TestKEnginePsCode(PsSanityTestsFuncs):

@@ -45,7 +45,7 @@ class BrandFullBayKpi(UnifiedCalculationsScript):
                     result_df['ratio'] = result_df['count'] / result_df['total_facings']
                     target_ratio = float(self._config_params['ratio'])
                     result = len(result_df[result_df['ratio'] >= target_ratio])
-                    self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['group_fk'],
+                    self.write_to_db_result(fk=row['kpi_level_2_fk'], numerator_id=row['group_fk'], result=result,
                                             score=result, target=target_ratio*100)
                     self.util.add_kpi_result_to_kpi_results_df(
                         [row['kpi_level_2_fk'], row['group_fk'], None, None, result, None])

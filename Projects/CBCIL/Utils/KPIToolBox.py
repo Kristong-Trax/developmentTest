@@ -27,6 +27,7 @@ PREVIOUS_TEMPLATES = 'Previous Templates'
 TEMPLATE_NAME_UNTIL_2019_01_15 = 'Template_until_2019-01-15.xlsx'
 TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01 = 'Template_until_2019-03-01.xlsx'
 TEMPLATE_NAME_BETWEEN_2019_03_01_TO_2019_12_31 = 'Template_until_2019-12-31.xlsx'
+TEMPLATE_NAME_BETWEEN_2019_12_31_TO_2020_04_21 = 'Template_until_2020-04-21.xlsx'
 CURRENT_TEMPLATE = 'Template.xlsx'
 
 
@@ -588,6 +589,7 @@ class CBCILCBCIL_ToolBox(object):
     @kpi_runtime()
     def calculate_availability_by_sequence(self, **general_filters):
         params = general_filters['filters']
+        target = int(general_filters.get('Target', 0))
         if params['All']['scene_id']:
             filters = params['1'].copy()
             filters.update(params['2'])
@@ -597,10 +599,13 @@ class CBCILCBCIL_ToolBox(object):
             if not result.empty:
                 result = result['shelf_number'].unique().tolist()
                 result.sort()
-            if len(result) >= 4:
-                for i in range(len(result) - 3):
-                    if result[i] == result[i + 1] - 1 == result[i + 2] - 2 == result[i + 3] - 3:
-                        return 100
+            if len(result) >= target:
+                # checks if the shelves are by order (in a row without gaps)
+                is_by_order = result == range(min(result), max(result)+1)
+
+                if is_by_order:
+                    return 100
+
         return 0
 
     @kpi_runtime()
@@ -789,6 +794,8 @@ class CBCILCBCIL_ToolBox(object):
             return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_01_15_TO_2019_03_01)
         elif self.visit_date <= datetime.date(datetime(2019, 12, 31)):
             return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_03_01_TO_2019_12_31)
+        elif self.visit_date <= datetime.date(datetime(2020, 04, 20)):
+            return "{}/{}/{}".format(TEMPLATE_PATH, PREVIOUS_TEMPLATES, TEMPLATE_NAME_BETWEEN_2019_12_31_TO_2020_04_21)
         else:
             return "{}/{}".format(TEMPLATE_PATH, CURRENT_TEMPLATE)
 

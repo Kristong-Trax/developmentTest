@@ -10,8 +10,8 @@ from mock import patch
 import os
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
-from Projects.PEPSICOUK.KPIs.Session.HeroAvailabilitySKU import HeroAvailabilitySkuKpi
-from Projects.PEPSICOUK.KPIs.Session.HeroAvailability import HeroAvailabilityKpi
+from Projects.PEPSICOUK.KPIs.Session.Primary_Location.HeroAvailabilitySKU import HeroAvailabilitySkuKpi
+from Projects.PEPSICOUK.KPIs.Session.Primary_Location.HeroAvailability import HeroAvailabilityKpi
 
 __author__ = 'natalya'
 
