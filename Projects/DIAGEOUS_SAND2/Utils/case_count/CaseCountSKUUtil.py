@@ -88,7 +88,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
             kpi_id = '{}_{}'.format(int(res[Pc.PRODUCT_FK]), kpi_fk)
             result, target = res.get(Src.RESULT), res.get(Src.TARGET)
             score = 1 if target is not None and result >= target else 0
-            self.common.write_to_db_result(fk=kpi_fk, numerator_id=res[Pc.PRODUCT_FK],result=result, score=score,
+            self.common.write_to_db_result(fk=kpi_fk, numerator_id=res[Pc.PRODUCT_FK], result=result, score=score,
                                            target=target, identifier_result=kpi_id, identifier_parent=parent_id,
                                            should_enter=True)
 
@@ -329,7 +329,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
             open_detection_indicator = False
             for stacking_layer, node in enumerate(path):
                 case_status = self._get_case_status(adj_g.nodes[node])
-                if not case_status:
+                if not (case_status or open_detection_indicator):
                     continue  # Closed case
                 else:
                     if open_detection_indicator:
@@ -375,56 +375,17 @@ class CaseCountCalculator(GlobalSessionToolBox):
         return self.filtered_mdis.scene_fk.unique().tolist()
 
 
-if __name__ == '__main__':
-    from KPIUtils_v2.DB.CommonV2 import Common
-    from Trax.Utils.Conf.Configuration import Config
-    from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-    Config.init('')
-    test_data_provider = KEngineDataProvider('diageous-sand2')
-    sessions = ['F689DF3A-D3C5-4AF2-A308-938177320871',
-                'EBCFCD1C-5431-49D0-A779-EB564FB62A45',
-                'E6A4B736-872B-4883-87C6-4C0132A99712',
-                'D81924B8-AA00-46D1-B14C-02A17B091DAE',
-                'D1B7046B-8358-4DFE-A737-0C6879BB11DA',
-                'C23F451F-919A-4BF7-9909-78A802FB266C',
-                'BE70CAE7-BD5B-4D3A-ADE3-9CA25C896DC6',
-                'BE38F2B9-C9B3-4DC3-AD01-BE7FD65F7C98',
-                'BA9765D1-B206-46F4-9741-B87982BF1578',
-                'B825ED73-B033-4CB1-B524-DF5A27DE0229',
-                'AE4F1C9B-276D-4662-A6F1-14C8F7362914',
-                'ADCA36F7-308F-4423-A252-8D8E84FA03AF',
-                'AB69FF78-E0AD-4FD8-A720-8DE441B000C1',
-                'A769D4F8-FC39-4E86-A218-1B74562759ED',
-                '978895CD-3AF7-4660-BDBE-9557F7C6320E',
-                '96BD6355-F03B-4322-9C89-737AC7B39A11',
-                '947DDF1F-EBE6-41C7-84F5-A75A3DCD9FAE',
-                '941B3B34-D43D-4FF7-985C-1F41ADF4A119',
-                '8F0E9D9B-6593-410A-95B7-F55103194065',
-                '8843DB0F-DFB7-42BD-A376-A8843C9BB3CF',
-                '858409B1-3273-4E44-82FC-275CF8C51981',
-                '8542E7C3-4903-4A5F-A19D-9280DFF4D4DD',
-                '733A500F-27A4-48EF-98D7-FB07E00B9A10',
-                '66608981-16C0-4364-9C2B-FAF752C7F009',
-                '50FC12A5-3BCE-4CCC-8F8F-2412D8446762',
-                '4B1D294F-E220-4C6F-893E-5C361BCA7823',
-                '4B0395FA-0390-4B6E-B96D-EC5A1CCD8797',
-                '440FF677-FB33-48BE-B6A2-B43E6089ED0F',
-                '3A693488-31A3-4675-AA5C-5636FD62DC44',
-                '2F9C5E14-94AD-4303-AB92-92AE17E8203A',
-                '2AAD922F-0F56-4E0E-96A3-CCC8B651E991',
-                '2435C6CD-FE43-4E8E-A93D-341CB6D21BC1',
-                '1D962EFD-D723-47DA-91B3-D2504809178E',
-                '195D0E0D-5860-4ABF-AEB2-56BC96E1F218',
-                '175578F8-AEC4-40DC-B033-3C5A65D9DEA9',
-                '162D6BCC-0628-498A-A68E-FAB8E688F07B',
-                '117384E5-F36F-4877-97DD-65259422A161',
-                '0EA99A38-5EB9-4B8E-B69D-FE2F27BE5AA5',
-                '063843F4-657F-416C-AE15-463F0653CF4F',
-                '022C4BD1-7254-4350-BD26-76C05737F7A3']
-    for session in sessions:
-        print(session)
-        test_data_provider.load_session_data(session_uid=session)
-        test_common = Common(test_data_provider)
-        case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
-        case_counter_calculator.main_case_count_calculations()
-        test_common.commit_results_data()
+# if __name__ == '__main__':
+#     from KPIUtils_v2.DB.CommonV2 import Common
+#     from Trax.Utils.Conf.Configuration import Config
+#     from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
+#     Config.init('')
+#     test_data_provider = KEngineDataProvider('diageous-sand2')
+#     sessions = ['b0cb6544-2609-473d-ac91-6e280c61eaff']
+#     for session in sessions:
+#         print(session)
+#         test_data_provider.load_session_data(session_uid=session)
+#         test_common = Common(test_data_provider)
+#         case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
+#         case_counter_calculator.main_case_count_calculations()
+#         test_common.commit_results_data()
