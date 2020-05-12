@@ -101,12 +101,42 @@ class PEPSICOUKCommonToolBox:
         self.kpi_score_values = self.get_kpi_score_values_df()
 
         self.displays_template = self.get_display_parameters()
+        self.shelf_len_mixed_shelves = self.calculate_shelf_len_for_mixed_shelves()
         self.scene_display = self.get_match_display_in_scene()
         self.assign_bays_to_bins()
         self.filtered_scif_secondary = self.get_initial_secondary_scif()
         self.filtered_matches_secondary = self.get_initial_secondary_matches()
         self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
                                                                   self.filtered_matches_secondary)
+
+    def calculate_shelf_len_for_mixed_shelves(self):
+        mix_displays = self.displays_template[self.displays_template[self.KPI_LOGIC] == 'Mix']\
+            [self.DISPLAY_NAME_TEMPL].unique()
+        mix_scenes = self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(mix_displays)][ScifConsts.SCENE_FK].unique()
+        mix_matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK].isin(mix_scenes)]
+        shelf_len_df = pd.DataFrame(columns=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER, 'shelf_length'])
+        if not mix_matches.empty:
+            scenes_bays = mix_matches.drop_duplicates(subset=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])
+            for i, row in scenes_bays.iterrows():
+                filtered_matches = mix_matches[(mix_matches[MatchesConsts.SCENE_FK]==row[MatchesConsts.SCENE_FK]) &
+                                               (mix_matches[MatchesConsts.BAY_NUMBER] == row[MatchesConsts.BAY_NUMBER])]
+                left_edge = self.get_left_edge_mm(filtered_matches)
+                right_edge = self.get_right_edge_mm(filtered_matches)
+                shelf_len = float(right_edge - left_edge)
+                shelf_len_df.loc[len(shelf_len_df)] = [row[MatchesConsts.SCENE_FK], row[MatchesConsts.BAY_NUMBER], shelf_len]
+        return shelf_len_df
+
+    @staticmethod
+    def get_left_edge_mm(matches):
+        matches['left_edge_mm'] = matches['x_mm'] - matches['width_mm_advance'] / 2
+        left_edge = matches['left_edge_mm'].min()
+        return left_edge
+
+    @staticmethod
+    def get_right_edge_mm(matches):
+        matches['right_edge_mm'] = matches['x_mm'] + matches['width_mm_advance'] / 2
+        right_edge = matches['right_edge_mm'].max()
+        return right_edge
 
     def get_match_display_in_scene(self):
         query = PEPSICOUK_Queries.get_match_display(self.session_uid)
@@ -127,6 +157,7 @@ class PEPSICOUKCommonToolBox:
                           how='left')
         matches = matches.merge(self.displays_template, left_on=ScifConsts.TEMPLATE_NAME,
                                 right_on=self.DISPLAY_NAME_TEMPL, how='left')
+        matches['facings_matches'] = 1
 
         bin_bay_scif, bin_bay_matches = self.calculate_displays_by_bin_bay_logic(scif, matches)
         bin_bin_scif, bin_bin_matches = self.calculate_displays_by_bin_bin_logic(scif, matches)
@@ -137,7 +168,7 @@ class PEPSICOUKCommonToolBox:
 
         matches = bin_bay_matches.append(bin_bin_matches)
         matches = matches.append(bin_shelf_matches)
-
+        # maybe remove extra columns from scif and matches
         return scif, matches
 
     def calculate_displays_by_mix_logic(self, scif, matches):
@@ -145,6 +176,8 @@ class PEPSICOUKCommonToolBox:
             [self.DISPLAY_NAME_TEMPL].unique()
         scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(mix_displays)]
         matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(mix_displays)]
+        matches = matches.merge(self.shelf_len_mixed_shelves, on=[MatchesConsts.BAY_NUMBER, MatchesConsts.SCENE_FK],
+                                how='left')
         mix_scif = scif
         mix_matches = matches
         if not matches.empty:
@@ -195,8 +228,17 @@ class PEPSICOUKCommonToolBox:
                                   as_index=False).agg({'facings_matches': np.sum})
         bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
         matches = matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER], how='left')
-        matches[MatchesConsts.WIDTH_MM_ADVANCE] = matches[self.SHELF_LEN_DISPL] / matches['unique_skus']
+        matches[MatchesConsts.WIDTH_MM_ADVANCE] = matches.apply(self.get_product_len, args=(matches,),axis=1)
         return matches
+
+    def get_product_len(self, row, matches):
+        if row[self.SHELF_LEN_DISPL]:
+            leng = row[self.SHELF_LEN_DISPL] / row['unique_skus']
+        else:
+            number_of_bays = len(matches[matches[MatchesConsts.SCENE_FK] == row[MatchesConsts.SCENE_FK]]\
+                                     [MatchesConsts.BAY_NUMBER].unique())
+            leng = row['shelf_length'] /number_of_bays / row['unique_skus']
+        return leng
 
     def calculate_product_length_on_display(self, scif, matches):
         matches = self.calculate_product_length_in_matches_on_display(matches)
@@ -206,7 +248,7 @@ class PEPSICOUKCommonToolBox:
         # matches = matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER], how='left')
         # matches[MatchesConsts.WIDTH_MM_ADVANCE] = matches[self.SHELF_LEN_DISPL] / matches['unique_skus']
         #
-        aggregated_matches = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]). \
+        aggregated_matches = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK], as_index=False). \
             agg({'facings_matches': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
         scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
         scif['facings'] = scif['updated_facings'] = scif['facings_matches']
@@ -221,17 +263,18 @@ class PEPSICOUKCommonToolBox:
         matches = matches[~(matches['new_bay_number'].isnull())]
         matches['bay_number'] = matches['new_bay_number']
         matches = matches.drop('new_bay_number', axis=1)
+        matches = matches.reset_index(drop=True)
         return matches
 
     def assign_bays_to_bins(self):
         if not self.scene_display.empty:
-            scene_display = self.scene_display[self.scene_display['display_name'] == 'Top Left']
+            scene_display = self.scene_display[self.scene_display['display_name'] == 'Top Left Corner']
             scene_display = scene_display.sort_values(['scene_fk', 'rect_x'])
             scene_display = scene_display.assign(rect_x_end=scene_display.groupby('scene_fk').rect_x.shift(-1)). \
                 fillna({'rect_x_end': np.inf})
             scene_display['assigned_bay_number'] = scene_display.groupby(['scene_fk'])['rect_x'].rank()
             scene_display.rename(columns={'rect_x': 'rect_x_start'}, inplace=True)
-            scene_display.drop('bay_number', axis=1)
+            scene_display.drop('bay_number', axis=1, inplace=True)
             self.scene_display = scene_display
 
     def calculate_displays_by_bin_bay_logic(self, scif, matches):
@@ -293,6 +336,7 @@ class PEPSICOUKCommonToolBox:
 
     def complete_templates_and_scif_data(self):
         template_store_area = self.get_template_to_store_area_map()
+        template_store_area = template_store_area.drop_duplicates(subset=[ScifConsts.TEMPLATE_FK], keep='last')
         self.all_templates = self.all_templates.merge(template_store_area, on=ScifConsts.TEMPLATE_FK, how='left')
         self.scif = self.scif.merge(template_store_area, on=ScifConsts.TEMPLATE_FK, how='left')
 

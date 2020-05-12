@@ -115,5 +115,6 @@ class PEPSICOUK_Queries(object):
 
     @staticmethod
     def get_template_store_area():
-        return """select st.*, sa.name as store_area from static.template_store_area st
+        return """select st.template_fk, st.store_area_fk, sa.name as store_area 
+                  from static.template_store_area st
                   JOIN static.store_task_area_group_items sa on st.store_area_fk = sa.pk"""
