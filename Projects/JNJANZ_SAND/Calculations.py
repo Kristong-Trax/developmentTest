@@ -7,8 +7,6 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-
-# TODO: Fix this finally
 from Projects.JNJANZ_SAND.Utils.LocalAssortKPIToolBox import JNJToolBox
 
 
@@ -20,24 +18,30 @@ class JNJANZ_SANDCalculations(BaseCalculationsScript):
     @log_runtime(description="Total Calculation")
     def run_project_calculations(self):
         self.timer.start()
+
         eye_level_data, exclusion_data = self._parse_templates_for_calculations()
         common = Common(self.data_provider)
-        jnj_generator = JNJGenerator(self.data_provider, self.output, common, exclusion_data)
 
-        self.calculate_local_assortment(jnj_generator, self.data_provider, self.output, common, exclusion_data)
+        try:
 
-        # Mobile KPIs with hierarchy
-        # jnj_generator.calculate_auto_assortment(in_balde=False, hierarchy=True,
-        #                                         just_primary=False, filter_sub_categories=False)
-        # jnj_generator.eye_hand_level_sos_calculation(eye_level_data, hierarchy=True)
-        # jnj_generator.promo_calc(hierarchy=True)
-        # jnj_generator.lsos_with_hierarchy()
-        #
-        # # API global KPIs
-        # jnj_generator.linear_sos_out_of_store_discovery_report()
-        # jnj_generator.calculate_auto_assortment(in_balde=False)
-        # jnj_generator.promo_calc()
-        # jnj_generator.eye_hand_level_sos_calculation(eye_level_data)
+            jnj_generator = JNJGenerator(self.data_provider, self.output, common, exclusion_data)
+            self.calculate_local_assortment(jnj_generator, self.data_provider, self.output, common, exclusion_data)
+
+            # Mobile KPIs with hierarchy
+            jnj_generator.calculate_auto_assortment(in_balde=False, hierarchy=True,
+                                                    just_primary=False, filter_sub_categories=False)
+            jnj_generator.eye_hand_level_sos_calculation(eye_level_data, hierarchy=True)
+            jnj_generator.promo_calc(hierarchy=True)
+            jnj_generator.lsos_with_hierarchy()
+
+            # API global KPIs
+            jnj_generator.linear_sos_out_of_store_discovery_report()
+            jnj_generator.calculate_auto_assortment(in_balde=False)
+            jnj_generator.promo_calc()
+            jnj_generator.eye_hand_level_sos_calculation(eye_level_data)
+
+        except Exception as e:
+            print ("Error :{}".format(e))
 
         common.commit_results_data()
         self.timer.stop('KPIGenerator.run_project_calculations')
