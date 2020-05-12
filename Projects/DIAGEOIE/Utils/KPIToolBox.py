@@ -26,7 +26,7 @@ class DIAGEOIEToolBox:
         self.commonV2.save_json_to_new_tables(sos_res)
 
         # sos by scene type
-        self.diageo_generator.sos_by_scene_type(self.commonV2)
+        self.diageo_generator.sos_by_scene_type_with_posm(self.commonV2)
 
         # Global assortment kpis
         assortment_res = self.diageo_generator.diageo_global_grouping_assortment_calculation()
