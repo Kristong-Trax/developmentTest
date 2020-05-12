@@ -30,6 +30,18 @@ __author__ = 'nicolaske'
 
 
 class ToolBox(GlobalSessionToolBox):
+    EXCLUDE_FILTER = 0
+    INCLUDE_FILTER = 1
+    CONTAIN_FILTER = 2
+    EXCLUDE_EMPTY = False
+    INCLUDE_EMPTY = True
+
+    STRICT_MODE = ALL = 1000
+
+    EMPTY = 'Empty'
+    DEFAULT = 'Default'
+    TOP = 'Top'
+    BOTTOM = 'Bottom'
 
     def __init__(self, data_provider, output):
         GlobalSessionToolBox.__init__(self, data_provider, output)
@@ -40,19 +52,21 @@ class ToolBox(GlobalSessionToolBox):
         self.block = Block(self.data_provider)
         self.toolbox = GENERALToolBox(self.data_provider)
         self.mpis = pd.merge(self.all_products, self.matches, how='right', on='product_fk')
+        self.ignore_stacking = False
+        self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
 
     def main_calculation(self):
-        # self.calculate_sku_count()
-        # self.calculate_facing_count()
-        # self.calculate_smart_tags()
-        #
-        # self.calculate_base_measurement()
-        # self.calculate_liner_measure()
-        #
-        # self.calculate_horizontal_shelf_position()
-        # self.calculate_vertical_shelf_position()
+        self.calculate_sku_count()
+        self.calculate_facing_count()
+        self.calculate_smart_tags()
+
+        self.calculate_base_measurement()
+        self.calculate_liner_measure()
+
+        self.calculate_horizontal_shelf_position()
+        self.calculate_vertical_shelf_position()
         self.calculate_blocking()
-        self.caculate_blocking_orientation()
+        # self.calculate_blocking_orientation()
 
         score = 0
         return score
@@ -152,13 +166,15 @@ class ToolBox(GlobalSessionToolBox):
                     shelf_positions.append(pos)
 
                 mode = max(shelf_positions, key=shelf_positions.count)
+                if not pd.isna(mode):
+                    result = Consts.HORIZONTAL_SHELF_POS_DICT[mode]
+                    self.write_to_db(fk=kpi_fk,
+                                     numerator_id=product_fk,
+                                     numerator_result=1,
+                                     denominator_id=self.store_id, result=result)
 
-                result = Consts.HORIZONTAL_SHELF_POS_DICT[mode]
 
-            self.write_to_db(fk=kpi_fk,
-                             numerator_id=product_fk,
-                             numerator_result=1,
-                             denominator_id=self.store_id, result=result)
+
 
     def calculate_blocking_orientation(self):
         template = self.kpi_template[Consts.BASE_MEASURE_SHEET]
@@ -181,41 +197,82 @@ class ToolBox(GlobalSessionToolBox):
             minimum_block_ratio = row['minimum_ratio']
 
             Exlude_Params1 = row['EXCLUDE PARAM 1']
-            Exclude_Value1 = row['EXCLUDE VALUE 1']
+            Exclude_Value1 = self.sanitize_row(row['EXCLUDE VALUE 1'])
 
-            Exlude_Params1 = row['EXCLUDE PARAM 2']
-            Exclude_Value1 = row['EXCLUDE VALUE 2']
+            Exlude_Params2 = row['EXCLUDE PARAM 2']
+            Exclude_Value2 = self.sanitize_row(row['EXCLUDE VALUE 2'])
 
             Block_AllowConnected_Params1 = row['BLOCK ALLOW-CONNECTED PARAM 1']
-            Block_AllowConnected_Value1 = row['BLOCK ALLOW-CONNECTED VALUE 1']
+            Block_AllowConnected_Value1 = self.sanitize_row(row['BLOCK ALLOW-CONNECTED VALUE 1'])
 
             Block_AllowConnected_Params2 = row['BLOCK ALLOW-CONNECTED PARAM 2']
-            Block_AllowConnected_Value2 = row['BLOCK ALLOW-CONNECTED VALUE 2']
+            Block_AllowConnected_Value2 = self.sanitize_row(row['BLOCK ALLOW-CONNECTED VALUE 2'])
 
             Block_AllowConnected_Params3 = row['BLOCK ALLOW-CONNECTED PARAM 3']
-            Block_AllowConnected_Value3 = row['BLOCK ALLOW-CONNECTED VALUE 3']
+            Block_AllowConnected_Value3 = self.sanitize_row(row['BLOCK ALLOW-CONNECTED VALUE 3'])
 
             Block_Exlude_Params1 = row['BLOCK EXCLUDE PARAM 1']
-            Block_Exclude_Value1 = row['BLOCK EXCLUDE VALUE 1']
+            Block_Exclude_Value1 = self.sanitize_row(row['BLOCK EXCLUDE VALUE 1'])
 
-            Exlude_Params1 = row['EXCLUDE PARAM 2']
-            Exclude_Value1 = row['EXCLUDE VALUE 2']
+
 
             # is_aggregate = row['aggregate']
             #
             # if is_aggregate == 'yes':
             #     pass
 
+            connect_dict = {}
+            excluded_dict = {}
+            smart_attribute_data_df = \
+                self.hdp.get_match_product_in_probe_state_values(self.matches['probe_match_fk'].unique().tolist())
+
+            if Block_AllowConnected_Params1:
+                connect_dict.update({Block_AllowConnected_Params1: Block_AllowConnected_Value1})
+            if Block_AllowConnected_Params2:
+                connect_dict.update({Block_AllowConnected_Params2: Block_AllowConnected_Value2})
+            if Block_AllowConnected_Params3:
+                connect_dict.update({Block_AllowConnected_Params3: Block_AllowConnected_Value3})
+
+
+            connected_product_pks = []
+            for key in connect_dict.keys():
+                if key == 'Smart Tag':
+                    product_fks = smart_attribute_data_df.product_fk.tolist()
+                    connected_product_pks.extend(product_fks)
+                elif not pd.isna(key):
+                    filtered_dict = self.scif[self.scif[key].isin(connect_dict[key])]
+
+                    if not filtered_dict.empty:
+                        connected_product_pks.extend(filtered_dict.product_fk.tolist())
+
+
+
+
             result = 0
-            general_filters = {Params1: [Value1], Params2: [VALUE2]}
+
+            general_filters = {}
+
+            param_dict = {Params1: [Value1], Params2: [VALUE2]}
+            excluded_dict = {Exlude_Params1: Exclude_Value1, Exlude_Params2: Exclude_Value2,
+                             Block_Exlude_Params1: Block_Exlude_Params1 }
+
+
+            # for param_key in param_dict.keys():
+            #     if not pd.isna(param_key):
+            #         general_filters[param_key] = param_dict[param_key]
+
+            general_filters = self.remove_nans_dict(param_dict)
+            excluded_filters = self.remove_nans_dict(excluded_dict)
+
+
 
             block_result = self.block.network_x_block_together(
                 population=general_filters,
                 additional={'minimum_block_ratio': minimum_block_ratio,
                             'minimum_facing_for_block': 1,
-                            'allowed_products_filters': {'product_type': ['Empty']},
-                            'calculate_all_scenes': False,
+                            'allowed_products_filters': {'product_type': connected_product_pks},
                             'include_stacking': True,
+                            'exclude_filter': excluded_filters,
                             'check_vertical_horizontal': False})
 
             if not block_result.empty:
@@ -365,6 +422,71 @@ class ToolBox(GlobalSessionToolBox):
         template = {}
         if len(relevant_sheets_list) > 0:
             for sheet in relevant_sheets_list:
-                template[sheet] = pd.read_excel(template_path, sheetname=sheet)
+                template[sheet] = pd.read_excel(template_path, sheetname=sheet, encoding='utf8')
 
         return template
+
+    def get_filter_condition(self, df, **filters):
+        """
+        :param df: The data frame to be filters.
+        :param filters: These are the parameters which the data frame is filtered by.
+                       Every parameter would be a tuple of the value and an include/exclude flag.
+                       INPUT EXAMPLE (1):   manufacturer_name = ('Diageo', DIAGEOAUGENERALToolBox.INCLUDE_FILTER)
+                       INPUT EXAMPLE (2):   manufacturer_name = 'Diageo'
+        :return: a filtered Scene Item Facts data frame.
+        """
+        if not filters:
+            return df
+        if self.facings_field in df.keys():
+            filter_condition = (df[self.facings_field] > 0)
+        else:
+            filter_condition = None
+        for field in filters.keys():
+            if field in df.keys():
+                if isinstance(filters[field], tuple):
+                    value, exclude_or_include = filters[field]
+                else:
+                    value, exclude_or_include = filters[field], self.INCLUDE_FILTER
+                if not value:
+                    continue
+                if not isinstance(value, list):
+                    value = [value]
+                if exclude_or_include == self.INCLUDE_FILTER:
+                    condition = (df[field].isin(value))
+                elif exclude_or_include == self.EXCLUDE_FILTER:
+                    condition = (~df[field].isin(value))
+                elif exclude_or_include == self.CONTAIN_FILTER:
+                    condition = (df[field].str.contains(value[0], regex=False))
+                    for v in value[1:]:
+                        condition |= df[field].str.contains(v, regex=False)
+                else:
+                    continue
+                if filter_condition is None:
+                    filter_condition = condition
+                else:
+                    filter_condition &= condition
+            else:
+                Log.warning('field {} is not in the Data Frame'.format(field))
+
+        return filter_condition
+
+    def sanitize_row(self, row):
+
+        if type(row) == unicode:
+            row = row.encode()
+            items = row.split(",")
+            cleansed_items = [s.strip() if type(s) == str else s for s in items]
+            return cleansed_items
+        else:
+            return [row]
+
+
+    def remove_nans_dict(self, input_dict):
+        filtered_dict = {}
+        for param_key in input_dict.keys():
+            if not pd.isna(param_key):
+                filtered_dict[param_key] = input_dict[param_key]
+        return filtered_dict
+
+
+

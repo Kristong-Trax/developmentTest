@@ -34,9 +34,11 @@ class HenkelDataProvider:
     def get_match_product_in_probe_state_values(self, probe_match_fks):
         query = """select mpipsv.match_product_in_probe_fk as 'probe_match_fk', 
                     mpips.name as 'match_product_in_probe_state_value',
-                    mpips.pk as 'match_product_in_probe_state_fk'
+                    mpips.pk as 'match_product_in_probe_state_fk',
+                    mpip.product_fk
                     from probedata.match_product_in_probe_state_value mpipsv
                     left join static.match_product_in_probe_state mpips on mpipsv.match_product_in_probe_state_fk = mpips.pk
+                    left join probedata.match_product_in_probe mpip on mpipsv.match_product_in_probe_fk = mpip.pk
                     where mpipsv.match_product_in_probe_fk in ({});""".format(
             ','.join([str(x) for x in probe_match_fks]))
 
@@ -44,7 +46,7 @@ class HenkelDataProvider:
         cur.execute(query)
         res = cur.fetchall()
         df = pd.DataFrame(list(res), columns=['probe_match_fk', 'match_product_in_probe_state_value',
-                                              'match_product_in_probe_state_fk'])
+                                              'match_product_in_probe_state_fk', 'product_fk'])
         df.drop_duplicates(subset=['probe_match_fk'], keep='first', inplace=True)
         return df
 
