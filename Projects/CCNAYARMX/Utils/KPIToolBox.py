@@ -74,6 +74,7 @@ MERCADEO_CONSTRAINTS = 'Mercadeo Constraints'
 BONUSES_AND_PENALTIES = 'Bonuses and Penalties'
 EJECUCION_SOMBRA = 'Ejecucion Sombra'
 EJECUCION_SOMBRA_PREREQUISITE = 'Ejecucion Sombra Prerequisite'
+PLATFORMAS_SCORING_PREREQ = 'Platformas Scoring Prereq'
 
 # Scif Filters
 BRAND_FK = 'brand_fk'
@@ -101,7 +102,7 @@ BAY_NUMBER = 'bay_number'
 
 SHEETS = [SOS, BLOCK_TOGETHER, SHARE_OF_EMPTY, BAY_COUNT, PER_BAY_SOS, SURVEY, AVAILABILITY, DISTRIBUTION,
           COMBO, SCORING, PLATFORMAS, PLATFORMAS_SCORING, KPIS, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS,
-          BONUSES_AND_PENALTIES, EJECUCION_SOMBRA, EJECUCION_SOMBRA_PREREQUISITE]
+          BONUSES_AND_PENALTIES, EJECUCION_SOMBRA, EJECUCION_SOMBRA_PREREQUISITE, PLATFORMAS_SCORING_PREREQ]
 POS_OPTIONS_SHEETS = [POS_OPTIONS, TARGETS_AND_CONSTRAINTS]
 ASSORTMENT_SHEETS = [GRANULAR_GROUPS, GRANULAR_GROUPS_LINK_TO_STORES]
 PORTAFOLIO_SHEETS = [ASSORTMENTS]
@@ -150,8 +151,9 @@ class ToolBox(GlobalSessionToolBox):
         self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
                              common=self.common)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.platformas_data = self.generate_platformas_data()
         self.att2 = self.store_info['additional_attribute_2'].iloc[0]
+        self.platformas_data = self.generate_platformas_data()
+        self.prereq = self.calculate_prereq_platformas_scoring()
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.match_product_in_probe_state_reporting = self.ps_data.get_match_product_in_probe_state_reporting()
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
@@ -179,19 +181,21 @@ class ToolBox(GlobalSessionToolBox):
         relevant_kpi_template = relevant_kpi_template[relevant_kpi_template.template_name.isin(
             self.scif.template_name.unique()) | relevant_kpi_template.template_name.isnull()]
 
-        # [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
-        #  DISTRIBUTION, SHARE_OF_EMPTY, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS]
-        foundation_kpi_types = [PLATFORMAS_SCORING]
+
+        foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
+                            DISTRIBUTION, SHARE_OF_EMPTY, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS, EJECUCION_SOMBRA]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
-        # platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
-        # combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == COMBO]
-        # scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING]
+        platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
+        bonus_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == BONUSES_AND_PENALTIES]
+        combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == COMBO]
+        scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING]
 
         self._calculate_kpis_from_template(foundation_kpi_template)
-        # self._calculate_kpis_from_template(platformas_kpi_template)
-        # self._calculate_kpis_from_template(combo_kpi_template)
-        # self._calculate_kpis_from_template(scoring_kpi_template)
+        self._calculate_kpis_from_template(platformas_kpi_template)
+        self._calculate_kpis_from_template(bonus_kpi_template)
+        self._calculate_kpis_from_template(combo_kpi_template)
+        self._calculate_kpis_from_template(scoring_kpi_template)
 
         self.save_results_to_db()
         return
@@ -225,11 +229,14 @@ class ToolBox(GlobalSessionToolBox):
             if result_data:
                 if isinstance(result_data, dict):
                     weight = row['Score']
-                    if weight and pd.notna(weight) and pd.notna(result_data['result']):
-                        if row[KPI_TYPE] == SCORING and 'score' not in result_data.keys():
-                            result_data['score'] = weight * result_data['result']
-                        elif row[KPI_TYPE] != SCORING:
-                            result_data['score'] = weight * result_data['result']
+                    try:
+                        if weight and pd.notna(weight) and pd.notna(result_data['result']):
+                            if row[KPI_TYPE] == SCORING and 'score' not in result_data.keys():
+                                result_data['score'] = weight * result_data['result']
+                            elif row[KPI_TYPE] != SCORING:
+                                result_data['score'] = weight * result_data['result']
+                    except:
+                        a = 1
                     parent_kpi_name = self._get_parent_name_from_kpi_name(result_data['kpi_name'])
                     if parent_kpi_name and 'identifier_parent' not in result_data.keys():
                         result_data['identifier_parent'] = parent_kpi_name
@@ -317,7 +324,7 @@ class ToolBox(GlobalSessionToolBox):
                     {'RETORNABILIDAD': 'mean'})
                 result = 1 if 1 in grouped_merge_mpis_prod.values else 0
         else:
-            a = 1
+            result = 1 if self.results_df[self.results_df.kpi_name.isin(['Hidratacion'])].result.iloc[0] == 100 else 0
             # DO THE FORTH ROW OF THE SHEET
 
         return_holder = self._get_kpi_name_and_fk(row)
@@ -353,47 +360,59 @@ class ToolBox(GlobalSessionToolBox):
                                            result=count_of_bays_in_template)
 
     def calculate_platformas_scoring(self, row):
-        results_list = []
-        kpi_name = row[KPI_NAME]
-        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-        relevant_platforms = self.sanitize_values(row['Platform'])
-        a = self.calculate_relevant_surnevey_result([28])
-        relevant_platformas_data = \
-            self.platformas_data[(self.platformas_data['Platform Name'].isin(relevant_platforms)) &
-                                 (self.platformas_data['consumed'] == 'no')]
-        for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name].iterrows():
-            child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
-            if not relevant_platformas_data.empty:
-                child_result = relevant_platformas_data[child_row['data_column']].iloc[0]
-                scene_id = relevant_platformas_data['scene_id'].iloc[0]
-                self.platformas_data.loc[relevant_platformas_data.index.values[0], 'consumed'] = 'yes'
-            else:
-                child_result = 0
-                scene_id = 0
-            result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
-                           'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
-                           'denominator_result': scene_id,
-                           'result': child_result}
-            results_list.append(result_dict)
+        result_container = self._get_kpi_name_and_fk(row)
+        kpi_name = result_container[0]
+        kpi_fk = result_container[1]
+        df = self.prereq[self.prereq['KPI Name'] == kpi_name]
+        resut_dict = {'kpi_name':kpi_name, 'kpi_fk':kpi_fk}
+        if df.empty:
+            resut_dict['result'] = np.nan
+        else:
+            resut_dict['denominator_id'] = df.scene_id.iloc[0]
+            resut_dict['result'] = df.result.iloc[0]
+            resut_dict['score'] = df.actual_score.iloc[0]
 
-        if kpi_name != 'Precios en cooler':
-            if relevant_platformas_data.empty:
-                result = 0
-                scene_id = 0
-            elif self.platformas_data.loc[relevant_platformas_data.index.values[0], 'passing_results'] == 4:
-                result = 1
-                scene_id = relevant_platformas_data['scene_id'].iloc[0]
-            else:
-                result = 0
-                scene_id = relevant_platformas_data['scene_id'].iloc[0]
-
-            result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk,
-                           'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
-                           'denominator_result': scene_id,
-                           'result': result}
-            results_list.append(result_dict)
-
-        return results_list
+        return resut_dict
+        # results_list = []
+        # kpi_name = row[KPI_NAME]
+        # kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        # relevant_platforms = self.sanitize_values(row['Platform'])
+        # relevant_platformas_data = \
+        #     self.platformas_data[(self.platformas_data['Platform Name'].isin(relevant_platforms)) &
+        #                          (self.platformas_data['consumed'] == 'no')]
+        # for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name].iterrows():
+        #     child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
+        #     if not relevant_platformas_data.empty:
+        #         child_result = relevant_platformas_data[child_row['data_column']].iloc[0]
+        #         scene_id = relevant_platformas_data['scene_id'].iloc[0]
+        #         self.platformas_data.loc[relevant_platformas_data.index.values[0], 'consumed'] = 'yes'
+        #     else:
+        #         child_result = 0
+        #         scene_id = 0
+        #     result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
+        #                    'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
+        #                    'denominator_result': scene_id,
+        #                    'result': child_result}
+        #     results_list.append(result_dict)
+        #
+        # if kpi_name != 'Precios en cooler':
+        #     if relevant_platformas_data.empty:
+        #         result = 0
+        #         scene_id = 0
+        #     elif self.platformas_data.loc[relevant_platformas_data.index.values[0], 'passing_results'] == 4:
+        #         result = 1
+        #         scene_id = relevant_platformas_data['scene_id'].iloc[0]
+        #     else:
+        #         result = 0
+        #         scene_id = relevant_platformas_data['scene_id'].iloc[0]
+        #
+        #     result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk,
+        #                    'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
+        #                    'denominator_result': scene_id,
+        #                    'result': result}
+        #     results_list.append(result_dict)
+        #
+        # return results_list
 
     def calculate_scoring(self, row):
         kpi_name = row[KPI_NAME]
@@ -471,6 +490,94 @@ class ToolBox(GlobalSessionToolBox):
             return None
 
     def generate_platformas_data(self):
+        # platformas_data = pd.DataFrame(columns=['scene_id', 'Platform Name', 'POS option present',
+        #                                         'Mandatory SKUs found', 'Minimum facings met', 'Coke purity',
+        #                                         'consumed'])
+        # relevant_pos_template = self.templates[POS_OPTIONS]
+        # unique_relevant_template_name = relevant_pos_template.template_name.unique()
+        # filtered_scif = self.scif[self.scif.template_name.isin(unique_relevant_template_name)]
+        #
+        # # WRITE LOGIC FOR IF SCIF EMPTY
+        # for scene in filtered_scif[['scene_id', 'template_name']].drop_duplicates().itertuples():
+        #     scene_scif = self.scif[self.scif.scene_id == scene.scene_id]
+        #     product_names_in_scene = scene_scif.product_short_name.unique()
+        #
+        #     relevant_pos_template = relevant_pos_template[relevant_pos_template.template_name.isin([scene.template_name])]
+        #
+        #     # section for the 'POS Option'
+        #     pos_option_found = 0
+        #     for index, relevant_row in relevant_pos_template.iterrows():
+        #         if pos_option_found:
+        #             break
+        #         groups = self._get_groups(relevant_row.dropna(), 'POS Option')
+        #         for group in groups:
+        #             if all(np.in1d(group, product_names_in_scene)):
+        #                 pos_option_found = 1  # True
+        #                 platform_name = relevant_row['Platform Name']
+        #                 platform_row = relevant_row.copy()
+        #                 break
+        #
+        #     if not pos_option_found:
+        #         continue
+        #
+        #     targets_and_constraints = self._get_relevant_targets_and_constraints(platform_name, scene.template_name)
+        #
+        #     if targets_and_constraints.empty:
+        #         # this is needed for the Precios en Cooler KPI
+        #         platformas_data.loc[len(platformas_data), platformas_data.columns.tolist()] = [
+        #             scene.scene_id, platform_name, pos_option_found, 0, 0, 0, 'no']
+        #
+        #     # calculate the 'empaques' data
+        #     assortment_groups = self._get_groups(platform_row.dropna(), 'Assortment')
+        #     mandatory_skus_found = 1  # True
+        #     for assortment in assortment_groups:
+        #         if not any(product in product_names_in_scene for product in assortment):
+        #             mandatory_skus_found = 0  # False
+        #             break
+        #     limited_product = self.sanitize_values(targets_and_constraints['max_facings_product_local_name'].iloc[0])
+        #     if limited_product and limited_product is not np.nan:
+        #         if scene_scif[scene_scif['product_short_name'].isin(limited_product)]['facings'].sum() > \
+        #                 targets_and_constraints['max_facings'].iloc[0]:
+        #             mandatory_skus_found = 0
+        # #     # this should be refactored to be more programmatic
+        #     if targets_and_constraints['Assortment_Facings_Constraints'].iloc[0] == 'Assortment_2>Assortment_1':
+        #         assortment_1_facings = \
+        #             scene_scif[scene_scif['product_short_name'].isin(assortment_groups[0])]['facings'].sum()
+        #         assortment_2_facings = \
+        #             scene_scif[scene_scif['product_short_name'].isin(assortment_groups[1])]['facings'].sum()
+        #         if assortment_1_facings >= assortment_2_facings:
+        #             mandatory_skus_found = 0
+        #
+        #     # calculate the 'botellas' data
+        #     total_facings = scene_scif[scene_scif['product_short_name'].isin(
+        #         [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
+        #     if total_facings >= targets_and_constraints['Facings_target'].iloc[0]:
+        #         minimum_facings_met = 1  # True
+        #     else:
+        #         minimum_facings_met = 0  # False
+        #
+        #     # calculate the coke purity (coke SOS) of this scene
+        #     coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif, assortment_groups)
+        #
+        #     platformas_data.loc[len(platformas_data), platformas_data.columns.tolist()] = [
+        #         scene.scene_id, platform_name, pos_option_found, mandatory_skus_found,
+        #         minimum_facings_met, coke_purity_for_scene, 'no'
+        #     ]
+        #
+        # platformas_data['passing_results'] = platformas_data['POS option present'] + \
+        #                                      platformas_data['Mandatory SKUs found'] + \
+        #                                      platformas_data['Minimum facings met'] + \
+        #                                      platformas_data['Coke purity']
+        #
+        # platformas_data.sort_values(by=['passing_results'], ascending=False, inplace=True)
+        # unique_scenes_in_platformas_data = platformas_data.scene_id.values
+        # survey_results = self.get_survey_results_for_POS(unique_scenes_in_platformas_data, 28)
+        # platformas_data = platformas_data.merge(survey_results[['scene_fk', 'selected_option_text']], how='left',
+        #                                         left_on='scene_id', right_on='scene_fk').drop(
+        #     columns=['scene_fk']).fillna(0)
+        # return platformas_data
+        #
+
         platformas_data = pd.DataFrame(columns=['scene_id', 'Platform Name', 'POS option present',
                                                 'Mandatory SKUs found', 'Minimum facings met', 'Coke purity',
                                                 'consumed'])
@@ -548,6 +655,11 @@ class ToolBox(GlobalSessionToolBox):
                                              platformas_data['Minimum facings met'] + \
                                              platformas_data['Coke purity']
         platformas_data.sort_values(by=['passing_results'], ascending=False, inplace=True)
+        unique_scenes_in_platformas_data = platformas_data.scene_id.values
+        survey_results = self.get_survey_results_for_POS(unique_scenes_in_platformas_data, 28)
+        platformas_data = platformas_data.merge(survey_results[['scene_fk', 'selected_option_text']], how='left',
+                                                left_on='scene_id', right_on='scene_fk').drop(
+            columns=['scene_fk']).fillna(0).rename(columns={'selected_option_text': 'survey_result'})
         return platformas_data
 
     def _get_coke_purity_for_scene(self, scene_scif, assortment_groups):
@@ -1353,7 +1465,7 @@ class ToolBox(GlobalSessionToolBox):
         return target
 
     def get_scene_survey_response(self):
-        query = """SELECT session_uid,question_fk,selected_option_text
+        query = """SELECT session_uid,question_fk,selected_option_text, scene_fk
                 FROM probedata.scene_survey_response res
                 LEFT JOIN probedata.scene sce ON res.scene_fk =  sce.pk
                 WHERE session_uid = '{}';""".format(self.session_uid)
@@ -1524,3 +1636,34 @@ class ToolBox(GlobalSessionToolBox):
             else:
                 df = df[df[key].isin(val)]
         return df
+
+    def get_survey_results_for_POS(self, unique_scenes, relevant_question):
+        survey_answer = self.get_scene_survey_response()
+        relevant_survey_ansewrs_for_scene = survey_answer[
+            survey_answer.scene_fk.isin(unique_scenes) & survey_answer.question_fk.isin([relevant_question])]
+        relevant_survey_ansewrs_for_scene.selected_option_text = np.where(
+            relevant_survey_ansewrs_for_scene.selected_option_text == 'Si', 1, 0)
+        return relevant_survey_ansewrs_for_scene
+
+    def calculate_prereq_platformas_scoring(self):
+        platformas_data = self.platformas_data
+        platformas_data['template_name'] = platformas_data.scene_id.apply(
+            lambda x: self.scif[self.scif.scene_id == x].template_name.iloc[0])
+
+        pre_req_platformas = self.templates[PLATFORMAS_SCORING_PREREQ]
+        pre_req_platformas = pre_req_platformas[pre_req_platformas.store_additional_attribute_2.str.contains(self.att2)]
+
+        final_df = pd.DataFrame()
+        for index, row in platformas_data.iterrows():
+            relevant_template_name =self.scif[self.scif.scene_id == row.scene_id].template_name.iloc[0]
+            relevant_preplat = pre_req_platformas[pre_req_platformas['Platform'].str.contains(row['Platform Name'])]
+            relevant_preplat =relevant_preplat[relevant_preplat.template_name == relevant_template_name]
+
+            result = (row['POS option present'] * .25) + (
+                        row['Minimum facings met'] * .5 / 3 + row['Mandatory SKUs found'] * .5 / 3 + row[
+                    'survey_result'] * .5 / 3) + (row['Coke purity'] * .25)
+            relevant_preplat['actual_score'] = relevant_preplat['Score'] * result
+            relevant_preplat['result'] = result
+            relevant_preplat['scene_id'] = row.scene_id
+            final_df = final_df.append(relevant_preplat)
+        return final_df
