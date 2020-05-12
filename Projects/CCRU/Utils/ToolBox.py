@@ -1614,7 +1614,7 @@ class CCRUKPIToolBox:
             filtered_products = filtered_products[filtered_products['product_type'].isin(include_product_types)]
 
         if return_column in filtered_products.columns:
-            return_list = filtered_products[return_column].unique().tolist()
+            return_list = filtered_products[filtered_products[return_column].notnull()][return_column].unique().tolist()
         else:
             return_list = []
 
@@ -1660,7 +1660,7 @@ class CCRUKPIToolBox:
             filtered_products = filtered_products[filtered_products['product_type'].isin(include_product_types)]
 
         if return_column in filtered_products.columns:
-            return_list = filtered_products[return_column].unique().tolist()
+            return_list = filtered_products[filtered_products[return_column].notnull()][return_column].unique().tolist()
         else:
             return_list = []
 

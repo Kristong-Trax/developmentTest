@@ -431,11 +431,7 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'jnjuk': {'a31b8f7a-9327-4f8e-8495-6c8bba2b4d0e': []},
-        # 'diageouk': {'AA387E6A-47D2-4BE8-983B-3C5C44EBE409': []},
-        # 'diageoza': {'44164ea5-f62f-4200-b169-ef0966424cf7': []},
-        # 'diageogh': {'f9cf43f0-b0be-4017-a765-1835f58d518a': []},
-        # 'sanofike': {'214F517F-0191-4C00-8DFD-A8FA5F7E0A4D': []}
+        'batru': {'AF410EF7-90D8-431A-AF12-60DE6ED7438B': []}
                 }
     for project in projects:
         try:
