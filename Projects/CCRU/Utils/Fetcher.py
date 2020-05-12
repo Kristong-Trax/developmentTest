@@ -49,7 +49,7 @@ class CCRUCCHKPIFetcher:
 
     def get_static_kpi_data(self, kpi_set_name=None):
         kpi_set_name = kpi_set_name if kpi_set_name else self.kpi_set_name
-        self.rds_conn.connect_rds()
+        self.rds_conn = self.rds_connection()
         query = """
                 select api.name as atomic_kpi_name, api.pk as atomic_kpi_fk,
                        kpi.display_text as kpi_name, kpi.pk as kpi_fk,
@@ -212,7 +212,7 @@ class CCRUCCHKPIFetcher:
         return df
 
     def get_kpi_result_values(self):
-        self.rds_conn.connect_rds()
+        self.rds_conn = self.rds_connection()
         query = """
                 select 
                 rt.pk as result_type_fk,
@@ -226,7 +226,7 @@ class CCRUCCHKPIFetcher:
         return df
 
     def get_kpi_entity_types(self):
-        self.rds_conn.connect_rds()
+        self.rds_conn = self.rds_connection()
         query = """
                 select * from static.kpi_entity_type;
                 """
@@ -234,7 +234,7 @@ class CCRUCCHKPIFetcher:
         return df
 
     def get_kpi_entity(self, entity, entity_type_fk, entity_table_name, entity_uid_field):
-        self.rds_conn.connect_rds()
+        self.rds_conn = self.rds_connection()
         query = """
                 select 
                 '{0}' as entity,
@@ -298,7 +298,7 @@ class CCRUCCHKPIFetcher:
         return data.groupby(['anchor_product_fk']).agg({'product_fks': 'first', 'min_facings': 'first'}).to_dict()
 
     def get_custom_entity(self, entity_type):
-        self.rds_conn.connect_rds()
+        self.rds_conn = self.rds_connection()
         query = \
             """
             SELECT en.pk, en.name
