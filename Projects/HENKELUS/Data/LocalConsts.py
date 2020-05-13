@@ -18,11 +18,12 @@ class Consts(object):
     BLOCKING_SHEET = 'Blocking'
     SHELF_MAP_SHEET = 'Shelf Map'
     BLOCK_COMPOSITION_SHEET = 'Block Composition'
+    MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET = 'Max Block Directional Adjacency'
 
     relevant_kpi_sheets = [FACING_COUNT_SHEET, SKU_COUNT_SHEET, SMART_TAG_SHEET,
                            LINEAR_SHEET, BASE_MEASURE_SHEET,
                            VERTICAL_SHELF_SHEET, BLOCKING_SHEET, HORIZONTAL_SHELF_SHEET, SHELF_MAP_SHEET,
-                           BLOCK_COMPOSITION_SHEET
+                           BLOCK_COMPOSITION_SHEET, MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET
                            ]
 
     OWN_MANUFACTURER_FK = 49
