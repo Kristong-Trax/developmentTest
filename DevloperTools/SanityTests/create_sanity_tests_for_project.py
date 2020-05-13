@@ -439,7 +439,7 @@ if __name__ == '__main__':
             kpi_results = pd.DataFrame()
             sessions = projects[project]
             # In case you don't need to generate a new seed, just comment out the below row
-            # sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
+            sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
             if kpi_results is None:
                 sys.exit(1)
             sessions = get_sessions_in_correct_format(sessions)
