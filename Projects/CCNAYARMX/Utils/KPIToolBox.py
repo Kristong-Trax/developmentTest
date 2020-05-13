@@ -181,9 +181,8 @@ class ToolBox(GlobalSessionToolBox):
         relevant_kpi_template = relevant_kpi_template[relevant_kpi_template.template_name.isin(
             self.scif.template_name.unique()) | relevant_kpi_template.template_name.isnull()]
 
-
         foundation_kpi_types = [BAY_COUNT, SOS, PER_BAY_SOS, BLOCK_TOGETHER, AVAILABILITY, SURVEY,
-                            DISTRIBUTION, SHARE_OF_EMPTY, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS, EJECUCION_SOMBRA]
+                                DISTRIBUTION, SHARE_OF_EMPTY, AVAILABILITY_COMBO, NUMERO_DE_PUERTAS, EJECUCION_SOMBRA]
 
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
         platformas_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == PLATFORMAS_SCORING]
@@ -328,7 +327,8 @@ class ToolBox(GlobalSessionToolBox):
             # DO THE FORTH ROW OF THE SHEET
 
         return_holder = self._get_kpi_name_and_fk(row)
-        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'result': result}
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],'numerator_id': self.own_manuf_fk,
+                       'denominator_id': self.store_id, 'result': result}
         return result_dict
 
     def calculate_numero_de_puertas(self, row):
@@ -364,7 +364,7 @@ class ToolBox(GlobalSessionToolBox):
         kpi_name = result_container[0]
         kpi_fk = result_container[1]
         df = self.prereq[self.prereq['KPI Name'] == kpi_name]
-        resut_dict = {'kpi_name':kpi_name, 'kpi_fk':kpi_fk}
+        resut_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk}
         if df.empty:
             resut_dict['result'] = np.nan
         else:
@@ -760,7 +760,8 @@ class ToolBox(GlobalSessionToolBox):
             final_assortment = self.filter_assortments(assortment_sheet_name, kpi_name, filter_att2=True)
             result = self.calculate_assortment_passsed_no_constraints(final_assortment, relevant_scif)
 
-        result_dict = {'kpi_name': kpi_name, 'kpi_fk': return_holder[1], 'result': result}
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': return_holder[1], 'numerator_id': self.own_manuf_fk,
+                       'denominator_id': self.store_id, 'result': result}
         return result_dict
 
         # kpi_name = row[KPI_NAME]
@@ -1655,13 +1656,13 @@ class ToolBox(GlobalSessionToolBox):
 
         final_df = pd.DataFrame()
         for index, row in platformas_data.iterrows():
-            relevant_template_name =self.scif[self.scif.scene_id == row.scene_id].template_name.iloc[0]
+            relevant_template_name = self.scif[self.scif.scene_id == row.scene_id].template_name.iloc[0]
             relevant_preplat = pre_req_platformas[pre_req_platformas['Platform'].str.contains(row['Platform Name'])]
-            relevant_preplat =relevant_preplat[relevant_preplat.template_name == relevant_template_name]
+            relevant_preplat = relevant_preplat[relevant_preplat.template_name == relevant_template_name]
 
             result = (row['POS option present'] * .25) + (
-                        row['Minimum facings met'] * .5 / 3 + row['Mandatory SKUs found'] * .5 / 3 + row[
-                    'survey_result'] * .5 / 3) + (row['Coke purity'] * .25)
+                    row['Minimum facings met'] * .5 / 3 + row['Mandatory SKUs found'] * .5 / 3 + row[
+                'survey_result'] * .5 / 3) + (row['Coke purity'] * .25)
             relevant_preplat['actual_score'] = relevant_preplat['Score'] * result
             relevant_preplat['result'] = result
             relevant_preplat['scene_id'] = row.scene_id
