@@ -56,18 +56,18 @@ class ToolBox(GlobalSessionToolBox):
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
 
     def main_calculation(self):
-        # self.calculate_sku_count()
-        # self.calculate_facing_count()
-        # self.calculate_smart_tags()
-        #
-        # self.calculate_base_measurement()
-        # self.calculate_liner_measure()
-        #
-        # self.calculate_horizontal_shelf_position()
-        # self.calculate_vertical_shelf_position()
-        # self.calculate_blocking()
-        # self.calculate_blocking_orientation()
+        self.calculate_sku_count()
+        self.calculate_facing_count()
+        self.calculate_smart_tags()
+        self.calculate_base_measurement()
+        self.calculate_liner_measure()
+        self.calculate_horizontal_shelf_position()
+        self.calculate_vertical_shelf_position()
+        self.calculate_blocking()
         self.calculate_blocking_comp()
+
+        # self.calculate_blocking_Sequence()
+        # self.calculate_blocking_orientation()
 
         score = 0
         return score
@@ -115,7 +115,7 @@ class ToolBox(GlobalSessionToolBox):
 
         for scene in list(filtered_mpis.scene_fk.unique()):
             filtered_mpis = filtered_mpis[filtered_mpis['scene_fk'] == scene]
-            shelf_count = len(mpis['shelf_number'][mpis['scene_fk'] == scene].unique())
+            shelf_count = len(self.matches['shelf_number'][self.matches['scene_fk'] == scene].unique())
             for i, row in filtered_mpis.iterrows():
                 shelf_number = row['shelf_number']
                 pos = shelf_map_df[shelf_number][shelf_map_df['Num Shelves'] == shelf_count]
@@ -127,13 +127,12 @@ class ToolBox(GlobalSessionToolBox):
 
             mode = max(shelf_positions, key=shelf_positions.count)
             if not pd.isna(mode):
-
                 result = Consts.CUSTOM_RESULTS[mode]
                 self.write_to_db(fk=kpi_fk,
-                             numerator_id=product_fk,
-                             numerator_result=1,
-                             context_id=product_fk,
-                             denominator_id=denom_id, result=result)
+                                 numerator_id=product_fk,
+                                 numerator_result=1,
+                                 context_id=product_fk,
+                                 denominator_id=denom_id, result=result)
 
     def calculate_horizontal_shelf_position(self):
         template = self.kpi_template[Consts.HORIZONTAL_SHELF_SHEET]
@@ -174,9 +173,6 @@ class ToolBox(GlobalSessionToolBox):
                                      numerator_result=1,
                                      denominator_id=self.store_id, result=result)
 
-
-
-
     def calculate_blocking_orientation(self):
         template = self.kpi_template[Consts.BASE_MEASURE_SHEET]
         for i, row in template.iterrows():
@@ -186,7 +182,8 @@ class ToolBox(GlobalSessionToolBox):
 
         pass
 
-
+    def calculate_blocking_Sequence(self):
+        pass
 
     def calculate_blocking_comp(self):
         template = self.kpi_template[Consts.BLOCK_COMPOSITION_SHEET]
@@ -195,7 +192,6 @@ class ToolBox(GlobalSessionToolBox):
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
             Params1 = row['DATASET A PARAM 1']
             Value1 = self.sanitize_row(row['DATASET A VALUE 1'])
-
 
             reduced_scif = self.scif[~self.scif['Scent'].isnull()
                                      | (~self.scif['Format'].isnull())]
@@ -219,14 +215,14 @@ class ToolBox(GlobalSessionToolBox):
 
                         block_result_list.append(scent_res)
 
-                if len(block_result_list) >0:
+                if len(block_result_list) > 0:
                     acceptance_ratio = sum(block_result_list) / float(len(block_result_list))
                     if acceptance_ratio > .5:
                         result = 1
                         custom_result_fk = Consts.CUSTOM_RESULTS['Yes']
 
-
-                self.write_to_db(fk=kpi_fk, numerator_id=product_fk, denominator_id=product_fk, numerator_result= result,  denominator_result=1, result=custom_result_fk, score=0)
+                self.write_to_db(fk=kpi_fk, numerator_id=product_fk, denominator_id=product_fk, numerator_result=result,
+                                 denominator_result=1, result=custom_result_fk, score=0)
             #         general_filter[Params1] = Value1
             #
             #     block_result_df = self.block.network_x_block_together(population=general_filter,
@@ -237,7 +233,7 @@ class ToolBox(GlobalSessionToolBox):
             #             'check_vertical_horizontal': False})
             #
             #     block_result_df
-                    # self.write_to_db()
+            # self.write_to_db()
 
     def calculate_blocking(self):
         template = self.kpi_template[Consts.BLOCKING_SHEET]
@@ -268,8 +264,6 @@ class ToolBox(GlobalSessionToolBox):
             Block_Exlude_Params1 = row['BLOCK EXCLUDE PARAM 1']
             Block_Exclude_Value1 = self.sanitize_row(row['BLOCK EXCLUDE VALUE 1'])
 
-
-
             # is_aggregate = row['aggregate']
             #
             # if is_aggregate == 'yes':
@@ -279,6 +273,7 @@ class ToolBox(GlobalSessionToolBox):
             excluded_dict = {}
             smart_attribute_data_df = \
                 self.hdp.get_match_product_in_probe_state_values(self.matches['probe_match_fk'].unique().tolist())
+            smart_tags_product_fks = smart_attribute_data_df.product_fk.tolist()
 
             if Block_AllowConnected_Params1:
                 connect_dict.update({Block_AllowConnected_Params1: Block_AllowConnected_Value1})
@@ -287,29 +282,21 @@ class ToolBox(GlobalSessionToolBox):
             if Block_AllowConnected_Params3:
                 connect_dict.update({Block_AllowConnected_Params3: Block_AllowConnected_Value3})
 
-
             connected_product_pks = []
             for key in connect_dict.keys():
                 if key == 'Smart Tag':
-                    product_fks = smart_attribute_data_df.product_fk.tolist()
-                    connected_product_pks.extend(product_fks)
+                    connected_product_pks.extend(smart_tags_product_fks)
                 elif not pd.isna(key):
                     filtered_dict = self.scif[self.scif[key].isin(connect_dict[key])]
 
                     if not filtered_dict.empty:
                         connected_product_pks.extend(filtered_dict.product_fk.tolist())
 
-
-
-
             result = 0
-
-            general_filters = {}
 
             param_dict = {Params1: [Value1], Params2: [VALUE2]}
             excluded_dict = {Exlude_Params1: Exclude_Value1, Exlude_Params2: Exclude_Value2,
-                             Block_Exlude_Params1: Block_Exlude_Params1 }
-
+                             Block_Exlude_Params1: Block_Exclude_Value1}
 
             # for param_key in param_dict.keys():
             #     if not pd.isna(param_key):
@@ -317,8 +304,9 @@ class ToolBox(GlobalSessionToolBox):
 
             general_filters = self.remove_nans_dict(param_dict)
             excluded_filters = self.remove_nans_dict(excluded_dict)
-
-
+            if Block_Exlude_Params1 == 'Smart Tag':
+                excluded_filters['product_fk'] = smart_tags_product_fks
+                del excluded_filters[Block_Exlude_Params1]
 
             block_result = self.block.network_x_block_together(
                 population=general_filters,
@@ -534,13 +522,9 @@ class ToolBox(GlobalSessionToolBox):
         else:
             return [row]
 
-
     def remove_nans_dict(self, input_dict):
         filtered_dict = {}
         for param_key in input_dict.keys():
             if not pd.isna(param_key):
                 filtered_dict[param_key] = input_dict[param_key]
         return filtered_dict
-
-
-
