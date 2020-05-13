@@ -88,4 +88,12 @@ class Const(object):
 
     LABEL_CONVERTERS = {'Segment': 'product_fk'}
 
-
+    DATA_QUERY = """select stores.*, retailer.name as retailer_name, retailer.name as retailer, regions.name as region_name,
+                     regions.name as region, countries.name as country, business_unit.name as business_unit, branch.name as
+                     branch_name, state.name as state, state.code as state_code from static.stores
+                     left join static.retailer on retailer.pk = stores.retailer_fk
+                     left join static.regions on regions.pk = stores.region_fk
+                     left join static.countries on countries.pk = regions.country_fk
+                     left join static.business_unit on business_unit.pk = stores.business_unit_fk
+                     left join static.branch on branch.pk = stores.branch_fk
+                     left join static.state on stores.state_fk = state.pk;"""

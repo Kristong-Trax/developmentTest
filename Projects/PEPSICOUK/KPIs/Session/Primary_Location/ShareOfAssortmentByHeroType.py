@@ -30,7 +30,7 @@ class ShareOfAssortmentByHeroTypeKpi(UnifiedCalculationsScript):
             kpi_res_df = lvl3_ass_res_df.groupby([self.util.HERO_SKU_LABEL, 'entity_fk'],
                                                  as_index=False).agg({'numerator_result': np.sum})
             kpi_res_df['in_store_total'] = in_store_skus
-            kpi_res_df['result'] = kpi_res_df['numerator_result'] / kpi_res_df['in_store_total'] * 100
+            kpi_res_df['result'] = kpi_res_df.apply(self.get_result, axis=1)
             kpi_res_df['score'] = kpi_res_df['result'].apply(lambda x: 100 if x >= 100 else 0)
             for i, res in kpi_res_df.iterrows():
                 self.write_to_db_result(fk=kpi_fk, numerator_id=res['entity_fk'],
@@ -42,3 +42,9 @@ class ShareOfAssortmentByHeroTypeKpi(UnifiedCalculationsScript):
 
     def kpi_type(self):
         pass
+
+    @staticmethod
+    def get_result(row):
+        rv = row['numerator_result'] / row['in_store_total'] * 100 if row['in_store_total'] else 0
+        return rv
+

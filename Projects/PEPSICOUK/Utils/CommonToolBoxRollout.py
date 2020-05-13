@@ -595,6 +595,13 @@ class PEPSICOUKCommonToolBox:
             if not excl_template_for_kpi.empty:
                 template_filters = self.get_filters_dictionary(excl_template_for_kpi)
                 scif, matches = self.filter_scif_and_matches_for_scene_and_product_filters(template_filters, scif, matches)
+        else:
+            excl_template_for_kpi = self.exclusion_template[(self.exclusion_template['KPI'] == kpi) &
+                                                            (self.exclusion_template['Ignore Store Policy'] == 1)]
+            if not excl_template_for_kpi.empty:
+                template_filters = self.get_filters_dictionary(excl_template_for_kpi)
+                scif, matches = self.filter_scif_and_matches_for_scene_and_product_filters(template_filters, scif, matches)
+
         return scif, matches
 
     def get_kpi_type_by_pk(self, kpi_fk):

@@ -95,6 +95,8 @@ class INBEVCIINBEVCIToolBox:
     def get_store_policies(self):
         query = INBEVCIINBEVCIQueries.get_store_policies()
         store_policies = pd.read_sql_query(query, self.rds_conn.db)
+        store_policies['target_validity_end_date'] = store_policies['target_validity_end_date'].replace(
+            '0000-00-00', datetime.strptime("1900-01-01", "%Y-%m-%d").date())
         return store_policies
 
     def main_calculation(self):

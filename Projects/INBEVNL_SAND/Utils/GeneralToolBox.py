@@ -8,7 +8,7 @@ from Trax.Data.Orm.OrmCore import OrmSession
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.INBEVNL_SAND.Utils.PositionGraph import INBEVNL_SANDINBEVBEPositionGraphs
+from Projects.INBEVNL_SAND.Utils.PositionGraph import INBEVNLINBEVBEPositionGraphs
 
 __author__ = 'Nimrod'
 
@@ -17,7 +17,7 @@ BUCKET = 'traxuscalc'
 KPI_NAME = 'KPI Level 2 Name'
 
 
-class INBEVNL_SANDINBEVBEGENERALToolBox:
+class INBEVNLINBEVBEGENERALToolBox:
 
     EXCLUDE_FILTER = 0
     INCLUDE_FILTER = 1
@@ -54,7 +54,7 @@ class INBEVNL_SANDINBEVBEGENERALToolBox:
     @property
     def position_graphs(self):
         if not hasattr(self, '_position_graphs'):
-            self._position_graphs = INBEVNL_SANDINBEVBEPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
+            self._position_graphs = INBEVNLINBEVBEPositionGraphs(self.data_provider, rds_conn=self.rds_conn)
         return self._position_graphs
 
     @property
@@ -617,9 +617,32 @@ class INBEVNL_SANDINBEVBEGENERALToolBox:
                 break
         return validated
 
-    def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
-                                 minimum_block_ratio=1, result_by_scene=False, **filters):
+    def get_scene_blocks(self, graph, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY, **filters):
         """
+        This function is a sub-function for Block Together. It receives a graph and filters and returns a list of
+        clusters.
+        """
+        relevant_vertices = set(self.filter_vertices_from_graph(graph, **filters))
+        if allowed_products_filters:
+            allowed_vertices = self.filter_vertices_from_graph(graph, **allowed_products_filters)
+        else:
+            allowed_vertices = set()
+
+        if include_empty == self.EXCLUDE_EMPTY:
+            empty_vertices = {v.index for v in graph.vs.select(product_type='Empty')}
+            allowed_vertices = set(allowed_vertices).union(empty_vertices)
+
+        all_vertices = {v.index for v in graph.vs}
+        vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
+        graph.delete_vertices(vertices_to_remove)
+        # removing clusters including 'allowed' SKUs only
+        blocks = [block for block in graph.clusters() if set(block).difference(allowed_vertices)]
+        return blocks, graph
+
+    def calculate_block_together(self, allowed_products_filters=None, include_empty=EXCLUDE_EMPTY,
+                                 minimum_block_ratio=1, result_by_scene=False, vertical=False, **filters):
+        """
+        :param vertical: if needed to check vertical block by average shelf
         :param allowed_products_filters: These are the parameters which are allowed to corrupt the block without failing it.
         :param include_empty: This parameter dictates whether or not to discard Empty-typed products.
         :param minimum_block_ratio: The minimum (block number of facings / total number of relevant facings) ratio
@@ -640,22 +663,9 @@ class INBEVNL_SANDINBEVBEGENERALToolBox:
         cluster_ratios = []
         for scene in relevant_scenes:
             scene_graph = self.position_graphs.get(scene).copy()
+            clusters, scene_graph = self.get_scene_blocks(scene_graph, allowed_products_filters=allowed_products_filters,
+                                                          include_empty=include_empty, **filters)
 
-            relevant_vertices = set(self.filter_vertices_from_graph(scene_graph, **filters))
-            if allowed_products_filters:
-                allowed_vertices = self.filter_vertices_from_graph(scene_graph, **allowed_products_filters)
-            else:
-                allowed_vertices = set()
-
-            if include_empty == self.EXCLUDE_EMPTY:
-                empty_vertices = {v.index for v in scene_graph.vs.select(product_type='Empty')}
-                allowed_vertices = set(allowed_vertices).union(empty_vertices)
-
-            all_vertices = {v.index for v in scene_graph.vs}
-            vertices_to_remove = all_vertices.difference(relevant_vertices.union(allowed_vertices))
-            scene_graph.delete_vertices(vertices_to_remove)
-            # removing clusters including 'allowed' SKUs only
-            clusters = [cluster for cluster in scene_graph.clusters() if set(cluster).difference(allowed_vertices)]
             new_relevant_vertices = self.filter_vertices_from_graph(scene_graph, **filters)
             for cluster in clusters:
                 relevant_vertices_in_cluster = set(cluster).intersection(new_relevant_vertices)
@@ -675,11 +685,22 @@ class INBEVNL_SANDINBEVBEGENERALToolBox:
                             all_vertices = {v.index for v in scene_graph.vs}
                             non_cluster_vertices = all_vertices.difference(cluster)
                             scene_graph.delete_vertices(non_cluster_vertices)
+                            if vertical:
+                                return {'block': True, 'shelves': len(
+                                    set(scene_graph.vs['shelf_number']))}
                             return cluster_ratio, scene_graph
         if result_by_scene:
             return number_of_blocked_scenes, len(relevant_scenes)
         else:
-            return False if minimum_block_ratio == 1 else max(cluster_ratios)
+            if cluster_ratios:
+                if sum(cluster_ratios) == 0:
+                    return True
+            if minimum_block_ratio == 1:
+                return False
+            elif cluster_ratios:
+                return max(cluster_ratios)
+            else:
+                return None
 
     def get_product_unique_position_on_shelf(self, scene_id, shelf_number, include_empty=False, **filters):
         """
