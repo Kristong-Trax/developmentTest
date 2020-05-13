@@ -56,6 +56,7 @@ class ToolBox(GlobalSessionToolBox):
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
 
     def main_calculation(self):
+        self.calculate_max_block_directional()
         self.calculate_sku_count()
         self.calculate_facing_count()
         self.calculate_smart_tags()
@@ -71,6 +72,19 @@ class ToolBox(GlobalSessionToolBox):
 
         score = 0
         return score
+
+    def calculate_max_block_directional(self):
+        template = self.kpi_template[Consts.MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET]
+        for i, row in template.iterrows():
+            row.dropna(inplace=True)
+            relevant_product_fks_with_parent_brand_all_and_non_sensitive = self._get_product_fks_with_filter(self.scif,
+                                                                                           {'Parent Brand': ['ALL'], 'Sensitive':['NOT SENSITIVE SKIN'],'product_type':['SKU']})
+            relevant_filters = {'product_fk': relevant_product_fks_with_parent_brand_all_and_non_sensitive}
+            block = self.block.network_x_block_together(relevant_filters, additional={'use_masking_only': True,
+                                                                                      'calculate_all_scenes': True, 'allow_products_filters':{'product_type':['Empty', 'Other']}})
+            passed_block = block[block.is_block == True]
+            a = 1
+        return 1
 
     def calculate_vertical_shelf_position(self):
         template = self.kpi_template[Consts.VERTICAL_SHELF_SHEET]
@@ -528,3 +542,9 @@ class ToolBox(GlobalSessionToolBox):
             if not pd.isna(param_key):
                 filtered_dict[param_key] = input_dict[param_key]
         return filtered_dict
+
+    @staticmethod
+    def _get_product_fks_with_filter(scif, input_dict):
+        for column, value in input_dict.items():
+            scif = scif[scif[column].isin(value)]
+        return scif.product_fk.unique()
