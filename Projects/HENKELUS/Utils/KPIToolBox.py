@@ -56,17 +56,18 @@ class ToolBox(GlobalSessionToolBox):
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
 
     def main_calculation(self):
-        self.calculate_sku_count()
-        self.calculate_facing_count()
-        self.calculate_smart_tags()
-
-        self.calculate_base_measurement()
-        self.calculate_liner_measure()
-
-        self.calculate_horizontal_shelf_position()
-        self.calculate_vertical_shelf_position()
-        self.calculate_blocking()
+        # self.calculate_sku_count()
+        # self.calculate_facing_count()
+        # self.calculate_smart_tags()
+        #
+        # self.calculate_base_measurement()
+        # self.calculate_liner_measure()
+        #
+        # self.calculate_horizontal_shelf_position()
+        # self.calculate_vertical_shelf_position()
+        # self.calculate_blocking()
         # self.calculate_blocking_orientation()
+        self.calculate_blocking_comp()
 
         score = 0
         return score
@@ -125,10 +126,10 @@ class ToolBox(GlobalSessionToolBox):
         else:
 
             mode = max(shelf_positions, key=shelf_positions.count)
+            if not pd.isna(mode):
 
-            result = Consts.VERTICAL_SHELF_POS_DICT[mode]
-
-            self.write_to_db(fk=kpi_fk,
+                result = Consts.CUSTOM_RESULTS[mode]
+                self.write_to_db(fk=kpi_fk,
                              numerator_id=product_fk,
                              numerator_result=1,
                              context_id=product_fk,
@@ -167,7 +168,7 @@ class ToolBox(GlobalSessionToolBox):
 
                 mode = max(shelf_positions, key=shelf_positions.count)
                 if not pd.isna(mode):
-                    result = Consts.HORIZONTAL_SHELF_POS_DICT[mode]
+                    result = Consts.CUSTOM_RESULTS[mode]
                     self.write_to_db(fk=kpi_fk,
                                      numerator_id=product_fk,
                                      numerator_result=1,
@@ -184,6 +185,59 @@ class ToolBox(GlobalSessionToolBox):
             Params1 = row['PARAM 1']
 
         pass
+
+
+
+    def calculate_blocking_comp(self):
+        template = self.kpi_template[Consts.BLOCK_COMPOSITION_SHEET]
+        for i, row in template.iterrows():
+            kpi_name = row['KPI Name'].strip()
+            kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+            Params1 = row['DATASET A PARAM 1']
+            Value1 = self.sanitize_row(row['DATASET A VALUE 1'])
+
+
+            reduced_scif = self.scif[~self.scif['Scent'].isnull()
+                                     | (~self.scif['Format'].isnull())]
+
+            for scent in reduced_scif['Scent'].tolist():
+                filtered_scif = reduced_scif[reduced_scif['Scent'] == scent]
+                product_fk = self.scif.product_fk.iloc[0]
+                result = 0
+                custom_result_fk = Consts.CUSTOM_RESULTS['No']
+                block_result_list = []
+
+                for scene in filtered_scif.scene_fk.unique().tolist():
+                    filtered_scif = filtered_scif[filtered_scif['scene_fk'] == scene]
+                    if not pd.isna(Params1):
+                        filtered_scif = filtered_scif[filtered_scif[Params1].isin(Value1)]
+
+                        format_count = len(filtered_scif['Format'].unique())
+                        scent_res = 0
+                        if format_count > 1:
+                            scent_res = 1
+
+                        block_result_list.append(scent_res)
+
+                if len(block_result_list) >0:
+                    acceptance_ratio = sum(block_result_list) / float(len(block_result_list))
+                    if acceptance_ratio > .5:
+                        result = 1
+                        custom_result_fk = Consts.CUSTOM_RESULTS['Yes']
+
+
+                self.write_to_db(fk=kpi_fk, numerator_id=product_fk, denominator_id=product_fk, numerator_result= result,  denominator_result=1, result=custom_result_fk, score=0)
+            #         general_filter[Params1] = Value1
+            #
+            #     block_result_df = self.block.network_x_block_together(population=general_filter,
+            # additional={'minimum_block_ratio': .5,
+            #             'minimum_facing_for_block': 1,
+            #             'allowed_products_filters': {'product_type': 'sku'},
+            #             'include_stacking': True,
+            #             'check_vertical_horizontal': False})
+            #
+            #     block_result_df
+                    # self.write_to_db()
 
     def calculate_blocking(self):
         template = self.kpi_template[Consts.BLOCKING_SHEET]
