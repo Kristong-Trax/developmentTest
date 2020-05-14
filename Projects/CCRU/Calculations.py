@@ -138,7 +138,7 @@ class CCRUProjectCalculations:
                 mr_targets.update({params[SET]: params[MR_TARGET]})
         self.tool_box.mr_targets = mr_targets
 
-        kpi_sets_types_to_calculate = [POS, SPIRITS]
+        kpi_sets_types_to_calculate = [POS]  # SPIRITS are excluded
         for kpi_set_type in kpi_sets_types_to_calculate:
             if kpi_source[kpi_set_type][SET]:
                 Log.debug('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))

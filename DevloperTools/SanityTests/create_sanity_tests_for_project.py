@@ -431,7 +431,8 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'batru': {'AF410EF7-90D8-431A-AF12-60DE6ED7438B': []}
+        'ccru':  {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [],
+                  '3b8a8039-2c79-436d-b42f-c72f4ce3b183': []}
                 }
     for project in projects:
         try:
