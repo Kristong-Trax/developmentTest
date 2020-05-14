@@ -28,7 +28,7 @@ class AltriaDataProvider:
             self.match_product_in_scene = mpis
             self.scene_fks = mpis['scene_fk'].unique().tolist()
 
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.Simon)
         self._mdis = pd.DataFrame()
 
     @property
@@ -36,6 +36,21 @@ class AltriaDataProvider:
         if self._mdis.empty:
             self._mdis = self.get_match_display_in_scene()
         return self._mdis
+
+    def get_probe_groups(self):
+        query = """
+                    SELECT distinct sub_group_id probe_group_id, mpip.pk probe_match_fk
+                    FROM probedata.stitching_probe_info as spi
+                    INNER JOIN probedata.stitching_scene_info ssi on
+                    ssi.pk = spi.stitching_scene_info_fk
+                    INNER JOIN probedata.match_product_in_probe mpip on
+                    mpip.probe_fk = spi.probe_fk
+                    INNER JOIN probedata.scene as sc on
+                    sc.pk = ssi.scene_fk
+                    WHERE ssi.delete_time is null
+                    AND sc.session_uid = '{}';
+                """.format(self.data_provider.session_uid)
+        return pd.read_sql_query(query, self.rds_conn.db)
 
     def get_match_product_in_probe_state_values(self, probe_match_fks):
         query = """select mpipsv.match_product_in_probe_fk as 'probe_match_fk', 
