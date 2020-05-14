@@ -1282,9 +1282,9 @@ class BATRUToolBox:
                                                 atomic_kpi_name=product_for_db)
                 count_prices += 1
 
-            if not product_for_db and pd.notnull(row['menu_tag']):
+            if product_for_db and pd.notnull(row['menu_tag']):
                 product_eans = self.all_products[(self.all_products['product_type'] == 'SKU') &
-                                                 (self.all_products['product_name'] == product_name) &
+                                                 (self.all_products['product_name'] == product_name.encode('utf-8')) &
                                                  (self.all_products['product_ean_code'].notnull())][
                                                  'product_ean_code_lead'].tolist()
                 product_for_db = product_eans[0] if product_eans else None
