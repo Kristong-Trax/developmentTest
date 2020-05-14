@@ -2,7 +2,7 @@
 __author__ = 'ilays'
 
 
-class JNJANZ_SANDQueries(object):
+class JNJANZQueries(object):
 
     @staticmethod
     def get_all_kpi_data():
