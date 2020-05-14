@@ -1789,9 +1789,9 @@ class CCRUKPIToolBox:
         score = self.calculate_score(kpi_total_res, p)
         return score
 
-    def calculate_tccc_40(self, params):
+    def calculate_tccc_denominated(self, params, denominator):
         facings = self.calculate_availability(params)
-        return float(facings) / 40
+        return float(facings) / denominator
 
     @kpi_runtime()
     def check_customer_cooler_doors(self, params, level=2, cooler_dict=None):
@@ -1799,9 +1799,15 @@ class CCRUKPIToolBox:
         for p in params.values()[0]:
             if p.get('level') != level:
                 continue
-            if p.get('Formula').strip() != "facings TCCC/40":
+            if p.get('Formula').strip() not in  ["facings TCCC/40", "facings TCCC/28"]:
                 continue
-            kpi_total_res = self.calculate_tccc_40(p)
+            if p.get('Formula').strip() == "facings TCCC/40":
+                d = 40
+            elif p.get('Formula').strip() == "facings TCCC/28":
+                d = 28
+            else:
+                continue
+            kpi_total_res = self.calculate_tccc_denominated(p, d)
             score = self.calculate_score(kpi_total_res, p)
             set_total_res += round(score) * p.get('KPI Weight')
             # writing to DB
@@ -1879,7 +1885,9 @@ class CCRUKPIToolBox:
                     elif c.get("Formula").strip() == "number of doors with more than Target facings":
                         atomic_res = self.calculate_number_of_doors_more_than_target_facings(c, 'sum of doors')
                     elif c.get("Formula").strip() == "facings TCCC/40":
-                        atomic_res = self.calculate_tccc_40(c)
+                        atomic_res = self.calculate_tccc_denominated(c, 40)
+                    elif c.get("Formula").strip() == "facings TCCC/28":
+                        atomic_res = self.calculate_tccc_denominated(c, 28)
                     elif c.get("Formula").strip() == "number of doors of filled Coolers":
                         atomic_res = self.check_number_of_doors_of_filled_coolers(c)
                     elif c.get("Formula").strip() == "check_number_of_scenes_with_facings_target":

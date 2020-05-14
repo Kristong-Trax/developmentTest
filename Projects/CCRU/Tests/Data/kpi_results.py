@@ -6,7 +6,7 @@ class CCRUKpiResults:
     @staticmethod
     def get_kpi_results():
         return {
-            'numerator_id': {
+            u'numerator_id': {
                 0: 1,
                 1: 1,
                 2: 1,
@@ -42,7 +42,7 @@ class CCRUKpiResults:
                 32: 1,
                 33: 1,
                 34: 1},
-            'kpi_level_2_fk': {
+            u'kpi_level_2_fk': {
                 0: 2200,
                 1: 2201,
                 2: 2202,
@@ -78,7 +78,7 @@ class CCRUKpiResults:
                 32: 4152,
                 33: 4153,
                 34: 4154},
-            'context_id': {
+            u'context_id': {
                 0: None,
                 1: None,
                 2: 1.0,
@@ -114,7 +114,7 @@ class CCRUKpiResults:
                 32: None,
                 33: None,
                 34: None},
-            'client_name': {
+            u'client_name': {
                 0: u'Promo Compliance Store',
                 1: u'Promo Compliance Display',
                 2: u'Promo Compliance Location',
@@ -150,7 +150,7 @@ class CCRUKpiResults:
                 32: u'OSA_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR',
                 33: u'SOS_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR',
                 34: u'AVAILABILITY_MANUFACTURER_OUT_OF_CAT_CUSTOM_MR'},
-            'session_fk': {
+            u'session_fk': {
                 0: 77328818,
                 1: 77328818,
                 2: 77328818,
@@ -186,7 +186,7 @@ class CCRUKpiResults:
                 32: 81772572,
                 33: 81772572,
                 34: 81772572},
-            'numerator_result': {
+            u'numerator_result': {
                 0: 0,
                 1: 1,
                 2: 0,
@@ -222,7 +222,7 @@ class CCRUKpiResults:
                 32: 0,
                 33: 0,
                 34: 0},
-            'denominator_result': {
+            u'denominator_result': {
                 0: 0.0,
                 1: 0.0,
                 2: 83203298.0,
@@ -258,7 +258,7 @@ class CCRUKpiResults:
                 32: 0.0,
                 33: 0.0,
                 34: 0.0},
-            'result': {
+            u'result': {
                 0: 1.0,
                 1: 2011.0,
                 2: 100.0,
@@ -276,7 +276,7 @@ class CCRUKpiResults:
                 14: 100.0,
                 15: 79.9,
                 16: 79.9,
-                17: 68.3887,
+                17: 68.8018,
                 18: 0.0,
                 19: 23.0,
                 20: 11.0,
@@ -289,12 +289,12 @@ class CCRUKpiResults:
                 27: 67.0,
                 28: 100.0,
                 29: 1.4,
-                30: 66.92,
+                30: 67.41,
                 31: 4.49,
                 32: 97.22,
                 33: 36.0,
                 34: 83.0},
-            'denominator_id': {
+            u'denominator_id': {
                 0: 32504.0,
                 1: 6.0,
                 2: 6.0,
