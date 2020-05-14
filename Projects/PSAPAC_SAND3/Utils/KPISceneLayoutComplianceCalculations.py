@@ -28,6 +28,13 @@ class SceneLayoutComplianceCalc(object):
         self.match_product_data = self.match_product_in_scene.merge(self.products, on='product_fk', how='left')
         self.block = Block(self.data_provider, self.output)
 
+    def ensure_as_list(self, template_fks):
+        if isinstance(template_fks, list):
+            ext_target_template_fks = template_fks
+        else:
+            ext_target_template_fks = list([template_fks])
+        return ext_target_template_fks
+
     def get_relevant_custom_entity_data(self):
         Log.info("Getting custom entity data for the present super brands and store banner...")
         query = """ select * from static.custom_entity where pk in {custom_entity_pks};"""
@@ -79,7 +86,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for banner and template match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                     or banner of current store -> {store_b} != target banner -> {targ_b}
@@ -178,7 +185,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for template and banner match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                 or banner of current store -> {store_b} != target banner -> {targ_b}
@@ -312,7 +319,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for template and banner match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                 or banner of current store -> {store_b} != target banner -> {targ_b}
@@ -404,7 +411,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for banner and template match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                                 or banner of current store -> {store_b} != target banner -> {targ_b}
@@ -513,7 +520,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for banner and template match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                                 or banner of current store -> {store_b} != target banner -> {targ_b}
