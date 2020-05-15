@@ -2,6 +2,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
+import numpy as np
 from Projects.HENKELUS.Utils.HenkelDataProvider import HenkelDataProvider
 from Projects.HENKELUS.Data.LocalConsts import Consts
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
@@ -76,15 +77,39 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_max_block_directional(self):
         template = self.kpi_template[Consts.MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET]
         for i, row in template.iterrows():
-            row.dropna(inplace=True)
-            relevant_product_fks_with_parent_brand_all_and_non_sensitive = self._get_product_fks_with_filter(self.scif,
-                                                                                           {'Parent Brand': ['ALL'], 'Sensitive':['NOT SENSITIVE SKIN'],'product_type':['SKU']})
-            relevant_filters = {'product_fk': relevant_product_fks_with_parent_brand_all_and_non_sensitive}
-            block = self.block.network_x_block_together(relevant_filters, additional={'use_masking_only': True,
-                                                                                      'calculate_all_scenes': True, 'allow_products_filters':{'product_type':['Empty', 'Other']}})
-            passed_block = block[block.is_block == True]
-            a = 1
-        return 1
+            kpi_name,kpi_fk = self._get_kpi_name_and_fk(row)
+
+            # dataset a: main block products
+            relevant_product_fks_with_parent_brand_all_and_non_sensitive = \
+                self._get_product_fks_with_filter(self.scif,{ 'Parent Brand': ['ALL'],'Sensitive': ['NOT SENSITIVE SKIN'],
+                                                                'product_type': ['SKU']})
+            # dataset b: adjacent block products
+            relevant_product_fks_with_parent_brand_all_and_sensitive = \
+                self._get_product_fks_with_filter(self.scif,{ 'Parent Brand': ['ALL'],'Sensitive': ['SENSITIVE SKIN'],
+                                                                'product_type': ['SKU']})
+
+            result = 0
+            if relevant_product_fks_with_parent_brand_all_and_non_sensitive.size != 0 and relevant_product_fks_with_parent_brand_all_and_sensitive.size != 0:
+                relevant_filters_for_blocka = {'product_fk': relevant_product_fks_with_parent_brand_all_and_non_sensitive} #products of dataset a
+                additional_filter_blocka = {'allowed_edge_type': ['connected'],
+                  'use_masking_only': True, 'calculate_all_scenes': True, 'allow_products_filters': {
+                'product_type': ['Empty', 'Other'],'minimum_facing_for_block': 1, 'Smart Tag': 'additional display'}}
+
+                relevant_filters_for_blockb = {'product_fk': relevant_product_fks_with_parent_brand_all_and_sensitive} # products of dataset b
+                additional_filter_blockb = {'allowed_edge_type': ['connected'],'use_masking_only': True,
+                'calculate_all_scenes': True, 'allow_products_filters': {
+                      'product_type': ['Empty','Other'], 'minimum_facing_for_block': 1, 'Smart Tag': 'additional display'}}
+
+                dataseta_block = self._get_block(relevant_filters_for_blocka, additional_filter_blocka)
+                datasetb_block = self._get_block(relevant_filters_for_blockb, additional_filter_blockb)
+
+                if (not dataseta_block.empty) and (not datasetb_block.empty):
+                    if any(np.in1d(dataseta_block.scene_fk, datasetb_block.scene_fk)):
+                        datasetb_block = datasetb_block.sort_values('total_facings')
+                        result = self._get_adjacent_node_direction(dataseta_block, datasetb_block)
+
+            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=1,
+                             denominator_id=self.store_id, denominator_result=1, result=result)
 
     def calculate_vertical_shelf_position(self):
         template = self.kpi_template[Consts.VERTICAL_SHELF_SHEET]
@@ -543,8 +568,85 @@ class ToolBox(GlobalSessionToolBox):
                 filtered_dict[param_key] = input_dict[param_key]
         return filtered_dict
 
+    def _filter_redundant_edges(self, adj_g):
+        """Since the edges determines by the masking only, there's a chance that there will be two edges
+        that come out from a single node. This method filters the redundant ones (the ones who skip the
+        closet adjecent node)"""
+        edges_filter = []
+        for node_fk, node_data in adj_g.nodes(data=True):
+            for direction in ['UP', 'DOWN', 'LEFT', 'RIGHT']:
+                edges = [(edge[0], edge[1]) for edge in list(adj_g.edges(node_fk, data=True)) if
+                         edge[2]['direction'] == direction]
+                if len(edges) <= 1:
+                    edges_filter.extend(edges)
+                else:
+                    edges_filter.append(self._get_shortest_path(adj_g, edges))
+        return edges_filter
+
     @staticmethod
     def _get_product_fks_with_filter(scif, input_dict):
         for column, value in input_dict.items():
             scif = scif[scif[column].isin(value)]
         return scif.product_fk.unique()
+
+    def _get_shortest_path(self, adj_g, edges_to_check):
+        """ This method gets a list of edge and returns the one with the minimum distance"""
+        distance_per_edge = {edge: self._get_edge_distance(adj_g, edge) for edge in edges_to_check}
+        shortest_edge = min(distance_per_edge, key=distance_per_edge.get)
+        return shortest_edge
+
+    def _get_edge_distance(self, adj_g, edge):
+        """
+        This method gets an edge and calculate it's length (the distance between it's nodes)
+        """
+        first_node_coordinate = np.array(self._get_node_display_coordinates(adj_g, edge[0]))
+        second_node_coordinate = np.array(self._get_node_display_coordinates(adj_g, edge[1]))
+        distance = np.sqrt(np.sum((first_node_coordinate - second_node_coordinate) ** 2))
+        return distance
+
+    def _get_node_display_coordinates(self, adj_g, node_fk):
+        """
+        This method gets a node and extract the Display coordinates (x and y).
+        Those attributes were added to each node since this is the attributes we condensed the graph by
+        """
+        return float(list(adj_g.nodes[node_fk]['rect_x'])[0]), float(list(adj_g.nodes[node_fk]['rect_y'])[0])
+
+
+    def _get_block(self, filters, additional_filter):
+
+        block = self.block.network_x_block_together(filters,additional=additional_filter)
+        if not block.empty:
+            block = block[block.is_block == True]
+        return block
+
+    def _get_adjacent_node_direction(self, dataseta_block, datasetb_block):
+        result_dict = {'LEFT':1, 'DOWN':2, 'RIGHT':3, 'UP':4}
+        result = 0
+        for b_index, block_b_row in datasetb_block.iterrows():
+            valid_cluster_for_blockb = block_b_row.cluster.nodes.values()
+            relevant_scene_match_fks_for_block_b = [scene_match_fk for item in valid_cluster_for_blockb for
+                                                    scene_match_fk in item['scene_match_fk']]
+
+            for a_index, block_a_row in dataseta_block.iterrows():
+                valid_cluster_for_blocka = block_a_row.cluster.nodes.values()
+                relevant_scene_match_fks_for_block_a = [scene_match_fk for item in valid_cluster_for_blocka for
+                                                        scene_match_fk in item['scene_match_fk']]
+                '''The below line is used to filter the adjacency graph by the closest edges. Specifically since
+                                     the edges are determined by masking only, there's a chance that there will be two edges that come
+                                     out from a single node.'''
+                adj_graph = self.block.adj_graphs_by_scene.values()[0].edge_subgraph(
+                    self._filter_redundant_edges(self.block.adj_graphs_by_scene.values()[0]))
+                for scene_match_a in relevant_scene_match_fks_for_block_a:
+                    for node, node_data in adj_graph.adj[scene_match_a].items():
+                        if node in relevant_scene_match_fks_for_block_b:
+                            result_direction = node_data['direction']
+                            result = result_dict[result_direction]
+                            return result
+        return result
+
+    def _get_kpi_name_and_fk(self, row):
+        kpi_name = row['KPI Name']
+        kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+        return kpi_name, kpi_fk
+
+
