@@ -47,8 +47,11 @@ class JNJANZCalculations(BaseCalculationsScript):
 
     def calculate_local_assortment(self, data_provider, output, common, exclusion_data):
         # LOCAL MSL / OSS Assortment KPIs
-        local_assort_toolbox = JNJToolBox(data_provider, output, common,  exclusion_data)
-        local_assort_toolbox.main_calculation()
+        try:
+            local_assort_toolbox = JNJToolBox(data_provider, output, common,  exclusion_data)
+            local_assort_toolbox.main_calculation()
+        except Exception as e:
+            print ("Error: {}".format(e))
 
     @staticmethod
     def _parse_templates_for_calculations():

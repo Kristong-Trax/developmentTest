@@ -461,12 +461,40 @@ class JNJToolBox:
         Log.debug("finishing assortment_per_category")
         return
 
+    def check_if_all_kpis_available(self):
+        local_msl_kpis = [
+            self.LOCAL_MSL_AVAILABILITY,
+            self.LOCAL_MSL_AVAILABILITY_SKU,
+            self.OOS_BY_LOCAL_ASSORT_STORE_KPI,
+            self.OOS_BY_LOCAL_ASSORT_PRODUCT,
+            self.OOS_BY_LOCAL_ASSORT_CATEGORY,
+            self.OOS_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY,
+            self.OOS_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT,
+            self.MSL_BY_LOCAL_ASSORT,
+            self.MSL_BY_LOCAL_ASSORT_PRODUCT,
+            self.MSL_BY_LOCAL_ASSORT_CATEGORY,
+            self.MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY,
+            self.MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT,
+        ]
+        kpis_not_found = []
+        for kpi_name in local_msl_kpis:
+            res_df = self.New_kpi_static_data[ self.New_kpi_static_data['client_name'] == kpi_name ]
+            if res_df.empty:
+                kpis_not_found.append(kpi_name)
+                Log.warning("Error: KPI {} not found in static.kpi_level_2 table.".format(kpi_name))
+
+        status = True if len(kpis_not_found) == 0 else False
+        return status
+
     def main_calculation(self):
         try:
             if self.scif.empty:
                 Log.warning('Scene item facts is empty for this session')
                 Log.warning('Unable to calculate local_msl assortment KPIs: SCIF  is empty')
                 return 0
+            if not self.check_if_all_kpis_available():
+                Log.warning('Unable to calculate local_msl assortment KPIs: KPIs are not in kpi_level_2')
+                return
             self.reset_scif_and_matches()
             self.filter_scif_matches_for_kpi("Distribution")  # changed from local_msl to Distribution
             self.local_assortment_hierarchy_per_store_calc()
