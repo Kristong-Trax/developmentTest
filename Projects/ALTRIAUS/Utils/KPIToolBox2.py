@@ -12,6 +12,7 @@ import datetime
 from Projects.ALTRIAUS.Utils.AltriaDataProvider import AltriaDataProvider
 from Projects.ALTRIAUS.Utils.AltriaGraphUtil import AltriaGraphBuilder
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from shapely.geometry import box
 
 
 __author__ = 'huntery'
@@ -39,6 +40,8 @@ def log_runtime(description, log_start=False):
         return wrapper
 
     return decorator
+
+REQUIRED_FLIP_SIGN_FSLOT_OVERLAP_RATIO = 0.3
 
 
 class ALTRIAUSToolBox:
@@ -108,7 +111,7 @@ class ALTRIAUSToolBox:
         for node, node_data in graph.nodes(data=True):
             if node_data['category'].value != 'POS':
                 self.calculate_fixture_width(node_data)
-                # self.calculate_flip_sign(node, graph)
+                self.calculate_flip_sign(node, node_data, graph)
                 self.calculate_flip_sign_empty_space(node, node_data, graph)
                 self.calculate_flip_sign_locations(node_data)
                 self.calculate_total_shelves(node_data)
@@ -141,8 +144,83 @@ class ALTRIAUSToolBox:
                                           numerator_result=block_number, denominator_result=fixture_number,
                                           result=width)
 
-    def calculate_flip_sign(self, node, graph):
-        pass
+    def calculate_flip_sign(self, node, node_data, graph):
+        if node_data['category'].value == 'Cigarettes':
+            self.calculate_flip_signs_cigarettes(node, node_data, graph)
+        else:
+            self.calculate_flip_signs_non_cigarettes(node, node_data, graph)
+        return
+
+    def calculate_flip_signs_non_cigarettes(self, node, node_data, graph):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Flip Sign')
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+
+        flip_signs_by_x_coord = {}
+
+        for neighbor in graph.neighbors(node):
+            neighbor_data = graph.nodes[neighbor]
+            if neighbor_data['category'].value != 'POS':
+                continue
+            if neighbor_data['pos_type'].value != 'Flip-Sign':
+                continue
+
+            center_x = neighbor_data['polygon'].centroid.coords[0][0]
+
+            flip_signs_by_x_coord[center_x] = neighbor_data
+
+        for i, pair in enumerate(sorted(flip_signs_by_x_coord.items())):
+            position_fk = self.get_custom_entity_pk(str(i+1))
+            product_fk = pair[1]['product_fk'].value
+            width = pair[1]['calculated_width_ft'].value
+            implied_facings = pair[1]['width_of_signage_in_facings'].value
+            # width = round(width)
+
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=position_fk,
+                                              numerator_result=block_number, denominator_result=fixture_number,
+                                              result=width, score=implied_facings)
+
+    def calculate_flip_signs_cigarettes(self, node, node_data, graph):
+        width = node_data['calculated_width_ft'].value
+        fixture_bounds = node_data['polygon'].bounds
+        fixture_width_coord_units = abs(fixture_bounds[0] - fixture_bounds[2])
+        proportions_dict = self.get_flip_sign_position_proportions(round(width))
+        if not proportions_dict:
+            return
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Flip Sign')
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+
+        f_slot_boxes = {}
+        left_bound = fixture_bounds[0]  # start proportional divisions on left side of fixture
+        for position, proportion in proportions_dict.items():
+            right_bound = left_bound + (fixture_width_coord_units * proportion)
+            # TODO update this to use min and max height of graph
+            f_slot_boxes[position] = box(left_bound, -9999, right_bound, 9999)
+            left_bound = right_bound
+
+        for position, slot_box in f_slot_boxes.items():
+            for neighbor in graph.neighbors(node):
+                neighbor_data = graph.nodes[neighbor]
+                try:
+                    if neighbor_data['pos_type'] != 'Flip-Sign':
+                        continue
+                except KeyError:
+                    continue
+                flip_sign_bounds = neighbor_data['polygon'].bounds
+                flip_sign_box = box(flip_sign_bounds[0], flip_sign_bounds[1], flip_sign_bounds[2], flip_sign_bounds[3])
+
+                overlap_ratio = flip_sign_box.intersection(slot_box).area / flip_sign_box.area
+                if overlap_ratio >= REQUIRED_FLIP_SIGN_FSLOT_OVERLAP_RATIO:
+                    product_fk = neighbor_data['product_fk'].value
+                    position_fk = self.get_custom_entity_pk(position)
+                    flip_sign_width = neighbor_data['calculated_width_ft'].value
+                    implied_facings = neighbor_data['width_of_signage_in_facings'].value
+                    self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=position_fk,
+                                                      numerator_result=block_number, denominator_result=fixture_number,
+                                                      result=flip_sign_width, score=implied_facings)
+        return
 
     def calculate_flip_sign_empty_space(self, node, node_data, graph):
         if node_data['category'].value != 'Cigarettes':
@@ -168,7 +246,7 @@ class ALTRIAUSToolBox:
             neighbor_width = neighbor_data['calculated_width_ft'].value
             flip_sign_widths.append(neighbor_width)
 
-        empty_space = fixture_width - sum(flip_sign_widths)
+        empty_space = abs(fixture_width - sum(flip_sign_widths))
 
         self.common_v2.write_to_db_result(kpi_fk, numerator_id=49, denominator_id=self.store_id,
                                           numerator_result=block_number, denominator_result=fixture_number,
@@ -215,7 +293,7 @@ class ALTRIAUSToolBox:
         proportions_dict = {}
 
         for i, slot in enumerate(f_slots):
-            proportions_dict["F{}".format(i)] = slot / sum(f_slots)
+            proportions_dict["F{}".format(i+1)] = slot / sum(f_slots)
 
         return proportions_dict
 
