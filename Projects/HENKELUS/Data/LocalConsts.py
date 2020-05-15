@@ -18,8 +18,11 @@ class Consts(object):
     BLOCKING_SHEET = 'Blocking'
     SHELF_MAP_SHEET = 'Shelf Map'
     BLOCK_COMPOSITION_SHEET = 'Block Composition'
+    BLOCKING_SEQUENCE = 'Block Sequence'
+    MAX_BLOCK_ADJ_SHEET= 'Max Block Adjacency'
+    NEGATIVE_BLOCK_ADJ_SHEET = 'Negative Block Adjacency'
 
-    relevant_kpi_sheets = [FACING_COUNT_SHEET, SKU_COUNT_SHEET, SMART_TAG_SHEET,
+    relevant_kpi_sheets = [FACING_COUNT_SHEET, SKU_COUNT_SHEET, SMART_TAG_SHEET,BLOCKING_SEQUENCE,
                            LINEAR_SHEET, BASE_MEASURE_SHEET,
                            VERTICAL_SHELF_SHEET, BLOCKING_SHEET, HORIZONTAL_SHELF_SHEET, SHELF_MAP_SHEET,
                            BLOCK_COMPOSITION_SHEET
@@ -55,3 +58,15 @@ class Consts(object):
         'Horizontal': 9,
         'Vertical': 8
     }
+
+
+    BLOCKING_SEQUENCE_DATA_COLUMNS = [
+                    'DATASET {} {} 1',
+                    'DATASET {} {} 2',
+                    # 'DATASET {}  EXCLUDE {} 1',
+                    # 'DATASET {}  EXCLUDE {} 2',
+                    # 'DATASET {}  BLOCK ALLOW-CONNECTED {} 1',
+                    # 'DATASET {}  BLOCK ALLOW-CONNECTED {} 2',
+                   # / # 'DATASET {}  BLOCK ALLOW-CONNECTED {} 3',
+                   #  'DATASET {}  BLOCK EXCLUDE {} 1',
+    ]
