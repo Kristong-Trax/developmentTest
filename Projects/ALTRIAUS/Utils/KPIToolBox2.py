@@ -80,23 +80,268 @@ class ALTRIAUSToolBox:
         self.adp = AltriaDataProvider(self.data_provider)
         self.active_kpis = self._get_active_kpis()
         self.external_targets = self.ps_data_provider.get_kpi_external_targets()
+        self._add_smart_attributes_to_mpis()
         self.scene_graphs = {}
+
+    def _add_smart_attributes_to_mpis(self):
+        smart_attribute_data = \
+            self.adp.get_match_product_in_probe_state_values(self.mpis['probe_match_fk'].unique().tolist())
+
+        self.mpis = pd.merge(self.mpis, smart_attribute_data, on='probe_match_fk', how='left')
+        self.mpis['match_product_in_probe_state_fk'].fillna(0, inplace=True)
 
     def main_calculation(self, *args, **kwargs):
         """
                This function calculates the KPI results.
                """
         self.generate_graph_per_scene()
+        for graph in self.scene_graphs.values():
+            self.calculate_fixture_and_block_level_kpis(graph)
+
         self.calculate_register_type()
         self.calculate_age_verification()
         self.calculate_facings_by_scene_type()
 
         return
 
+    def calculate_fixture_and_block_level_kpis(self, graph):
+        for node, node_data in graph.nodes(data=True):
+            if node_data['category'].value != 'POS':
+                self.calculate_fixture_width(node_data)
+                # self.calculate_flip_sign(node, graph)
+                self.calculate_flip_sign_empty_space(node, node_data, graph)
+                self.calculate_flip_sign_locations(node_data)
+                self.calculate_total_shelves(node_data)
+                self.calculate_tags_by_fixture_block(node_data)
+                if node_data['block_number'].value == 1:
+                    self.calculate_header(node, node_data, graph)
+                    self.calculate_product_above_headers(node_data)
+                    self.calculate_no_headers(node_data)
+        return
+
     def generate_graph_per_scene(self):
         relevant_scif = self.scif[self.scif['template_name'] == 'Tobacco Merchandising Space']
         for scene in relevant_scif['scene_id'].unique().tolist():
-            self.scene_graphs[scene] = AltriaGraphBuilder(self.data_provider, scene)
+            agb = AltriaGraphBuilder(self.data_provider, scene)
+            self.scene_graphs[scene] = agb.get_graph()
+        if len(self.scene_graphs.keys()) > 1:
+            Log.warning("More than one Tobacco Merchandising Space scene detected. Results could be mixed!")
+        return
+
+    def calculate_fixture_width(self, node_data):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Fixture Width')
+
+        width = node_data['calculated_width_ft'].value
+        # width = round(width)
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+        category_fk = self.get_category_fk_by_name(node_data['category'].value)
+
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
+                                          numerator_result=block_number, denominator_result=fixture_number,
+                                          result=width)
+
+    def calculate_flip_sign(self, node, graph):
+        pass
+
+    def calculate_flip_sign_empty_space(self, node, node_data, graph):
+        if node_data['category'].value != 'Cigarettes':
+            return
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Empty Flip Sign Space')
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+
+        fixture_width = node_data['calculated_width_ft'].value
+        # fixture_width = round(fixture_width)
+
+        flip_sign_widths = []
+
+        for neighbor in graph.neighbors(node):
+            neighbor_data = graph.nodes[neighbor]
+            if neighbor_data['category'].value != 'POS':
+                continue
+            if neighbor_data['pos_type'].value != 'Flip-Sign':
+                continue
+            # TODO exclude non Altria POS
+
+            neighbor_width = neighbor_data['calculated_width_ft'].value
+            flip_sign_widths.append(neighbor_width)
+
+        empty_space = fixture_width - sum(flip_sign_widths)
+
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=49, denominator_id=self.store_id,
+                                          numerator_result=block_number, denominator_result=fixture_number,
+                                          result=empty_space)
+
+    def calculate_flip_sign_locations(self, node_data):
+        if node_data['category'].value != 'Cigarettes':
+            return
+
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Flip Sign Locations')
+
+        width = node_data['calculated_width_ft'].value
+        width = round(width)
+
+        proportions_dict = self.get_flip_sign_position_proportions(width)
+        if not proportions_dict:
+            return
+
+        for position, proportion in proportions_dict.items():
+            position_fk = self.get_custom_entity_pk(position)
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=49, denominator_id=position_fk,
+                                              numerator_result=block_number, denominator_result=fixture_number,
+                                              result=round(proportion * width))
+
+        return
+
+    def get_flip_sign_position_proportions(self, width):
+        relevant_template = self.fixture_width_template[self.fixture_width_template['Fixture Width (ft)'] == width]
+        if relevant_template.empty:
+            Log.error("Unable to save flip sign location data. {}ft does not exist as a defined width".format(width))
+            return None
+
+        # this could definitely be simpler, but I'm tired and don't want to use my brain
+        relevant_template[['F1', 'F2', 'F3', 'F4']] = relevant_template[['F1', 'F2', 'F3', 'F4']].fillna(0)
+
+        f_slots = [relevant_template['F1'].iloc[0], relevant_template['F2'].iloc[0],
+                   relevant_template['F3'].iloc[0], relevant_template['F4'].iloc[0]]
+
+        f_slots = [i for i in f_slots if i != 0]
+
+        proportions_dict = {}
+
+        for i, slot in enumerate(f_slots):
+            proportions_dict["F{}".format(i)] = slot / sum(f_slots)
+
+        return proportions_dict
+
+    def calculate_total_shelves(self, node_data):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Total Shelves')
+
+        shelves = len(node_data['shelf_number'].values)
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+        category_fk = self.get_category_fk_by_name(node_data['category'].value)
+
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=category_fk, denominator_id=self.store_id,
+                                          numerator_result=block_number, denominator_result=fixture_number,
+                                          result=shelves)
+
+    def calculate_tags_by_fixture_block(self, node_data):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('TAGS_BY_FIXTURE_BLOCK')
+
+        scene_match_fks = node_data['match_fk'].values
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+
+        relevant_matches = self.mpis[self.mpis['scene_match_fk'].isin(scene_match_fks)]
+
+        for row in relevant_matches.itertuples():
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=row.product_fk, denominator_id=row.scene_match_fk,
+                                              numerator_result=block_number, denominator_result=fixture_number,
+                                              result=1, context_id=row.match_product_in_probe_state_fk)
+
+    def calculate_header(self, node, node_data, graph):
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Header')
+        parent_category = node_data['category'].value
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+
+        if parent_category not in self.header_positions_template.columns.tolist():
+            return
+        headers_by_x_coord = {}
+        menu_board_items_by_x_coord = {}
+
+        for neighbor in graph.neighbors(node):
+            neighbor_data = graph.nodes[neighbor]
+            if neighbor_data['category'].value != 'POS':
+                continue
+            if neighbor_data['pos_type'].value != 'Header':
+                continue
+
+            center_x = neighbor_data['polygon'].centroid.coords[0][0]
+
+            if neighbor_data['in_menu_board_area'].value is True:
+                menu_board_items_by_x_coord[center_x] = neighbor_data
+            else:
+                headers_by_x_coord[center_x] = neighbor_data
+
+        number_of_headers = len(headers_by_x_coord.keys())
+        if menu_board_items_by_x_coord:
+            number_of_headers += 1
+
+        relevant_positions = \
+            self.header_positions_template[(self.header_positions_template['Number of Headers'] == number_of_headers)]
+
+        if relevant_positions.empty:
+            Log.error("Too many headers ({}) found for one block ({}). Unable to calculate positions!".format(
+                number_of_headers, parent_category))
+            return
+
+        positions = relevant_positions[parent_category].iloc[0]
+        positions = [position.strip() for position in positions.split(',')]
+
+        for i, pair in enumerate(sorted(headers_by_x_coord.items())):
+            position_fk = self.get_custom_entity_pk(positions[i])
+            product_fk = pair[1]['product_fk'].value
+            width = pair[1]['calculated_width_ft'].value
+            # width = round(width)
+
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=position_fk,
+                                              numerator_result=block_number, denominator_result=fixture_number,
+                                              result=width, score=width)
+
+        if menu_board_items_by_x_coord:
+            for pair in menu_board_items_by_x_coord.items():
+                position_fk = self.get_custom_entity_pk(positions[-1])
+                product_fk = pair[1]['product_fk'].value
+                width = pair[1]['calculated_width_ft'].value
+                # width = round(width)
+                # width = 1  # this is because there is no real masking for menu board items
+
+                self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=position_fk,
+                                                  numerator_result=block_number, denominator_result=fixture_number,
+                                                  result=width, score=width)
+        return
+
+    def calculate_product_above_headers(self, node_data):
+        try:
+            product_above_header = node_data['product_above_header'].value
+        except KeyError:
+            return
+
+        if not product_above_header:
+            return
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Product Above Header')
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=49, denominator_id=self.store_id,
+                                          numerator_result=block_number, denominator_result=fixture_number,
+                                          result=1, score=1, context_id=fixture_number)
+        return
+
+    def calculate_no_headers(self, node_data):
+        try:
+            no_header = node_data['no_header'].value
+        except KeyError:
+            return
+
+        if not no_header:
+            return
+
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('No Header')
+        fixture_number = node_data['fixture_number'].value
+        block_number = node_data['block_number'].value
+
+        self.common_v2.write_to_db_result(kpi_fk, numerator_id=49, denominator_id=self.store_id,
+                                          numerator_result=block_number, denominator_result=fixture_number,
+                                          result=1, score=1, context_id=fixture_number)
         return
 
     def _get_active_kpis(self):
@@ -119,11 +364,6 @@ class ALTRIAUSToolBox:
 
         relevant_mpis = self.mpis[(self.mpis['product_type'].isin(product_types)) &
                                   (self.mpis['template_name'].isin(template_names))]
-        smart_attribute_data = \
-            self.adp.get_match_product_in_probe_state_values(relevant_mpis['probe_match_fk'].unique().tolist())
-
-        relevant_mpis = pd.merge(relevant_mpis, smart_attribute_data, on='probe_match_fk', how='left')
-        relevant_mpis['match_product_in_probe_state_fk'].fillna(0, inplace=True)
 
         relevant_mpis = relevant_mpis.groupby(['product_fk',
                                                'template_fk',

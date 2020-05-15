@@ -56,11 +56,21 @@ class AltriaGraphBuilder(object):
             return pd.DataFrame()
 
         self.matches_df = self.matches.merge(self.data_provider.all_products, on='product_fk')
+
+        # smart_attribute_data = \
+        #     self.adp.get_match_product_in_probe_state_values(self.matches_df['probe_match_fk'].unique().tolist())
+        #
+        # self.matches_df = pd.merge(self.matches_df, smart_attribute_data, on='probe_match_fk', how='left')
+        # self.matches_df['match_product_in_probe_state_fk'].fillna(0, inplace=True)
+
         self.matches_df['pk'] = self.matches_df['scene_match_fk']
         self.probe_groups = self.adp.get_probe_groups()
         self.matches_df = self.matches_df.merge(self.probe_groups, on='probe_match_fk', how='left')
         self.pos_matches_df = self.matches_df[self.matches_df['category'] == 'POS']
         self.pos_masking_data = self.adp.get_masking_data(self.matches_df, y_axis_threshold=35)
+
+    def get_graph(self):
+        return self.adj_component_graph
 
     def _generate_graph(self):
         self.create_masking_and_matches()
@@ -507,7 +517,9 @@ class AltriaGraphBuilder(object):
                 nodes_with_products_above.append(node)
 
         for header_node in nodes_with_products_above:
-            self.adj_component_graph.nodes[header_node].update({'products_above_header': NodeAttribute([True])})
+            self.adj_component_graph.nodes[header_node].update({'product_above_header': NodeAttribute([True])})
+            for parent_node in self.adj_component_graph.neighbors(header_node):
+                self.adj_component_graph.nodes[parent_node].update({'product_above_header': NodeAttribute([True])})
 
         return
 
