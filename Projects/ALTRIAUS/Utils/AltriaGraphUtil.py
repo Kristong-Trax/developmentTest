@@ -74,6 +74,10 @@ class AltriaGraphBuilder(object):
         self.condensed_adj_graph = AdjacencyGraphBuilder.condense_graph_by_level('category', self.base_adj_graph)
         self.condensed_adj_graph = self.condensed_adj_graph.to_undirected()
         self._remove_products_outside_core_rectangles()
+        self._pair_signage_with_fixture_block()
+        self._filter_pos_edges_to_closest()
+        self._consume_fully_encapsulated_nodes()
+
         return
 
     def check_and_add_menu_board_pos_item(self):
@@ -146,5 +150,167 @@ class AltriaGraphBuilder(object):
                 [p for p in multi_polygon if p not in polygons_to_remove])
         return adj_graph
 
+    def _pair_signage_with_fixture_block(self):
+        # requires graph to be undirected
+        edges_to_remove = []
+        flip_sign_nodes = []
+        header_nodes = []
+        for node_id, node_data in self.condensed_adj_graph.nodes(data=True):
+            if node_data['category_name'].value != 'POS':
+                continue
+            parent_nodes = []
+            shadow_parent_nodes = []
+            for neighbor in self.condensed_adj_graph.neighbors(node_id):
+                neighbor_data = self.condensed_adj_graph.nodes[neighbor]
+                if self.polygon_inside_other_polygon(node_data['polygon'], neighbor_data['polygon']):
+                    parent_nodes.append(neighbor)
+                elif self.polygon_above_other_polygon(node_data['polygon'], neighbor_data['polygon']):
+                    shadow_parent_nodes.append(neighbor)
+                else:
+                    edges_to_remove.append((node_id, neighbor))
+            if parent_nodes and shadow_parent_nodes:
+                for shadow_parent in shadow_parent_nodes:
+                    edges_to_remove.append((node_id, shadow_parent))
+            # if the POS item only exists in a shadow, and not inside any other blocks, it must be a header
+            if shadow_parent_nodes and not parent_nodes:
+                header_nodes.append(node_id)
+            elif parent_nodes:
+                flip_sign_nodes.append(node_id)
 
+        for node in header_nodes:
+            self.condensed_adj_graph.nodes[node]['pos_type'] = NodeAttribute(['Header'])
+        for node in flip_sign_nodes:
+            self.condensed_adj_graph.nodes[node]['pos_type'] = NodeAttribute(['Flip-Sign'])
+
+        edges_to_keep = [edge for edge in self.condensed_adj_graph.edges() if
+                         edge not in edges_to_remove and (edge[1], edge[0]) not in edges_to_remove]
+
+        self.condensed_adj_graph = self.condensed_adj_graph.edge_subgraph(edges_to_keep)
+        return edges_to_keep
+
+    @staticmethod
+    def cast_shadow_above(p, xoff, yoff):
+        return p.union(affinity.translate(p, xoff=xoff, yoff=yoff)).envelope
+
+    @staticmethod
+    def polygon_inside_other_polygon(child_polygon, potential_parent_polygon):
+        required_overlap = 0.80
+        bounds = potential_parent_polygon.bounds
+        parent_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
+
+        child_inside_parent = parent_box.intersection(child_polygon).area / child_polygon.area >= required_overlap
+        return child_inside_parent
+
+    def polygon_above_other_polygon(self, child_polygon, potential_parent_polygon, required_overlap=0.80):
+        bounds = potential_parent_polygon.bounds
+        parent_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
+
+        # cast shadow above the parent
+        shadow_above_potential_parent = self.cast_shadow_above(parent_box, xoff=0, yoff=bounds[1] - bounds[3])
+        child_above_parent = shadow_above_potential_parent.intersection(
+            child_polygon).area / child_polygon.area >= required_overlap
+        return child_above_parent
+
+    def _consume_fully_encapsulated_nodes(self):
+        nodes_to_remove = []
+        node_attribute_dict = {}
+
+        for node1_id, node2_id in self.condensed_adj_graph.edges():
+            node1 = self.condensed_adj_graph.nodes[node1_id]
+            node2 = self.condensed_adj_graph.nodes[node2_id]
+            if node1['category_name'].value == 'POS' or node2['category_name'].value == 'POS':
+                continue
+            if self._node_a_contains_node_b(node1, node2):
+                root_category_attribute = node1['category_name']
+                # print((node1_id, node2_id))
+                merged_attributes = self.get_merged_node_attributes_from_nodes([node1_id, node2_id], self.condensed_adj_graph)
+                merged_attributes['category_name'] = root_category_attribute
+                node_attribute_dict[node1_id] = merged_attributes
+                nodes_to_remove.append(node2_id)
+            elif self._node_a_contains_node_b(node2, node1):
+                root_category_attribute = node2['category_name']
+                # print((node2_id, node1_id))
+                merged_attributes = self.get_merged_node_attributes_from_nodes([node1_id, node2_id], self.condensed_adj_graph)
+                merged_attributes['category_name'] = root_category_attribute
+                node_attribute_dict[node2_id] = merged_attributes
+                nodes_to_remove.append(node1_id)
+
+        for node, attributes in node_attribute_dict.iteritems():
+            self.condensed_adj_graph.nodes[node].update(attributes)
+
+        # unfreeze graph
+        self.condensed_adj_graph = self.condensed_adj_graph.copy()
+
+        for node in nodes_to_remove:
+            self.condensed_adj_graph.remove_node(node)
+        return
+
+    @staticmethod
+    def _node_a_contains_node_b(node_a, node_b):
+        node_a_bounds = node_a['polygon'].bounds
+        node_b_bounds = node_b['polygon'].bounds
+        node_a_box = box(node_a_bounds[0], node_a_bounds[1], node_a_bounds[2], node_a_bounds[3])
+        node_b_box = box(node_b_bounds[0], node_b_bounds[1], node_b_bounds[2], node_b_bounds[3])
+        # return node_a_box.contains(node_b_box)
+        return (node_a_box.intersection(node_b_box).area / node_b_box.area) > 0.95
+
+    @staticmethod
+    def get_merged_node_attributes_from_nodes(selected_nodes, graph):
+        filtered_nodes = [n for i, n in graph.nodes(data=True) if i in selected_nodes]
+
+        attributes_list = [attr for attr, value in graph.node[selected_nodes[0]].items() if
+                           isinstance(value, NodeAttribute)]
+
+        node_attributes = {}
+        for attribute_name in attributes_list:
+            node_attributes[attribute_name] = AdjacencyGraphBuilder._chain_attribute(attribute_name, filtered_nodes)
+
+        # Total facing of all the products.
+        total_facings = sum([n['facings'] for n in filtered_nodes])
+        node_attributes.update({'facings': total_facings})
+
+        return node_attributes
+
+    def _filter_pos_edges_to_closest(self):
+        edges_filter = []
+        edges_to_remove = []
+        for node_fk, node_data in self.condensed_adj_graph.nodes(data=True):
+            edges = list(self.condensed_adj_graph.edges(node_fk))
+            if node_data['category'].value != 'POS':
+                edges_filter.extend(edges)
+            elif len(edges) <= 1:
+                edges_filter.extend(edges)
+            else:
+                shortest_edge = self._get_shortest_path(adj_g, edges)
+                edges_to_remove.extend([edge for edge in edges if edge != shortest_edge])
+        edges_filter = [edge for edge in edges_filter if
+                        edge not in edges_to_remove and (edge[1], edge[0]) not in edges_to_remove]
+
+        self.condensed_adj_graph = self.condensed_adj_graph.edge_subgraph(edges_filter)
+        return
+
+    def _get_shortest_path(self, adj_g, edges_to_check):
+        """ This method gets a list of edge and returns the one with the minimum distance"""
+        distance_per_edge = {edge: self._get_edge_distance(adj_g, edge) for edge in edges_to_check}
+        shortest_edge = min(distance_per_edge, key=distance_per_edge.get)
+        return shortest_edge
+
+    def _get_edge_distance(self, adj_g, edge):
+        """
+        This method gets an edge and calculate it's length (the distance between it's nodes)
+        """
+        first_node_coordinate = np.array(self._get_node_display_coordinates(adj_g, edge[0]))
+        second_node_coordinate = np.array(self._get_node_display_coordinates(adj_g, edge[1]))
+        distance = np.sqrt(np.sum((first_node_coordinate - second_node_coordinate) ** 2))
+        return distance
+
+    @staticmethod
+    def _get_node_display_coordinates(adj_g, node_fk):
+        """
+        This method gets a node and extract the Display coordinates (x and y).
+        Those attributes were added to each node since this is the attributes we condensed the graph by
+        """
+        # return float(list(adj_g.nodes[node_fk]['rect_x'])[0]), float(list(adj_g.nodes[node_fk]['rect_y'])[0])
+        centroid = adj_g.node[node_fk]['polygon'].centroid
+        return centroid.coords[0][0], centroid.coords[0][1]
 

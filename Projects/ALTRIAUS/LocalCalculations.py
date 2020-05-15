@@ -144,7 +144,7 @@ if __name__ == '__main__':
 '60A147CF-7B77-4ECF-9E91-724F281C8B42'
     ]
     sessions = ['0B72B172-D32C-4F70-8CA9-22B2EAF4BBB5'] # good clean scene
-    sessions = ['0000005e-b06d-4d68-81cc-ff15783cc79d'] # bad scene with multiple probe groups
+    # sessions = ['0000005e-b06d-4d68-81cc-ff15783cc79d'] # bad scene with multiple probe groups
     # sessions = ['40E2DA30-FA6A-4B9C-B813-F2A18EE77555']
 
 
