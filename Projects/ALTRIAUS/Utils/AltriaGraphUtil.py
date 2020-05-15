@@ -23,6 +23,8 @@ from shapely.geometry import MultiPolygon, box, Point
 from shapely import affinity
 import networkx as nx
 
+MINIMUM_FACINGS_FOR_BLOCK = 3
+
 
 class AltriaGraphBuilder(object):
     def __init__(self, data_provider, scene_id):
@@ -30,6 +32,7 @@ class AltriaGraphBuilder(object):
         self.adp = AltriaDataProvider(self.data_provider)
         self.scene_id = scene_id
         self.matches = data_provider.matches
+        self.minimum_facings_for_block = MINIMUM_FACINGS_FOR_BLOCK
 
         self.probe_groups = None
         self.masking_data = None
@@ -77,6 +80,10 @@ class AltriaGraphBuilder(object):
         self._pair_signage_with_fixture_block()
         self._filter_pos_edges_to_closest()
         self._consume_fully_encapsulated_nodes()
+        self._remove_nodes_with_less_facings_than(self.minimum_facings_for_block)
+        self._calculate_widths_of_flip_signs()
+
+        # create component graph (split graph into separate components by removing horizontal connections
 
         return
 
@@ -98,7 +105,8 @@ class AltriaGraphBuilder(object):
 
         self.matches_df['in_menu_board_area'] = self.matches_df.apply(
             lambda row: menu_box.intersects(self.get_box_by_probe_match_fk(row['probe_match_fk'])), axis=1)
-        probe_match_fks_to_add = self.matches_df[(self.matches_df['in_menu_board_area']) & (self.matches_df['category'] == 'POS')][
+        probe_match_fks_to_add = self.matches_df[(self.matches_df['in_menu_board_area']) &
+                                                 (self.matches_df['category'] == 'POS')][
             'probe_match_fk'].tolist()
         pos_probe_match_fks_to_keep = pos_probe_match_fks_to_keep + probe_match_fks_to_add
         print(len(pos_probe_match_fks_to_keep))
@@ -150,13 +158,42 @@ class AltriaGraphBuilder(object):
                 [p for p in multi_polygon if p not in polygons_to_remove])
         return adj_graph
 
+    def _calculate_widths_of_flip_signs(self):
+        additional_skus_to_add = 1
+        skus_above_flipsign_dict = {}
+        for node, node_data in self.condensed_adj_graph.nodes(data=True):
+            skus_above_flipsign = []
+            try:
+                if node_data['pos_type'].value != 'Flip-Sign':
+                    continue
+            except KeyError:
+                continue
+
+            match_fk = node_data['match_fk'].value
+
+            for neighbor_match_fk in nx.all_neighbors(self.base_adj_graph, match_fk):
+                neighbor_data = self.base_adj_graph.nodes[neighbor_match_fk]
+                if self.polygon_above_other_polygon(neighbor_data['polygon'], node_data['polygon'],
+                                                    required_overlap=0.10):
+                    if neighbor_match_fk not in skus_above_flipsign:
+                        skus_above_flipsign.append(neighbor_match_fk)
+
+            skus_above_flipsign_dict[node] = skus_above_flipsign
+            # print(skus_above_flipsign)
+
+        for node, skus_above in skus_above_flipsign_dict.iteritems():
+            self.condensed_adj_graph.nodes[node]['width_of_signage_in_facings'] = NodeAttribute(
+                [len(skus_above) + additional_skus_to_add])
+
+        return
+
     def _pair_signage_with_fixture_block(self):
         # requires graph to be undirected
         edges_to_remove = []
         flip_sign_nodes = []
         header_nodes = []
         for node_id, node_data in self.condensed_adj_graph.nodes(data=True):
-            if node_data['category_name'].value != 'POS':
+            if node_data['category'].value != 'POS':
                 continue
             parent_nodes = []
             shadow_parent_nodes = []
@@ -218,20 +255,22 @@ class AltriaGraphBuilder(object):
         for node1_id, node2_id in self.condensed_adj_graph.edges():
             node1 = self.condensed_adj_graph.nodes[node1_id]
             node2 = self.condensed_adj_graph.nodes[node2_id]
-            if node1['category_name'].value == 'POS' or node2['category_name'].value == 'POS':
+            if node1['category'].value == 'POS' or node2['category'].value == 'POS':
                 continue
             if self._node_a_contains_node_b(node1, node2):
-                root_category_attribute = node1['category_name']
+                root_category_attribute = node1['category']
                 # print((node1_id, node2_id))
-                merged_attributes = self.get_merged_node_attributes_from_nodes([node1_id, node2_id], self.condensed_adj_graph)
-                merged_attributes['category_name'] = root_category_attribute
+                merged_attributes = self.get_merged_node_attributes_from_nodes([node1_id, node2_id],
+                                                                               self.condensed_adj_graph)
+                merged_attributes['category'] = root_category_attribute
                 node_attribute_dict[node1_id] = merged_attributes
                 nodes_to_remove.append(node2_id)
             elif self._node_a_contains_node_b(node2, node1):
-                root_category_attribute = node2['category_name']
+                root_category_attribute = node2['category']
                 # print((node2_id, node1_id))
-                merged_attributes = self.get_merged_node_attributes_from_nodes([node1_id, node2_id], self.condensed_adj_graph)
-                merged_attributes['category_name'] = root_category_attribute
+                merged_attributes = self.get_merged_node_attributes_from_nodes([node1_id, node2_id],
+                                                                               self.condensed_adj_graph)
+                merged_attributes['category'] = root_category_attribute
                 node_attribute_dict[node2_id] = merged_attributes
                 nodes_to_remove.append(node1_id)
 
@@ -313,4 +352,12 @@ class AltriaGraphBuilder(object):
         # return float(list(adj_g.nodes[node_fk]['rect_x'])[0]), float(list(adj_g.nodes[node_fk]['rect_y'])[0])
         centroid = adj_g.node[node_fk]['polygon'].centroid
         return centroid.coords[0][0], centroid.coords[0][1]
+
+    def _remove_nodes_with_less_facings_than(self, minimum_facings):
+        for node_fk, node_data in self.condensed_adj_graph.nodes(data=True):
+            if node_data['category'].value == 'POS':
+                continue
+            if len(node_data['match_fk'].values) < minimum_facings:
+                self.condensed_adj_graph.remove_node(node_fk)
+        return
 
