@@ -39,9 +39,11 @@ class AltriaGraphBuilder(object):
         self.matches_df = None
         self.pos_matches_df = None
         self.pos_masking_data = None
+        self.conversion_data = None
 
         self.base_adj_graph = None
         self.condensed_adj_graph = None
+        self.adj_component_graph = None
 
         self._generate_graph()
 
@@ -73,6 +75,7 @@ class AltriaGraphBuilder(object):
                                                                       ['category', 'in_menu_board_area',
                                                                        'probe_group_id'], use_masking_only=True)
         self.base_adj_graph = self.remove_pos_to_pos_edges(self.base_adj_graph)
+        self.conversion_data = self.calculate_width_conversion()
 
         self.condensed_adj_graph = AdjacencyGraphBuilder.condense_graph_by_level('category', self.base_adj_graph)
         self.condensed_adj_graph = self.condensed_adj_graph.to_undirected()
@@ -84,6 +87,13 @@ class AltriaGraphBuilder(object):
         self._calculate_widths_of_flip_signs()
 
         # create component graph (split graph into separate components by removing horizontal connections
+        non_horizontal_edges = self._filter_horizontal_edges_between_blocks(self.condensed_adj_graph)
+        self.adj_component_graph = self.condensed_adj_graph.edge_subgraph(non_horizontal_edges)
+        self._assign_fixture_and_block_numbers_to_product_clusters()
+        self._assign_block_numbers_to_pos_items()
+        self._assign_width_values_to_all_nodes()
+        self._assign_no_header_attribute()
+        self._assign_product_above_header_attribute()
 
         return
 
@@ -109,7 +119,6 @@ class AltriaGraphBuilder(object):
                                                  (self.matches_df['category'] == 'POS')][
             'probe_match_fk'].tolist()
         pos_probe_match_fks_to_keep = pos_probe_match_fks_to_keep + probe_match_fks_to_add
-        print(len(pos_probe_match_fks_to_keep))
         return pos_probe_match_fks_to_keep
 
     def get_box_by_probe_match_fk(self, probe_match_fk):
@@ -158,6 +167,22 @@ class AltriaGraphBuilder(object):
                 [p for p in multi_polygon if p not in polygons_to_remove])
         return adj_graph
 
+    @staticmethod
+    def _filter_horizontal_edges_between_blocks(condensed_adj_graph):
+        edges_to_remove = []
+        sub_graph = condensed_adj_graph.subgraph([node for node, node_data in condensed_adj_graph.nodes(data=True) if
+                                                  node_data['category'].value != 'POS'])
+        for node1, node2, edge_data in sub_graph.edges(data=True):
+            if edge_data['degree'] < 45.0 and edge_data['degree'] > -45.0:
+                edges_to_remove.extend([(node1, node2), (node2, node1)])
+            elif edge_data['degree'] < 180.0 and edge_data['degree'] > 135.0:
+                edges_to_remove.extend([(node1, node2), (node2, node1)])
+            elif edge_data['degree'] > -180.0 and edge_data['degree'] < -135.0:
+                edges_to_remove.extend([(node1, node2), (node2, node1)])
+
+        edges_to_keep = [edge for edge in condensed_adj_graph.edges() if edge not in edges_to_remove]
+        return edges_to_keep
+
     def _calculate_widths_of_flip_signs(self):
         additional_skus_to_add = 1
         skus_above_flipsign_dict = {}
@@ -179,7 +204,6 @@ class AltriaGraphBuilder(object):
                         skus_above_flipsign.append(neighbor_match_fk)
 
             skus_above_flipsign_dict[node] = skus_above_flipsign
-            # print(skus_above_flipsign)
 
         for node, skus_above in skus_above_flipsign_dict.iteritems():
             self.condensed_adj_graph.nodes[node]['width_of_signage_in_facings'] = NodeAttribute(
@@ -259,7 +283,6 @@ class AltriaGraphBuilder(object):
                 continue
             if self._node_a_contains_node_b(node1, node2):
                 root_category_attribute = node1['category']
-                # print((node1_id, node2_id))
                 merged_attributes = self.get_merged_node_attributes_from_nodes([node1_id, node2_id],
                                                                                self.condensed_adj_graph)
                 merged_attributes['category'] = root_category_attribute
@@ -267,7 +290,6 @@ class AltriaGraphBuilder(object):
                 nodes_to_remove.append(node2_id)
             elif self._node_a_contains_node_b(node2, node1):
                 root_category_attribute = node2['category']
-                # print((node2_id, node1_id))
                 merged_attributes = self.get_merged_node_attributes_from_nodes([node1_id, node2_id],
                                                                                self.condensed_adj_graph)
                 merged_attributes['category'] = root_category_attribute
@@ -360,4 +382,170 @@ class AltriaGraphBuilder(object):
             if len(node_data['match_fk'].values) < minimum_facings:
                 self.condensed_adj_graph.remove_node(node_fk)
         return
+
+    def _assign_fixture_and_block_numbers_to_product_clusters(self):
+        x_position_avg_per_component = {}
+        components = [c for c in nx.connected_components(self.adj_component_graph)]
+        for component in components:
+            x_coord_list = []
+            y_position_per_node = {}
+            for node in component:
+                node_data = self.adj_component_graph.nodes[node]
+                x_coord = node_data['polygon'].centroid.coords[0][0]
+                x_coord_list.append(x_coord)
+
+                if node_data['category'].value == 'POS':
+                    continue
+                y_coord = node_data['polygon'].centroid.coords[0][1]
+                y_position_per_node[y_coord] = node
+
+            for i, pair in enumerate(sorted(y_position_per_node.items())):
+                self.adj_component_graph.nodes[pair[1]].update({"block_number": NodeAttribute([i + 1])})
+
+            x_position_avg_per_component[(sum(x_coord_list) / len(x_coord_list))] = component
+
+        for i, pair in enumerate(sorted(x_position_avg_per_component.items())):
+            for node in pair[1]:
+                self.adj_component_graph.nodes[node].update({"fixture_number": NodeAttribute([i + 1])})
+
+        return
+
+    def _assign_block_numbers_to_pos_items(self):
+        node_to_block_number = {}
+        for node, node_data in self.adj_component_graph.nodes(data=True):
+            if node_data['category'].value != 'POS':
+                continue
+            block_number = 0
+            for neighbor in self.adj_component_graph.neighbors(node):
+                if block_number == 0:
+                    block_number = self.adj_component_graph.nodes[neighbor]['block_number'].value
+
+            node_to_block_number[node] = block_number
+
+        for node, block_number in node_to_block_number.items():
+            self.adj_component_graph.nodes[node].update({"block_number": NodeAttribute([block_number])})
+
+        return
+
+    def _assign_width_values_to_all_nodes(self):
+        node_to_width = {}
+        for node, node_data in self.adj_component_graph.nodes(data=True):
+            one_ft = self.get_width_conversion_by_probe_group(node_data['probe_group_id'].value, self.conversion_data)
+            bounds = node_data['polygon'].bounds
+            width = abs((bounds[0] - bounds[2]) / one_ft)
+            node_to_width[node] = width
+
+        for node, width in node_to_width.items():
+            self.adj_component_graph.nodes[node].update({'calculated_width_ft': NodeAttribute([width])})
+        return
+
+    def calculate_width_conversion(self):
+        conversion_data = pd.DataFrame(columns=['probe_group_id', 'category', 'width'])
+        for node, node_data in self.base_adj_graph.nodes(data=True):
+            bounds = node_data['polygon'].bounds
+            width = abs(bounds[0] - bounds[2])
+            data = [node_data['probe_group_id'].value, node_data['category'].value, width]
+            conversion_data.loc[len(conversion_data), conversion_data.columns.tolist()] = data
+
+        return conversion_data
+
+    @staticmethod
+    def get_width_conversion_by_probe_group(probe_group_id, conversion_data):
+        relevant_data = conversion_data[conversion_data['probe_group_id'] == probe_group_id]
+        cigarettes_median = relevant_data[relevant_data['category'] == 'Cigarettes']['width'].median()
+        cigarettes_avg = relevant_data[relevant_data['category'] == 'Cigarettes']['width'].mean()
+        # print("avg: {} median {}".format(cigarettes_avg, cigarettes_median))
+        smokeless_median = relevant_data[relevant_data['category'] == 'Smokeless']['width'].median()
+
+        cigarettes_one_ft = cigarettes_median * 5
+        smokeless_one_ft = smokeless_median * 4
+
+        return (cigarettes_one_ft + smokeless_one_ft) / 2
+
+    def _assign_no_header_attribute(self):
+        nodes_without_headers = []
+        for node, node_data in self.adj_component_graph.nodes(data=True):
+            header_found = False
+            try:
+                if node_data['category'].value == 'POS' or node_data['block_number'].value != 1:
+                    continue
+            except KeyError:
+                continue
+
+            for neighbor in self.adj_component_graph.neighbors(node):
+                neighbor_data = self.adj_component_graph.nodes[neighbor]
+                if neighbor_data['category'].value != 'POS':
+                    continue
+                if neighbor_data['pos_type'].value == 'Header':
+                    header_found = True
+
+            if header_found:
+                continue
+            else:
+                nodes_without_headers.append(node)
+
+        for headerless_node in nodes_without_headers:
+            self.adj_component_graph.nodes[headerless_node].update({'no_header': NodeAttribute([True])})
+
+        return
+
+    def _assign_product_above_header_attribute(self):
+        nodes_with_products_above = []
+        for node, node_data in self.adj_component_graph.nodes(data=True):
+            try:
+                if node_data['pos_type'].value != 'Header':
+                    continue
+            except KeyError:
+                continue
+
+            bounds = node_data['polygon'].bounds
+            products_above_header = self.matches_df[(self.matches_df['rect_y'] < bounds[1]) &
+                                         (self.matches_df['rect_x'] > bounds[0]) &
+                                         (self.matches_df['rect_x'] < bounds[2])]
+            products_above_header = products_above_header[products_above_header['category'] != 'POS']
+            if not products_above_header.empty:
+                nodes_with_products_above.append(node)
+
+        for header_node in nodes_with_products_above:
+            self.adj_component_graph.nodes[header_node].update({'products_above_header': NodeAttribute([True])})
+
+        return
+
+
+    # Plot Utils used for debugging
+
+    @staticmethod
+    def add_polygons_to_condensed_graph(condensed_adj_graph, level_attribute, mpis, fig):
+        level_attribute_color_dict = GraphPlot.generate_sku_color_dict(mpis[level_attribute].unique().tolist())
+
+        layout = fig.layout
+
+        for node, node_data in condensed_adj_graph.nodes(data=True):
+            rectangle = node_data['polygon']
+
+            layout['shapes'] += ({
+                                     'type': 'rect',
+                                     'x0': rectangle.bounds[0],
+                                     'y0': rectangle.bounds[1],
+                                     'x1': rectangle.bounds[2],
+                                     'y1': rectangle.bounds[3],
+                                     'line': {'color': 'rgba(0, 230, 64, 1)', 'width': 3},
+                                     'fillcolor': level_attribute_color_dict[node_data[level_attribute].value],
+                                     'opacity': 0.4
+                                 },)
+
+        fig.update_layout(layout)
+        return fig
+
+    def create_graph_image(self):
+        filtered_figure = GraphPlot.plot_networkx_graph(self.adj_component_graph, overlay_image=True,
+                                                        scene_id=self.scene_id, project_name='altriaus')
+        filtered_figure.update_layout(autosize=False, width=1000, height=800)
+
+        fig = MaskingPlot.plot_maskings(mpis_with_masking_df=self.matches_df.merge(self.pos_masking_data,
+                                                                                   on='probe_match_fk'),
+                                        overlay_image=True, scene_id=self.scene_id, project_name='altriaus',
+                                        fig=filtered_figure)
+        fig.update_layout(autosize=False, width=1000, height=800)
+        iplot(fig)
 
