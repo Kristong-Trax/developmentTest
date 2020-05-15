@@ -8,6 +8,8 @@ from Projects.HENKELUS.Data.LocalConsts import Consts
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from collections import Counter
+from collections import OrderedDict
+import operator
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import 
 # from KPIUtils_v2.Utils.Consts.DB import 
@@ -57,6 +59,7 @@ class ToolBox(GlobalSessionToolBox):
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
 
     def main_calculation(self):
+        self.calculate_adjacency_within_bay()
         self.calculate_max_block_directional()
         self.calculate_sku_count()
         self.calculate_facing_count()
@@ -73,6 +76,20 @@ class ToolBox(GlobalSessionToolBox):
 
         score = 0
         return score
+    def calculate_adjacency_within_bay(self):
+        a = 1
+        template = self.kpi_template[Consts.ADJACENCY_WITHIN_BAY]
+        for i, row in template.iterrows():
+            anchor_sub_category_fk = map(int,self.sanitize_row(row['anchor_sub_category_fk']))
+            secondary_sub_category_fk = map(int,self.sanitize_row(row['secondary_sub_category_fk']))
+
+            anchor_product_fks = self._get_product_fks_with_filter(self.scif, {'sub_category_fk':anchor_sub_category_fk})
+            relevant_filters_for_anchor_block = {'product_fk': anchor_product_fks}
+            additional_filter_anchor_block = {'use_masking_only': True, 'calculate_all_scenes': True, 'minimum_facing_for_block': 1, 'check_vertical_horizontal':True}
+            a = self.block.network_x_block_together(relevant_filters_for_anchor_block,
+                                                additional=additional_filter_anchor_block)
+            b = a.orientation
+            c = 1
 
     def calculate_max_block_directional(self):
         template = self.kpi_template[Consts.MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET]
@@ -105,6 +122,7 @@ class ToolBox(GlobalSessionToolBox):
 
                 if (not dataseta_block.empty) and (not datasetb_block.empty):
                     if any(np.in1d(dataseta_block.scene_fk, datasetb_block.scene_fk)):
+                        dataseta_block = dataseta_block.sort_values('total_facings')
                         datasetb_block = datasetb_block.sort_values('total_facings')
                         result = self._get_adjacent_node_direction(dataseta_block, datasetb_block)
 
@@ -611,7 +629,6 @@ class ToolBox(GlobalSessionToolBox):
         """
         return float(list(adj_g.nodes[node_fk]['rect_x'])[0]), float(list(adj_g.nodes[node_fk]['rect_y'])[0])
 
-
     def _get_block(self, filters, additional_filter):
 
         block = self.block.network_x_block_together(filters,additional=additional_filter)
@@ -620,27 +637,33 @@ class ToolBox(GlobalSessionToolBox):
         return block
 
     def _get_adjacent_node_direction(self, dataseta_block, datasetb_block):
-        result_dict = {'LEFT':1, 'DOWN':2, 'RIGHT':3, 'UP':4}
+        result_dict = {'LEFT':1, 'RIGHT':2, 'UP':3,  'DOWN':4}
+        count_of_directions = OrderedDict((("LEFT", 0), ("RIGHT", 0), ("UP", 0), ('DOWN', 0)))
         result = 0
         for b_index, block_b_row in datasetb_block.iterrows():
             valid_cluster_for_blockb = block_b_row.cluster.nodes.values()
             relevant_scene_match_fks_for_block_b = [scene_match_fk for item in valid_cluster_for_blockb for
                                                     scene_match_fk in item['scene_match_fk']]
 
-            for a_index, block_a_row in dataseta_block.iterrows():
-                valid_cluster_for_blocka = block_a_row.cluster.nodes.values()
-                relevant_scene_match_fks_for_block_a = [scene_match_fk for item in valid_cluster_for_blocka for
-                                                        scene_match_fk in item['scene_match_fk']]
-                '''The below line is used to filter the adjacency graph by the closest edges. Specifically since
-                                     the edges are determined by masking only, there's a chance that there will be two edges that come
-                                     out from a single node.'''
-                adj_graph = self.block.adj_graphs_by_scene.values()[0].edge_subgraph(
-                    self._filter_redundant_edges(self.block.adj_graphs_by_scene.values()[0]))
-                for scene_match_a in relevant_scene_match_fks_for_block_a:
-                    for node, node_data in adj_graph.adj[scene_match_a].items():
-                        if node in relevant_scene_match_fks_for_block_b:
-                            result_direction = node_data['direction']
-                            result = result_dict[result_direction]
+            if np.any(dataseta_block.scene_fk.values == block_b_row.scene_fk):
+                for a_index, block_a_row in dataseta_block[dataseta_block.scene_fk == block_b_row.scene_fk].iterrows():
+                    valid_cluster_for_blocka = block_a_row.cluster.nodes.values()
+                    relevant_scene_match_fks_for_block_a = [scene_match_fk for item in valid_cluster_for_blocka for
+                                                            scene_match_fk in item['scene_match_fk']]
+                    '''The below line is used to filter the adjacency graph by the closest edges. Specifically since
+                                         the edges are determined by masking only, there's a chance that there will be two edges that come
+                                         out from a single node.'''
+                    adj_graph = self.block.adj_graphs_by_scene.values()[0].edge_subgraph(
+                        self._filter_redundant_edges(self.block.adj_graphs_by_scene.values()[0]))
+                    for scene_match_a in relevant_scene_match_fks_for_block_a:
+                        for node, node_data in adj_graph.adj[scene_match_a].items():
+                            if node in relevant_scene_match_fks_for_block_b:
+                                result_direction = node_data['direction']
+                                count_of_directions[result_direction] = count_of_directions[result_direction] + 1
+
+                        if count_of_directions.keys():
+                            direction_with_max_facings = max(count_of_directions.iteritems(), key=operator.itemgetter(1))[0]
+                            result = result_dict[direction_with_max_facings]
                             return result
         return result
 
