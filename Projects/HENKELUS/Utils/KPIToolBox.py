@@ -103,7 +103,7 @@ class ToolBox(GlobalSessionToolBox):
                         'sub_category_fk': secondary_sub_category_fk, 'scene_fk': [unique_scene_fk],
                         'bay_number': [unique_bay]})
 
-                    if anchor_product_fks.size > 0:  # and secondary_product_fks.size > 0
+                    if anchor_product_fks.size > 0 and secondary_product_fks.size > 0:
                         relevant_filters_for_anchor_block = {'product_fk': anchor_product_fks,
                                                              'bay_number': [unique_bay]}
                         additional_filter_anchor_block = {'use_masking_only': True, 'calculate_all_scenes': True,
@@ -126,7 +126,6 @@ class ToolBox(GlobalSessionToolBox):
                     break
             self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=1,
                              denominator_id=self.store_id, denominator_result=1, result=result)
-
 
     def calculate_max_block_directional(self):
         template = self.kpi_template[Consts.MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET]
