@@ -11,7 +11,18 @@ if __name__ == '__main__':
     project_name = 'henkelus'
     data_provider = KEngineDataProvider(project_name)
     session_list = [
-        "be04d3a9-e4ee-4ea8-b7c7-4ed2c39f4548",
+        # "6d9bbf49-3d9f-4b14-a7db-8b06096fae31",
+        # 'fc4260f6-2e84-41d8-aba7-26bef28f2072',
+        # 'f1a40090-3c6f-4ec3-a1d0-80ca12f64419',
+
+        # 'e75f5f09-9861-45aa-b6bd-ccd89b20b72d'
+
+        # 'fd6ee83a-a166-4957-98ac-c28e698413ac',
+        # 'e5cac33d-d1c2-4c37-8029-30a60e04908f'
+        # 'dc6b9147-70ba-4f60-bb0d-9231dab2fd1f',
+
+        'd4b24e75-35fa-4c48-9fb7-6252f5ad5df3',  #this is max block directional adjacency
+
                     # '23388796-e888-497b-bcbe-efe3d95f286d',
                     # 'a8e1b893-e0cc-475b-8537-f459bdc21f4d',
                     # '7128148f-08e7-4c9f-9373-1c1a21be3e96',
