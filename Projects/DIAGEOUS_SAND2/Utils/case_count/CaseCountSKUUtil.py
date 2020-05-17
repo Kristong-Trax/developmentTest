@@ -31,7 +31,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
         This method fetches the relevant targets for the case count
         """
         case_count_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_STORE_KPI)
-        targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[case_count_kpi_fk])
+        targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[case_count_kpi_fk], data_fields=[Src.TARGET],
+                                                                 key_fields=[Sc.PRODUCT_FK, 'store_number_1'])
         targets = targets.loc[targets.store_number_1 == self.store_number_1][[Pc.PRODUCT_FK, Src.TARGET]]
         return dict(zip(targets[Pc.PRODUCT_FK], targets[Src.TARGET]))
 
@@ -375,17 +376,17 @@ class CaseCountCalculator(GlobalSessionToolBox):
         return self.filtered_mdis.scene_fk.unique().tolist()
 
 
-# if __name__ == '__main__':
-#     from KPIUtils_v2.DB.CommonV2 import Common
-#     from Trax.Utils.Conf.Configuration import Config
-#     from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-#     Config.init('')
-#     test_data_provider = KEngineDataProvider('diageous-sand2')
-#     sessions = ['b0cb6544-2609-473d-ac91-6e280c61eaff']
-#     for session in sessions:
-#         print(session)
-#         test_data_provider.load_session_data(session_uid=session)
-#         test_common = Common(test_data_provider)
-#         case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
-#         case_counter_calculator.main_case_count_calculations()
-#         test_common.commit_results_data()
+if __name__ == '__main__':
+    from KPIUtils_v2.DB.CommonV2 import Common
+    from Trax.Utils.Conf.Configuration import Config
+    from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
+    Config.init('')
+    test_data_provider = KEngineDataProvider('diageous-sand2')
+    sessions = ['b0cb6544-2609-473d-ac91-6e280c61eaff']
+    for session in sessions:
+        print(session)
+        test_data_provider.load_session_data(session_uid=session)
+        test_common = Common(test_data_provider)
+        case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
+        case_counter_calculator.main_case_count_calculations()
+        test_common.commit_results_data()
