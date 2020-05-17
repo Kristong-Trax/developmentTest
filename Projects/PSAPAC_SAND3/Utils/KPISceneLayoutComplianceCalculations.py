@@ -140,6 +140,7 @@ class SceneLayoutComplianceCalc(object):
                                 super_id=super_brand_pk,
                                 scat=sub_category_pk,
                             ))
+                        continue
                     else:
                         Log.info(
                             "Found brand blocked for super brand: {super_b} "
@@ -487,6 +488,7 @@ class SceneLayoutComplianceCalc(object):
                         scat=sub_category_pk,
                         brand=brand_pk,
                     ))
+                    continue
 
                 self.common.write_to_db_result(
                     fk=kpi_details.iloc[0].pk,
