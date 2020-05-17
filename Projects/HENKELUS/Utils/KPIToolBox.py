@@ -142,7 +142,7 @@ class ToolBox(GlobalSessionToolBox):
                 self._get_product_fks_with_filter(self.scif, {'Parent Brand': ['ALL'], 'Sensitive': ['SENSITIVE SKIN'],
                                                               'product_type': ['SKU']})
 
-            result = 0
+            result = 19
             if relevant_product_fks_with_parent_brand_all_and_non_sensitive.size != 0 and relevant_product_fks_with_parent_brand_all_and_sensitive.size != 0:
                 relevant_filters_for_blocka = {
                     'product_fk': relevant_product_fks_with_parent_brand_all_and_non_sensitive}  # products of dataset a
@@ -784,9 +784,9 @@ class ToolBox(GlobalSessionToolBox):
         return block
 
     def _get_adjacent_node_direction(self, dataseta_block, datasetb_block):
-        result_dict = {'UP': 1, 'DOWN': 2, 'LEFT': 3, 'RIGHT': 4}
+        result_dict = {'UP': 17, 'DOWN': 18, 'LEFT': 14, 'RIGHT': 15}
         count_of_directions = OrderedDict((("UP", 0), ("DOWN", 0), ("LEFT", 0), ('RIGHT', 0)))
-        result = 0
+        result = 19
         for b_index, block_b_row in datasetb_block.iterrows():
             valid_cluster_for_blockb = block_b_row.cluster.nodes.values()
             relevant_scene_match_fks_for_block_b = self._get_anchor_relevant_scene_match_fk(valid_cluster_for_blockb)
