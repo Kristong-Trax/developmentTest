@@ -360,12 +360,18 @@ class SceneLayoutComplianceCalc(object):
                         (scif_with_products['Super Brand'] == super_brand_name) &
                         (scif_with_products['sub_category_fk'] == sub_category_pk)][facings_field].sum()
                     result = round((numerator / float(denominator)) * 100, 2)
+                else:
+                    Log.info("{kpi}: No products with sub cat: {scat} found. Save zero.".format(
+                        kpi=kpi_details.iloc[0][KPI_TYPE_COL],
+                        scat=sub_category_pk
+                    ))
+                    continue
                 if result >= each_target.threshold:
                     score = 1
                 self.common.write_to_db_result(
                     fk=kpi_details.iloc[0].pk,
                     numerator_id=store_banner_pk,
-                    denominator_id=brand_pk,
+                    denominator_id=super_brand_pk,
                     context_id=sub_category_pk,
                     numerator_result=numerator,
                     denominator_result=denominator,
