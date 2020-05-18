@@ -163,7 +163,8 @@ class SceneLayoutComplianceCalc(object):
                         context_id=sub_category_pk,
                         numerator_result=biggest_block_facings_count,
                         denominator_result=total_facings_count,
-                        target=result,
+                        target=block_threshold_perc,
+                        result=result,
                         score=score,
                         by_scene=True,
                     )
