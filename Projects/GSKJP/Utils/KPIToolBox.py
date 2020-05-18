@@ -52,7 +52,8 @@ class GSKJPToolBox:
         self.store_info = self.data_provider['store_info']
         self.store_fk = self.data_provider[StoreInfoConsts.STORE_FK]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=Consts.KEY_FIELDS,
+                                                                      data_fields=Consts.DATA_FIELDS)
         self.own_manufacturer = self.get_manufacturer
         self.set_up_data = {(Consts.PLN_BLOCK, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
                             (Consts.POSITION_SCORE, Const.KPI_TYPE_COLUMN):
