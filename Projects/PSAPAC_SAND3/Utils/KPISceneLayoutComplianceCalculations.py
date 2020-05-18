@@ -294,9 +294,9 @@ class SceneLayoutComplianceCalc(object):
                     denominator_id=brand_pk_to_check,
                     context_id=sub_category_pk,
                     result=result,
-                    numerator_result=1,
+                    numerator_result=result,
                     denominator_result=1,
-                    score=1,
+                    score=result,
                     target=1,
                     by_scene=True,
                 )
