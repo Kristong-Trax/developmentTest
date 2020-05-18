@@ -13,9 +13,7 @@ __author__ = 'urid'
 class INBEVNLINBEVBECalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'INBEVNL', 'Data',
-                                     'POCE_Template.xlsx')
-        INBEVNLINBEVBEGenerator(self.data_provider, self.output, TEMPLATE_PATH).main_function()
+        INBEVNLINBEVBEGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 # if __name__ == '__main__':
