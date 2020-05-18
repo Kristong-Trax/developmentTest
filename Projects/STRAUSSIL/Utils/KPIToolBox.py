@@ -81,7 +81,7 @@ class ToolBox(GlobalSessionToolBox):
         denominator = len(product_fks)
         dis_result = self.get_result(dis_numerator, denominator)
         if denominator == 0:
-            oos_result = 0
+            oos_result = dis_result = None
         else:
             oos_result = 1 - dis_result
         oos_numerator = denominator - dis_numerator
