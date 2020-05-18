@@ -25,3 +25,9 @@ class Consts(object):
     SOS_BY_BRAND = '_SOS_BY_BRAND'
     SOS_BY_CAT_BRAND = '_SOS_BY_CAT_BRAND'
     SOS_BY_CAT_BRAND_SKU = '_SOS_BY_CAT_BRAND_SKU'
+
+    # external targets keys
+    KEY_FIELDS = ['store_type', 'numerator_type', 'denominator_value', 'additional_attribute_6', 'retailer',
+                  'additional_attribute_2', 'numerator_value', 'denominator_type', 'additional_attribute_8',
+                  'additional_attribute_12']
+    DATA_FIELDS = ['target_range', 'target']
