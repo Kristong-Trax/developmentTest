@@ -234,15 +234,15 @@ class AltriaDataProvider:
             if anchor_points.equals(top_left_points):
                 other_point_domain = opposite_points[(opposite_points['x'] > anchor_point.x) &
                                                      (opposite_points['y'] > anchor_point.y) &
-                                                     (opposite_points['y'] < anchor_point.y + y_range) &
-                                                     (opposite_points['x'] < anchor_point.x + x_range)]
+                                                     (opposite_points['y'] <= anchor_point.y + y_range) &
+                                                     (opposite_points['x'] <= anchor_point.x + x_range)]
             # ... or if the anchor points are the bottom right, we only care about points that are higher
             # and further to the left than the anchor point
             elif anchor_points.equals(bottom_right_points):
                 other_point_domain = opposite_points[(opposite_points['x'] < anchor_point.x) &
                                                      (opposite_points['y'] < anchor_point.y) &
-                                                     (opposite_points['y'] > anchor_point.y - y_range) &
-                                                     (opposite_points['x'] > anchor_point.x - x_range)]
+                                                     (opposite_points['y'] >= anchor_point.y - y_range) &
+                                                     (opposite_points['x'] >= anchor_point.x - x_range)]
 
             if other_point_domain.empty:
                 # this shouldn't happen in a perfect world

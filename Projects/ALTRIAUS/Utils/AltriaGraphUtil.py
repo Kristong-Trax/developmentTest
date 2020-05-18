@@ -56,6 +56,7 @@ class AltriaGraphBuilder(object):
             return pd.DataFrame()
 
         self.matches_df = self.matches.merge(self.data_provider.all_products, on='product_fk')
+        self.matches_df = self.matches_df[self.matches_df['scene_fk'] == self.scene_id]
 
         # smart_attribute_data = \
         #     self.adp.get_match_product_in_probe_state_values(self.matches_df['probe_match_fk'].unique().tolist())
@@ -67,7 +68,7 @@ class AltriaGraphBuilder(object):
         self.probe_groups = self.adp.get_probe_groups()
         self.matches_df = self.matches_df.merge(self.probe_groups, on='probe_match_fk', how='left')
         self.pos_matches_df = self.matches_df[self.matches_df['category'] == 'POS']
-        self.pos_masking_data = self.adp.get_masking_data(self.matches_df, y_axis_threshold=35)
+        self.pos_masking_data = self.adp.get_masking_data(self.matches_df, y_axis_threshold=35, x_axis_threshold=100)
 
     def get_graph(self):
         return self.adj_component_graph
@@ -104,6 +105,8 @@ class AltriaGraphBuilder(object):
         self._assign_width_values_to_all_nodes()
         self._assign_no_header_attribute()
         self._assign_product_above_header_attribute()
+
+        self.create_graph_image()
 
         return
 
@@ -352,7 +355,7 @@ class AltriaGraphBuilder(object):
             elif len(edges) <= 1:
                 edges_filter.extend(edges)
             else:
-                shortest_edge = self._get_shortest_path(adj_g, edges)
+                shortest_edge = self._get_shortest_path(self.condensed_adj_graph, edges)
                 edges_to_remove.extend([edge for edge in edges if edge != shortest_edge])
         edges_filter = [edge for edge in edges_filter if
                         edge not in edges_to_remove and (edge[1], edge[0]) not in edges_to_remove]
@@ -553,6 +556,9 @@ class AltriaGraphBuilder(object):
         filtered_figure = GraphPlot.plot_networkx_graph(self.adj_component_graph, overlay_image=True,
                                                         scene_id=self.scene_id, project_name='altriaus')
         filtered_figure.update_layout(autosize=False, width=1000, height=800)
+
+        filtered_figure = self.add_polygons_to_condensed_graph(self.adj_component_graph, 'category', self.matches_df,
+                                                               filtered_figure)
 
         fig = MaskingPlot.plot_maskings(mpis_with_masking_df=self.matches_df.merge(self.pos_masking_data,
                                                                                    on='probe_match_fk'),

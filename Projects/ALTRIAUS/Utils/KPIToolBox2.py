@@ -310,7 +310,7 @@ class ALTRIAUSToolBox:
                                           result=shelves)
 
     def calculate_tags_by_fixture_block(self, node_data):
-        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('TAGS_BY_FIXTURE_BLOCK')
+        kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('FACINGS_BY_FIXTURE_BLOCK')
 
         scene_match_fks = node_data['match_fk'].values
         fixture_number = node_data['fixture_number'].value
@@ -318,10 +318,14 @@ class ALTRIAUSToolBox:
 
         relevant_matches = self.mpis[self.mpis['scene_match_fk'].isin(scene_match_fks)]
 
+        relevant_matches = relevant_matches.groupby(['product_fk', 'template_fk', 'match_product_in_probe_state_fk'],
+                                                    as_index=False)['scene_match_fk'].count()
+        relevant_matches.rename(columns={'scene_match_fk': 'facings'}, inplace=True)
+
         for row in relevant_matches.itertuples():
-            self.common_v2.write_to_db_result(kpi_fk, numerator_id=row.product_fk, denominator_id=row.scene_match_fk,
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=row.product_fk, denominator_id=row.template_fk,
                                               numerator_result=block_number, denominator_result=fixture_number,
-                                              result=1, context_id=row.match_product_in_probe_state_fk)
+                                              result=row.facings, context_id=row.match_product_in_probe_state_fk)
 
     def calculate_header(self, node, node_data, graph):
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Header')
