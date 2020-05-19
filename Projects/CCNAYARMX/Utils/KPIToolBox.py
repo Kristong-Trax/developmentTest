@@ -110,7 +110,7 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
                               MERCADEO_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplate2020v0.9.0.xlsx')
+                             'CCNayarTemplate2020v0.9.3.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v7.xlsx')
 
@@ -204,10 +204,12 @@ class ToolBox(GlobalSessionToolBox):
         self.results_df.rename(columns={'kpi_fk': 'fk'}, inplace=True)
         self.results_df.loc[~self.results_df['identifier_parent'].isnull(), 'should_enter'] = True
         # set result to NaN for records that do not have a parent
-        identifier_results = self.results_df[self.results_df['result'].notna()]['identifier_result'].unique().tolist()
+        # identifier_results = self.results_df[self.results_df['result'].notna()]['identifier_result'].unique().tolist()
+        # self.results_df['result'] = self.results_df.apply(
+        #     lambda row: pd.np.nan if (pd.notna(row['identifier_parent']) and row[
+        #         'identifier_parent'] not in identifier_results) else row['result'], axis=1)
         self.results_df['result'] = self.results_df.apply(
-            lambda row: pd.np.nan if pd.notna(row['identifier_parent']) and row[
-                'identifier_parent'] not in identifier_results else row['result'], axis=1)
+            lambda row: row['result'] if pd.notna(row['identifier_parent']) else np.nan, axis=1)
         # get rid of 'not applicable' results
         self.results_df.dropna(subset=['result'], inplace=True)
         self.results_df.fillna(0)
@@ -228,14 +230,11 @@ class ToolBox(GlobalSessionToolBox):
             if result_data:
                 if isinstance(result_data, dict):
                     weight = row['Score']
-                    try:
-                        if weight and pd.notna(weight) and pd.notna(result_data['result']):
-                            if row[KPI_TYPE] == SCORING and 'score' not in result_data.keys():
-                                result_data['score'] = weight * result_data['result']
-                            elif row[KPI_TYPE] != SCORING:
-                                result_data['score'] = weight * result_data['result']
-                    except:
-                        a = 1
+                    if weight and pd.notna(weight) and pd.notna(result_data['result']):
+                        if row[KPI_TYPE] == SCORING and 'score' not in result_data.keys():
+                            result_data['score'] = weight * result_data['result']
+                        elif row[KPI_TYPE] != SCORING:
+                            result_data['score'] = weight * result_data['result']
                     parent_kpi_name = self._get_parent_name_from_kpi_name(result_data['kpi_name'])
                     if parent_kpi_name and 'identifier_parent' not in result_data.keys():
                         result_data['identifier_parent'] = parent_kpi_name
@@ -303,8 +302,9 @@ class ToolBox(GlobalSessionToolBox):
                 0]  # num id
             result_dict['numerator_id'] = product_fk
             result_dict['denominator_id'] = brand_fk
-            result_dict['result'] = result[0][0]
-
+            result = result[0][0]
+            final_result = float(result) / 5
+            result_dict['result'] = final_result
         return result_dict
 
     def calculate_bonus_and_penalties(self, row):
@@ -327,7 +327,7 @@ class ToolBox(GlobalSessionToolBox):
             # DO THE FORTH ROW OF THE SHEET
 
         return_holder = self._get_kpi_name_and_fk(row)
-        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],'numerator_id': self.own_manuf_fk,
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': self.own_manuf_fk,
                        'denominator_id': self.store_id, 'result': result}
         return result_dict
 
@@ -813,6 +813,8 @@ class ToolBox(GlobalSessionToolBox):
 
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        if kpi_name == 'Puerta Dedicada - Sabores':
+            a = 1
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
         numerator_value1 = row[NUMERATOR_VALUE_1]
