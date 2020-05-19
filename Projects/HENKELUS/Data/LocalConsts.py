@@ -4,7 +4,7 @@ __author__ = 'Nicolas Keeton'
 
 
 class Consts(object):
-    template_file_name = 'KPI Template - Working 5-11-2020 v4.xlsx'
+    template_file_name = 'KPI Template - Working 5-11-2020 v6.xlsx'
     KPI_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                      template_file_name)
 
@@ -26,7 +26,7 @@ class Consts(object):
     relevant_kpi_sheets = [FACING_COUNT_SHEET, SKU_COUNT_SHEET, SMART_TAG_SHEET,BLOCKING_SEQUENCE,
                            LINEAR_SHEET, BASE_MEASURE_SHEET,
                            VERTICAL_SHELF_SHEET, BLOCKING_SHEET, HORIZONTAL_SHELF_SHEET, SHELF_MAP_SHEET,
-                           BLOCK_COMPOSITION_SHEET, MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET
+                           BLOCK_COMPOSITION_SHEET, MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET, MAX_BLOCK_ADJ_SHEET, NEGATIVE_BLOCK_ADJ_SHEET
                            ]
 
     OWN_MANUFACTURER_FK = 49
@@ -70,4 +70,15 @@ class Consts(object):
                     # 'DATASET {}  BLOCK ALLOW-CONNECTED {} 2',
                    # / # 'DATASET {}  BLOCK ALLOW-CONNECTED {} 3',
                    #  'DATASET {}  BLOCK EXCLUDE {} 1',
+    ]
+
+    BLOCKING_ADJ_DATA_COLUMNS = [
+        'DATASET {} {} 1',
+        'DATASET {} {} 2',
+        # 'DATASET {}  EXCLUDE {} 1',
+        # 'DATASET {}  EXCLUDE {} 2',
+        'DATASET {} BLOCK ALLOW-CONNECTED {} 1',
+        'DATASET {} BLOCK ALLOW-CONNECTED {} 2',
+        'DATASET {} BLOCK ALLOW-CONNECTED {} 3',
+        #  'DATASET {}  BLOCK EXCLUDE {} 1',
     ]

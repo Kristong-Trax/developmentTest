@@ -11,10 +11,10 @@ if __name__ == '__main__':
     project_name = 'henkelus'
     data_provider = KEngineDataProvider(project_name)
     session_list = [
-        "be04d3a9-e4ee-4ea8-b7c7-4ed2c39f4548",
-                    # '23388796-e888-497b-bcbe-efe3d95f286d',
-                    # 'a8e1b893-e0cc-475b-8537-f459bdc21f4d',
-                    # '7128148f-08e7-4c9f-9373-1c1a21be3e96',
+        # "be04d3a9-e4ee-4ea8-b7c7-4ed2c39f4548",
+                    '23388796-e888-497b-bcbe-efe3d95f286d',
+                    'a8e1b893-e0cc-475b-8537-f459bdc21f4d',
+                    '7128148f-08e7-4c9f-9373-1c1a21be3e96',
                     # 'c59fb6c0-8727-44d6-af62-98c195baa74a',
                     # 'dc6b9147-70ba-4f60-bb0d-9231dab2fd1f'
 
@@ -35,6 +35,7 @@ if __name__ == '__main__':
                     # 'bab01ed2-d444-4958-ab4a-608bbf8088d1',
                     ]
     for session in session_list:
+        print(session)
         data_provider.load_session_data(session)
         output = Output()
         Calculations(data_provider, output).run_project_calculations()
