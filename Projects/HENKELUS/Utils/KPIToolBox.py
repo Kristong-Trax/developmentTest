@@ -8,9 +8,10 @@ from Projects.HENKELUS.Data.LocalConsts import Consts
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.AdjacencyCalculations_v2 import Adjancency
 
-
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from collections import Counter
+from collections import OrderedDict
+import operator
 
 # from KPIUtils_v2.Utils.Consts.DataProvider import 
 # from KPIUtils_v2.Utils.Consts.DB import 
@@ -61,9 +62,18 @@ class ToolBox(GlobalSessionToolBox):
         self.ignore_stacking = False
         self.facings_field = 'facings' if not self.ignore_stacking else 'facings_ign_stack'
         self.smart_tags_product_fks = []
-        self.block_parent_results= {}
+        self.block_parent_results = {}
 
     def main_calculation(self):
+        self.calculate_adjacency_within_bay()
+        self.calculate_max_block_directional()
+        self.calculate_sku_count()
+        self.calculate_facing_count()
+        self.calculate_smart_tags()
+        self.calculate_base_measurement()
+        self.calculate_liner_measure()
+        self.calculate_horizontal_shelf_position()
+        self.calculate_vertical_shelf_position()
         # self.calculate_max_block_directional()
         # self.calculate_sku_count()
         # self.calculate_facing_count()
@@ -72,7 +82,6 @@ class ToolBox(GlobalSessionToolBox):
         # self.calculate_liner_measure()
         # self.calculate_horizontal_shelf_position()
         # self.calculate_vertical_shelf_position()
-
 
         # self.calculate_blocking_comp()
 
@@ -83,9 +92,53 @@ class ToolBox(GlobalSessionToolBox):
         self.calculate_max_blocking_adj()
         self.calculate_negative_max_blocking_adj()
 
-
         score = 0
         return score
+
+    def calculate_adjacency_within_bay(self):
+        template = self.kpi_template[Consts.ADJACENCY_WITHIN_BAY]
+
+        for i, row in template.iterrows():
+            kpi_name, kpi_fk = self._get_kpi_name_and_fk(row)
+            for unique_scene_fk in self.mpis.scene_fk.unique():
+                for unique_bay in self.mpis[self.mpis.scene_fk.isin([unique_scene_fk])].bay_number.unique():
+                    result = 0
+                    anchor_sub_category_fk = map(int, self.sanitize_row(row['anchor_sub_category_fk']))
+                    secondary_sub_category_fk = map(int, self.sanitize_row(row['secondary_sub_category_fk']))
+
+                    anchor_product_fks = self._get_product_fks_with_filter(self.mpis,
+                                                                           {'sub_category_fk': anchor_sub_category_fk,
+                                                                            'scene_fk': [unique_scene_fk],
+                                                                            'bay_number': [unique_bay]})
+
+                    secondary_product_fks = self._get_product_fks_with_filter(self.mpis, {
+                        'sub_category_fk': secondary_sub_category_fk, 'scene_fk': [unique_scene_fk],
+                        'bay_number': [unique_bay]})
+
+                    if anchor_product_fks.size > 0 and secondary_product_fks.size > 0:
+                        relevant_filters_for_anchor_block = {'product_fk': anchor_product_fks,
+                                                             'bay_number': [unique_bay]}
+                        additional_filter_anchor_block = {'use_masking_only': True, 'calculate_all_scenes': True,
+                                                          'minimum_facing_for_block': 1,
+                                                          'check_vertical_horizontal': True}
+
+                        anchor_block = self._get_block(relevant_filters_for_anchor_block, {'scene_fk': unique_scene_fk},
+                                                       additional_filter=additional_filter_anchor_block)
+                        anchor_block = anchor_block[
+                            (anchor_block.orientation != 'HORIZONTAL')]
+
+                        if not anchor_block.empty:
+                            for anchor_index, anchor_row in anchor_block.iterrows():
+                                result = self._logic_adjacency_within_bay(anchor_row, unique_scene_fk, unique_bay,
+                                                                          secondary_product_fks)
+                                if result == 1:
+                                    break
+                            if result == 1:
+                                break
+                if result == 1:
+                    break
+            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=1,
+                             denominator_id=self.store_id, denominator_result=1, result=result)
 
     def calculate_max_block_directional(self):
         template = self.kpi_template[Consts.MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET]
@@ -102,7 +155,7 @@ class ToolBox(GlobalSessionToolBox):
                 self._get_product_fks_with_filter(self.scif, {'Parent Brand': ['ALL'], 'Sensitive': ['SENSITIVE SKIN'],
                                                               'product_type': ['SKU']})
 
-            result = 0
+            result = 19
             if relevant_product_fks_with_parent_brand_all_and_non_sensitive.size != 0 and relevant_product_fks_with_parent_brand_all_and_sensitive.size != 0:
                 relevant_filters_for_blocka = {
                     'product_fk': relevant_product_fks_with_parent_brand_all_and_non_sensitive}  # products of dataset a
@@ -119,12 +172,15 @@ class ToolBox(GlobalSessionToolBox):
                         'product_type': ['Empty', 'Other'], 'minimum_facing_for_block': 1,
                         'Smart Tag': 'additional display'}}
 
-                dataseta_block = self._get_block(relevant_filters_for_blocka, additional_filter_blocka)
-                datasetb_block = self._get_block(relevant_filters_for_blockb, additional_filter_blockb)
+                dataseta_block = self._get_block(relevant_filters_for_blocka,
+                                                 additional_filter=additional_filter_blocka)
+                datasetb_block = self._get_block(relevant_filters_for_blockb,
+                                                 additional_filter=additional_filter_blockb)
 
                 if (not dataseta_block.empty) and (not datasetb_block.empty):
                     if any(np.in1d(dataseta_block.scene_fk, datasetb_block.scene_fk)):
-                        datasetb_block = datasetb_block.sort_values('total_facings')
+                        dataseta_block = dataseta_block.sort_values('total_facings', ascending=False)
+                        datasetb_block = datasetb_block.sort_values('total_facings', ascending=False)
                         result = self._get_adjacent_node_direction(dataseta_block, datasetb_block)
 
             self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=1,
@@ -238,7 +294,7 @@ class ToolBox(GlobalSessionToolBox):
         #     kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         #     Params1 = row['PARAM 1']
 
-        #debug
+        # debug
         self.block_parent_results[623] = 1
 
     def calculate_blocking_sequence(self):
@@ -458,9 +514,6 @@ class ToolBox(GlobalSessionToolBox):
             block_adj_mpis = {}
             sequence_letters = ['A', 'B']
 
-
-
-
             for letter in sequence_letters:
                 param_dict = {}
                 allow_connected_dict = {}
@@ -487,7 +540,7 @@ class ToolBox(GlobalSessionToolBox):
                     block_adj_mpis[letter] = adj_mpis
 
             if len(block_adj_mpis) == len(sequence_letters):
-                target_adj_mpis= block_adj_mpis[sequence_letters[0]].scene_match_fk.tolist()
+                target_adj_mpis = block_adj_mpis[sequence_letters[0]].scene_match_fk.tolist()
                 side_adj_mpis = block_adj_mpis[sequence_letters[1]].scene_match_fk.tolist()
 
                 side_adj = len(set(target_adj_mpis).intersection(side_adj_mpis))
@@ -500,9 +553,6 @@ class ToolBox(GlobalSessionToolBox):
             self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                              numerator_result=result,
                              denominator_result=1, result=custom_result_fk, score=0)
-
-
-
 
     def generate_pk_list_for_connected_block(self, connected_dict):
 
@@ -522,8 +572,8 @@ class ToolBox(GlobalSessionToolBox):
         block_result = self.block.network_x_block_together(
             population=filter_dict,
             additional={
-                        'allowed_products_filters': allowed_connected_dict,
-                        'include_stacking': True})
+                'allowed_products_filters': allowed_connected_dict,
+                'include_stacking': True})
 
         return block_result
 
@@ -609,8 +659,8 @@ class ToolBox(GlobalSessionToolBox):
                             'exclude_filter': excluded_filters})
 
             is_blocked = block_result[block_result.is_block == True]
-            total_facings_df = block_result[['scene_fk','total_facings']].drop_duplicates()
-            total_facings  = total_facings_df['total_facings'].sum()
+            total_facings_df = block_result[['scene_fk', 'total_facings']].drop_duplicates()
+            total_facings = total_facings_df['total_facings'].sum()
             if not is_blocked.empty:
                 for i, row in is_blocked.iterrows():
                     ratio = row.block_facings / total_facings
@@ -618,8 +668,6 @@ class ToolBox(GlobalSessionToolBox):
                         result = 1
                         result_value = 'Yes'
                         break
-
-
 
             custom_result = Consts.CUSTOM_RESULTS[result_value]
 
@@ -856,6 +904,8 @@ class ToolBox(GlobalSessionToolBox):
     @staticmethod
     def _get_product_fks_with_filter(scif, input_dict):
         for column, value in input_dict.items():
+            if not isinstance(value, list):
+                value = [value]
             scif = scif[scif[column].isin(value)]
         return scif.product_fk.unique()
 
@@ -881,35 +931,39 @@ class ToolBox(GlobalSessionToolBox):
         """
         return float(list(adj_g.nodes[node_fk]['rect_x'])[0]), float(list(adj_g.nodes[node_fk]['rect_y'])[0])
 
-    def _get_block(self, filters, additional_filter):
+    def _get_block(self, filters, location=None, additional_filter=None):
 
-        block = self.block.network_x_block_together(filters, additional=additional_filter)
+        block = self.block.network_x_block_together(filters, location=location, additional=additional_filter)
         if not block.empty:
             block = block[block.is_block == True]
         return block
 
     def _get_adjacent_node_direction(self, dataseta_block, datasetb_block):
-        result_dict = {'LEFT': 1, 'DOWN': 2, 'RIGHT': 3, 'UP': 4}
-        result = 0
+        result_dict = {'UP': 17, 'DOWN': 18, 'LEFT': 14, 'RIGHT': 15}
+        count_of_directions = OrderedDict((("UP", 0), ("DOWN", 0), ("LEFT", 0), ('RIGHT', 0)))
+        result = 19
         for b_index, block_b_row in datasetb_block.iterrows():
             valid_cluster_for_blockb = block_b_row.cluster.nodes.values()
-            relevant_scene_match_fks_for_block_b = [scene_match_fk for item in valid_cluster_for_blockb for
-                                                    scene_match_fk in item['scene_match_fk']]
+            relevant_scene_match_fks_for_block_b = self._get_anchor_relevant_scene_match_fk(valid_cluster_for_blockb)
 
-            for a_index, block_a_row in dataseta_block.iterrows():
-                valid_cluster_for_blocka = block_a_row.cluster.nodes.values()
-                relevant_scene_match_fks_for_block_a = [scene_match_fk for item in valid_cluster_for_blocka for
-                                                        scene_match_fk in item['scene_match_fk']]
-                '''The below line is used to filter the adjacency graph by the closest edges. Specifically since
-                                     the edges are determined by masking only, there's a chance that there will be two edges that come
-                                     out from a single node.'''
-                adj_graph = self.block.adj_graphs_by_scene.values()[0].edge_subgraph(
-                    self._filter_redundant_edges(self.block.adj_graphs_by_scene.values()[0]))
-                for scene_match_a in relevant_scene_match_fks_for_block_a:
-                    for node, node_data in adj_graph.adj[scene_match_a].items():
-                        if node in relevant_scene_match_fks_for_block_b:
-                            result_direction = node_data['direction']
-                            result = result_dict[result_direction]
+            if np.any(dataseta_block.scene_fk.values == block_b_row.scene_fk):
+                adj_graph = self._get_adj_graph(block_b_row.scene_fk)
+
+                for a_index, block_a_row in dataseta_block[dataseta_block.scene_fk == block_b_row.scene_fk].iterrows():
+                    valid_cluster_for_blocka = block_a_row.cluster.nodes.values()
+                    relevant_scene_match_fks_for_block_a = self._get_anchor_relevant_scene_match_fk(
+                        valid_cluster_for_blocka)
+
+                    for scene_match_a in relevant_scene_match_fks_for_block_a:
+                        for node, node_data in adj_graph.adj[scene_match_a].items():
+                            if node in relevant_scene_match_fks_for_block_b:
+                                result_direction = node_data['direction']
+                                count_of_directions[result_direction] = count_of_directions[result_direction] + 1
+
+                        if count_of_directions.keys():
+                            direction_with_max_facings = \
+                                max(count_of_directions.iteritems(), key=operator.itemgetter(1))[0]
+                            result = result_dict[direction_with_max_facings]
                             return result
         return result
 
@@ -918,6 +972,52 @@ class ToolBox(GlobalSessionToolBox):
         kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
         return kpi_name, kpi_fk
 
+    def _get_adj_graph(self, scene_fk):
+        adj_graph = [self.block.adj_graphs_by_scene[key].edge_subgraph(
+            self._filter_redundant_edges(self.block.adj_graphs_by_scene[key])) for key in
+            self.block.adj_graphs_by_scene.keys() if scene_fk == int(key[0])][0]
+        return adj_graph
+
+    @staticmethod
+    def _filter_df(df, filters, exclude=0):
+        for key, val in filters.items():
+            if not isinstance(val, list):
+                val = [val]
+            if exclude:
+                df = df[~df[key].isin(val)]
+            else:
+                df = df[df[key].isin(val)]
+        return df
+
+    @staticmethod
+    def _get_anchor_relevant_scene_match_fk(valid_cluster):
+        relevant_scene_match_fk = [scene_match_fk for item in valid_cluster for
+                                   scene_match_fk in item['scene_match_fk']]
+        return relevant_scene_match_fk
+
+    def _logic_adjacency_within_bay(self, anchor_row, unique_scene_fk, unique_bay, secondary_product_fks):
+        result = 0
+        adj_graph = self._get_adj_graph(anchor_row.scene_fk)
+        valid_cluster_for_anchor = anchor_row.cluster.nodes.values()
+        anchor_relevant_scene_match_fk = self._get_anchor_relevant_scene_match_fk(valid_cluster_for_anchor)
+
+        max_shelves_in_mpis = self._filter_df(self.mpis, {'scene_fk': unique_scene_fk,
+                                                          'bay_number': unique_bay}).shelf_number.max()
+        number_relevant_products_in_block_by_shelf = \
+            self._filter_df(self.mpis,
+                            {'scene_match_fk': anchor_relevant_scene_match_fk}).groupby(
+                'shelf_number').count()['product_name'].values
+
+        if (not np.any(number_relevant_products_in_block_by_shelf > len(number_relevant_products_in_block_by_shelf))) or \
+                (len(number_relevant_products_in_block_by_shelf) == max_shelves_in_mpis):
+            for a_scene_match_fk in anchor_relevant_scene_match_fk:
+                for node, node_data in adj_graph.adj[a_scene_match_fk].items():
+                    if any(np.in1d(
+                            self.mpis[self.mpis.scene_match_fk == node].product_fk.values,
+                            secondary_product_fks)):
+                        result = 1
+                        return result
+        return result
 
     def generate_adjacent_matches(self, block_res):
         match_fk_list = set(match for cluster in block_res for node in cluster.nodes() for match in
