@@ -12,7 +12,7 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     session_list = [
         # "be04d3a9-e4ee-4ea8-b7c7-4ed2c39f4548",
-                    '23388796-e888-497b-bcbe-efe3d95f286d',
+        #             '23388796-e888-497b-bcbe-efe3d95f286d',
                     'a8e1b893-e0cc-475b-8537-f459bdc21f4d',
                     '7128148f-08e7-4c9f-9373-1c1a21be3e96',
                     # 'c59fb6c0-8727-44d6-af62-98c195baa74a',
