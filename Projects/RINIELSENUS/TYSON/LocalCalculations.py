@@ -22,7 +22,6 @@ def run_sessions(sessions):
         output = Output()
         Generator(data_provider, output).main_function()
         print("Completed {}% of local test sessions".format(round(float(i)/len(sessions)*100, 2)))
-    print("Done")
 
 
 if __name__ == '__main__':
@@ -32,8 +31,9 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
 
     test_sessions = [
+        '3c0abb33-5f80-447c-9d94-80d399930cf2',
         '70fcb7e9-72bd-4799-afea-4d018e142c5b', '79eb1a47-25b3-4aa6-9266-221d20b2e553',
-        'ea434336-4144-4e82-ae34-2e8307c1004f', '3c0abb33-5f80-447c-9d94-80d399930cf2',
+        'ea434336-4144-4e82-ae34-2e8307c1004f',
         'daf7fd47-fadb-455e-acd6-9926ed71ee73', 'b9cdc474-ccae-424b-a12c-c0c0a1195af1'
     ]
 

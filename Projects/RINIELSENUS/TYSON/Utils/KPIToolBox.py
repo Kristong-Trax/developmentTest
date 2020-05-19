@@ -1,9 +1,11 @@
 import numpy as np
+import itertools
 
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Algo.Calculations.Core.DataProvider import Data
 
 import Projects.RINIELSENUS.TYSON.Utils.Const as Const
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 
 __author__ = 'Trevaris'
 
@@ -20,10 +22,12 @@ class TysonToolBox:
         self.store_id = self.data_provider[Data.STORE_FK]
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.manufacturer_id = self.get_manufacturer_id_from_manufacturer_name(Const.MANUFACTURER)
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.template_info = self.data_provider[Data.TEMPLATES]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.block = Block(self.data_provider, self.output, common=self.common)
 
         self.mpis = self.match_product_in_scene \
             .merge(self.products, on='product_fk', suffixes=['', '_p']) \
@@ -34,7 +38,7 @@ class TysonToolBox:
         self.calculate_shelf_neighbors('scrambles', 'irrelevant')
         self.calculate_shelf_neighbors('ore ida', 'breakfast meat')
         self.calculate_shelf_neighbors('ore ida', 'irrelevant')
-        #
+        self.calculate_max_block_adjacency('scrambles', 'ore ida')
         self.calculate_adjacent_bay('breakfast meat', 'irrelevant')
 
     def calculate_shelf_neighbors(self, target, neighbor):
@@ -61,6 +65,37 @@ class TysonToolBox:
             result=result
         )
 
+    def calculate_max_block_adjacency(self, target, neighbor):
+        """
+        Calculates the Max Block Adjacency for `target` and `neighbor` products.
+
+        :param target: Key for customer products.
+        :param neighbor: Key for competitor products.
+        """
+
+        kpi = Const.KPIs[('scrambles', 'ore ida')]
+        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
+        target_max_block, target_scene = self.get_max_block_from_products(Const.PRODUCTS[target])
+        neighbor_max_block, neighbor_scene = self.get_max_block_from_products(Const.PRODUCTS[neighbor])
+
+        result = 0
+        if target_max_block and neighbor_max_block and (target_scene == neighbor_scene):
+            possible_adjacencies = itertools.product(target_max_block.nodes, neighbor_max_block.nodes)
+            adj_graph = self.block.adj_graphs_by_scene
+            directed_edges = [list(adj_graph[key].edges) for key in adj_graph.keys() if int(key[0]) == target_scene][0]
+            complimentary_edges = [edge[::-1] for edge in directed_edges if edge[::-1] not in directed_edges]
+            all_edges = directed_edges + complimentary_edges
+            result = int(any(True for edge in possible_adjacencies if edge in all_edges))
+
+        self.common.write_to_db_result(
+            fk=kpi_id,
+            numerator_id=self.manufacturer_id,
+            numerator_result=result,
+            denominator_id=self.store_id,
+            denominator_result=1,
+            result=result
+        )
+
     def calculate_adjacent_bay(self, target, neighbor):
         """
         Determines whether any products in `target` are located in the same scene
@@ -71,13 +106,14 @@ class TysonToolBox:
         """
         kpi = Const.KPIs.get((target, neighbor))
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
-        manufacturer_id = self.get_manufacturer_id_from_manufacturer_name(Const.MANUFACTURER)
         result = self.neighbors(target, neighbor,
                                 target_type='category', neighbor_type='product', same_bay=False)
 
+        # probe group id
+
         self.common.write_to_db_result(
             fk=kpi_id,
-            numerator_id=manufacturer_id,
+            numerator_id=self.manufacturer_id,
             numerator_result=result,
             denominator_id=self.store_id,
             denominator_result=1,
@@ -87,7 +123,7 @@ class TysonToolBox:
     def neighbors(self, target, neighbor, target_type='product', neighbor_type='category', same_bay=True):
         """
         Determine whether any of the products in `target` and `neighbor` are
-            in the same scene and same bay (if `same_bay` is True) or the same
+            in the same scene and same bay (if `same_bay` is True)
         or  in the same scene and same or adjacent bay (if `same_bay`is False).
 
         :param target:
@@ -155,3 +191,28 @@ class TysonToolBox:
         elif isinstance(values, str):
             filtered = df[df[column] == values]
         return filtered
+
+    def get_max_block_from_products(self, products):
+        """
+        Get max block based on list of product names.
+        :param products: List of product names.
+        :return: Max block graph.
+        """
+
+        product_ids = [self.get_product_id_from_product_name(product) for product in products]
+        blocks = self.block.network_x_block_together(
+            {'product_fk': product_ids},
+            additional={
+                'calculate_all_scenes': True,
+                'use_masking_only': True,
+                'minimum_facing_for_block': 2
+            }
+        )
+        blocks.sort_values(by=['block_facings', 'facing_percentage'], ascending=False, inplace=True)
+
+        max_block = scene_id = None
+        if not blocks.empty:
+            max_block = blocks['cluster'].iloc[0]
+            scene_id = blocks['scene_fk'].iloc[0]
+
+        return max_block, scene_id
