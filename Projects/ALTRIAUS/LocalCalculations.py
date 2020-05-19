@@ -149,16 +149,18 @@ if __name__ == '__main__':
 
 
     # dan sessions
-    sessions = [# '898140B1-0BCF-4E9F-A4D9-B36CFD7675B1',
-# 'D0276318-60B4-4D9F-92D7-BF9C4956D380',
-# '9ECADF45-BF6A-4E86-A3D3-EFFB61AC997D', # weird display tag issue causing graph to not generate correctly
-# '7A31A5B7-322E-42A8-ABEE-F2466807B72D',
-# '89F8D689-AAB5-4026-878E-263F69ADC116',
-'7A16487B-9A57-4525-91E2-2E93F8D5053E',
-'E9597BD3-6C3F-4A1A-A70B-3EF976082E45',
-'34EA2210-8201-4C9A-BD18-670CCFC4F463',
-'546F74F7-CFE9-4B33-B52D-F04DB9950B7A',
-'646FA89D-790B-481E-96E9-E3D9AD950238']
+    sessions = [
+        # '898140B1-0BCF-4E9F-A4D9-B36CFD7675B1',  # good
+        # 'D0276318-60B4-4D9F-92D7-BF9C4956D380',  # good
+        # '9ECADF45-BF6A-4E86-A3D3-EFFB61AC997D',  # no pos tags, weird smokeless position
+        # '7A31A5B7-322E-42A8-ABEE-F2466807B72D',  # good
+        '89F8D689-AAB5-4026-878E-263F69ADC116',  # needs outlier detection, great test scene
+        # '7A16487B-9A57-4525-91E2-2E93F8D5053E',  # good
+        # 'E9597BD3-6C3F-4A1A-A70B-3EF976082E45',  # good - merchandising display, not tobacco
+        # '34EA2210-8201-4C9A-BD18-670CCFC4F463',  # good
+        # '546F74F7-CFE9-4B33-B52D-F04DB9950B7A',  # good
+        # '646FA89D-790B-481E-96E9-E3D9AD950238'  # good
+    ]
 
     for session in sessions:
         print('===================={}===================='.format(session))

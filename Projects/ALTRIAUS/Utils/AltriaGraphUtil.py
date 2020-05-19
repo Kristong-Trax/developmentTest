@@ -99,7 +99,10 @@ class AltriaGraphBuilder(object):
 
         # create component graph (split graph into separate components by removing horizontal connections
         non_horizontal_edges = self._filter_horizontal_edges_between_blocks(self.condensed_adj_graph)
-        self.adj_component_graph = self.condensed_adj_graph.edge_subgraph(non_horizontal_edges)
+        if non_horizontal_edges:
+            self.adj_component_graph = self.condensed_adj_graph.edge_subgraph(non_horizontal_edges)
+        else:
+            self.adj_component_graph = self.condensed_adj_graph.copy()
         self._assign_fixture_and_block_numbers_to_product_clusters()
         self._assign_block_numbers_to_pos_items()
         self._assign_width_values_to_all_nodes()
@@ -256,11 +259,11 @@ class AltriaGraphBuilder(object):
         for node in flip_sign_nodes:
             self.condensed_adj_graph.nodes[node]['pos_type'] = NodeAttribute(['Flip-Sign'])
 
-        edges_to_keep = [edge for edge in self.condensed_adj_graph.edges() if
-                         edge not in edges_to_remove and (edge[1], edge[0]) not in edges_to_remove]
-
-        self.condensed_adj_graph = self.condensed_adj_graph.edge_subgraph(edges_to_keep)
-        return edges_to_keep
+        if edges_to_remove:
+            edges_to_keep = [edge for edge in self.condensed_adj_graph.edges() if
+                             edge not in edges_to_remove and (edge[1], edge[0]) not in edges_to_remove]
+            self.condensed_adj_graph = self.condensed_adj_graph.edge_subgraph(edges_to_keep)
+        return
 
     @staticmethod
     def cast_shadow_above(p, xoff, yoff):
@@ -315,7 +318,7 @@ class AltriaGraphBuilder(object):
         # unfreeze graph
         self.condensed_adj_graph = self.condensed_adj_graph.copy()
 
-        for node in nodes_to_remove:
+        for node in [node for node in set(nodes_to_remove)]:
             self.condensed_adj_graph.remove_node(node)
         return
 
@@ -357,10 +360,11 @@ class AltriaGraphBuilder(object):
             else:
                 shortest_edge = self._get_shortest_path(self.condensed_adj_graph, edges)
                 edges_to_remove.extend([edge for edge in edges if edge != shortest_edge])
-        edges_filter = [edge for edge in edges_filter if
-                        edge not in edges_to_remove and (edge[1], edge[0]) not in edges_to_remove]
 
-        self.condensed_adj_graph = self.condensed_adj_graph.edge_subgraph(edges_filter)
+        if edges_to_remove:
+            edges_filter = [edge for edge in edges_filter if
+                            edge not in edges_to_remove and (edge[1], edge[0]) not in edges_to_remove]
+            self.condensed_adj_graph = self.condensed_adj_graph.edge_subgraph(edges_filter)
         return
 
     def _get_shortest_path(self, adj_g, edges_to_check):
@@ -473,6 +477,11 @@ class AltriaGraphBuilder(object):
         cigarettes_one_ft = cigarettes_median * 5
         smokeless_one_ft = smokeless_median * 4
 
+        if pd.np.isnan(cigarettes_one_ft):
+            return smokeless_one_ft
+        elif pd.np.isnan(smokeless_one_ft):
+            return cigarettes_one_ft
+
         return (cigarettes_one_ft + smokeless_one_ft) / 2
 
     def _assign_no_header_attribute(self):
@@ -564,6 +573,6 @@ class AltriaGraphBuilder(object):
                                                                                    on='probe_match_fk'),
                                         overlay_image=True, scene_id=self.scene_id, project_name='altriaus',
                                         fig=filtered_figure)
-        fig.update_layout(autosize=False, width=1000, height=800)
+        fig.update_layout(autosize=False, width=1000, height=800, title=str(self.scene_id))
         iplot(fig)
 

@@ -221,7 +221,15 @@ class AltriaDataProvider:
         # since the x and y axes aren't normalized to scale, we need a threshold to prevent incorrect pairs
         y_min = top_left_points['y'].min()
         y_max = bottom_right_points['y'].max()
-        y_range = (y_max - y_min) * y_axis_threshold / 100
+
+        lowest_top_left = top_left_points['y'].max()
+        highest_bottom_right = bottom_right_points['y'].min()
+
+        # this is needed to deal with cases where there are no flip signs
+        if lowest_top_left < highest_bottom_right:
+            y_range = 9999
+        else:
+            y_range = (y_max - y_min) * y_axis_threshold / 100
 
         x_min = top_left_points['x'].min()
         x_max = bottom_right_points['x'].max()

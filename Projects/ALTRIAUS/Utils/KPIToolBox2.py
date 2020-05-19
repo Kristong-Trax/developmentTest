@@ -360,9 +360,12 @@ class ALTRIAUSToolBox:
             self.header_positions_template[(self.header_positions_template['Number of Headers'] == number_of_headers)]
 
         if relevant_positions.empty:
-            Log.error("Too many headers ({}) found for one block ({}). Unable to calculate positions!".format(
-                number_of_headers, parent_category))
-            return
+            if number_of_headers == 0:
+                return
+            else:
+                Log.error("Too many headers ({}) found for one block ({}). Unable to calculate positions!".format(
+                    number_of_headers, parent_category))
+                return
 
         positions = relevant_positions[parent_category].iloc[0]
         positions = [position.strip() for position in positions.split(',')]
