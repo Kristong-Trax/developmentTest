@@ -136,6 +136,9 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.filtered_matches = self.commontools.filtered_matches.copy()
         self.filtered_matches = self.filtered_matches.merge(self.probe_groups, on='probe_match_fk', how='left')
 
+        self.filtered_scif_secondary = self.commontools.filtered_scif_secondary.copy()
+        self.filtered_matches_secondary = self.commontools.filtered_matches_secondary.copy()
+
         self.scene_bay_shelf_product = self.commontools.scene_bay_shelf_product
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.full_store_info = self.commontools.full_store_info.copy()
@@ -317,6 +320,10 @@ class PepsicoUtil(UnifiedKPISingleton):
     def reset_filtered_scif_and_matches_to_exclusion_all_state(self):
         self.filtered_scif = self.commontools.filtered_scif.copy()
         self.filtered_matches = self.commontools.filtered_matches.copy()
+
+    def reset_secondary_filtered_scif_and_matches_to_exclusion_all_state(self):
+        self.filtered_scif_secondary = self.commontools.filtered_scif_secondary.copy()
+        self.filtered_matches_secondary = self.commontools.filtered_matches_secondary.copy()
 
     def get_available_hero_sku_list(self, dependencies_df):
         hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &

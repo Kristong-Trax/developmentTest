@@ -14,20 +14,25 @@ class HeroSKUAvailabilityByHeroTypeKpi(UnifiedCalculationsScript):
         self.kpi_name = self._config_params['kpi_type']
 
     def calculate(self):
-        # pass secondary scif and matches
-        self.util.filtered_scif, self.util.filtered_matches = \
-            self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
-                                                                                 self.util.filtered_matches,
+
+        self.util.filtered_scif_secondary, self.util.filtered_matches_secondary = \
+            self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif_secondary,
+                                                                                 self.util.filtered_matches_secondary,
                                                                                  self.kpi_name)
+        total_skus_in_ass = len(self.util.lvl3_ass_result)
+        if not total_skus_in_ass:
+            return
         lvl3_ass_res_df = self.dependencies_data
-        if lvl3_ass_res_df.empty:
+        if lvl3_ass_res_df.empty and total_skus_in_ass:
             self.write_to_db_result(fk=self.kpi_name, numerator_id=self.util.own_manuf_fk,
                                     result=0, score=0, denominator_id=self.util.store_id)
             return
         if not lvl3_ass_res_df.empty:
-            available_hero_list = self.util.get_unavailable_hero_sku_list(lvl3_ass_res_df)
-            filtered_scif = self.util.filtered_scif[self.util.filtered_scif[ScifConsts.PRODUCT_FK].isin(available_hero_list)]
-            result_df = filtered_scif.groupby([self.util.HERO_SKU_LABEL], as_index=False).agg({'updated_gross_len': np.sum})
+            available_hero_list = self.util.get_available_hero_sku_list(lvl3_ass_res_df)
+            filtered_scif = self.util.filtered_scif_secondary[self.util.filtered_scif_secondary[ScifConsts.PRODUCT_FK].\
+                isin(available_hero_list)]
+            result_df = filtered_scif.groupby([self.util.HERO_SKU_LABEL], as_index=False).agg({'updated_gross_len':
+                                                                                                   np.sum})
             result_df = result_df.merge(self.util.hero_type_custom_entity_df, left_on=self.util.HERO_SKU_LABEL,
                                         right_on='name', how='left')
             for i, row in result_df.iterrows():
@@ -36,7 +41,7 @@ class HeroSKUAvailabilityByHeroTypeKpi(UnifiedCalculationsScript):
                                         score=row['updated_gross_len'])
 
         # add a function that resets to secondary scif and matches
-        self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
+        self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()
 
     def kpi_type(self):
         pass

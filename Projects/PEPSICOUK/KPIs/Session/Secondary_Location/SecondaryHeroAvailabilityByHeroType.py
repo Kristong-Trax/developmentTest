@@ -14,6 +14,9 @@ class HeroSKUAvailabilityByHeroTypeKpi(UnifiedCalculationsScript):
         self.kpi_name = self._config_params['kpi_type']
 
     def calculate(self):
+        total_skus_in_ass = len(self.util.lvl3_ass_result)
+        if not total_skus_in_ass:
+            return
         lvl3_ass_res_df = self.dependencies_data
         if not lvl3_ass_res_df.empty:
             product_hero_df = self.util.all_products[[ScifConsts.PRODUCT_FK, self.util.HERO_SKU_LABEL]]

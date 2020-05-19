@@ -14,7 +14,17 @@ class HeroAvailabilityKpi(UnifiedCalculationsScript):
         self.kpi_name = self._config_params['kpi_type']
 
     def calculate(self):
-        kpi_result = len(self.dependencies_data['numerator_id'].unique())
+        total_skus_in_ass = len(self.util.lvl3_ass_result)
+        if not total_skus_in_ass:
+            return
+        lvl3_ass_result_sku = self.dependencies_data
+        if lvl3_ass_result_sku.empty and total_skus_in_ass:
+            self.write_to_db_result(fk=self.kpi_name, numerator_id=self.util.own_manuf_fk,
+                                    numerator_result=0, result=0,
+                                    denominator_id=self.util.store_id, denominator_result=total_skus_in_ass,
+                                    score=0)
+            return
+        kpi_result = len(lvl3_ass_result_sku['numerator_id'].unique())
         self.write_to_db_result(fk=self.kpi_name, numerator_id=self.util.own_manuf_fk,
                                 result=kpi_result, score=kpi_result,
                                 denominator_id=self.util.store_id)

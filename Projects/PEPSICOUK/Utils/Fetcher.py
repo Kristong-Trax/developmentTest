@@ -114,7 +114,8 @@ class PEPSICOUK_Queries(object):
         """.format(session_uid)
 
     @staticmethod
-    def get_template_store_area():
-        return """select st.template_fk, st.store_area_fk, sa.name as store_area 
-                  from static.template_store_area st
-                  JOIN static.store_task_area_group_items sa on st.store_area_fk = sa.pk"""
+    def get_scene_store_area(session_uid):
+        return """SELECT ta.scene_fk, sta.name as store_area FROM probedata.scene_store_task_area_group_items ta
+                  join static.store_task_area_group_items sta on ta.store_task_area_group_item_fk = sta.pk
+                  where ta.scene_fk in 
+                  (select pk from probedata.scene where session_uid='{}')""".format(session_uid)

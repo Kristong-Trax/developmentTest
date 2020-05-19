@@ -14,9 +14,9 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
         self.kpi_name = self._config_params['kpi_type']
 
     def calculate(self):
-        self.util.filtered_scif, self.util.filtered_matches = \
-            self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
-                                                                                 self.util.filtered_matches,
+        self.util.filtered_scif_secondary, self.util.filtered_matches_secondary = \
+            self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif_secondary,
+                                                                                 self.util.filtered_matches_secondary,
                                                                                  self.kpi_name)
         self.calculate_kpi_for_secondary_shelf()
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
@@ -26,8 +26,15 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
 
     def calculate_kpi_for_secondary_shelf(self):
         # scif for secondary should have display and store_area breakdown
-        ass_list = self.util.lvl3_ass_result[ScifConsts.PRODUCT_FK].values.tolist()
-        filtered_scif = self.util.filtered_scif[self.util.filtered_scif[ScifConsts.PRODUCT_FK].isin(ass_list)]
+
+        lvl3_ass_res = self.util.lvl3_ass_result
+        if lvl3_ass_res.empty:
+            return
+        ass_list = lvl3_ass_res[ScifConsts.PRODUCT_FK].values.tolist()
+        filtered_scif = self.util.filtered_scif_secondary[self.util.filtered_scif_secondary[ScifConsts.PRODUCT_FK]. \
+            isin(ass_list)]
+        # products_in_session = filtered_scif.loc[filtered_scif['facings'] > 0]['product_fk'].values
+        # lvl3_ass_res.loc[lvl3_ass_res['product_fk'].isin(products_in_session), 'in_store'] = 1
         assortment_scif = filtered_scif.drop_duplicates(subset=[ScifConsts.TEMPLATE_FK, 'store_area',
                                                                 ScifConsts.PRODUCT_FK])
         for i, result in assortment_scif.iterrows():
