@@ -79,12 +79,13 @@ class AltriaGraphBuilder(object):
         self.matches_df.loc[self.matches_df['category'] == 'POS', 'stacking_layer'] = 0
         self.matches_df.loc[(self.matches_df['stacking_layer'] < 1) &
                             (self.matches_df['probe_match_fk'].isin(self.check_and_add_menu_board_pos_item())),
-                            'stacking_layer'] = 1
+                            'stacking_layer'] = 2
         filtered_mpis = self.matches_df.loc[~self.matches_df['category'].isin(['General'])]
 
         self.base_adj_graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_mpis, combined_maskings,
                                                                       ['category', 'in_menu_board_area',
-                                                                       'probe_group_id'], use_masking_only=True)
+                                                                       'probe_group_id'], use_masking_only=True,
+                                                                                minimal_overlap_ratio=0.4)
         self.base_adj_graph = self.remove_pos_to_pos_edges(self.base_adj_graph)
         self.conversion_data = self.calculate_width_conversion()
 
@@ -561,12 +562,15 @@ class AltriaGraphBuilder(object):
         fig.update_layout(layout)
         return fig
 
-    def create_graph_image(self):
-        filtered_figure = GraphPlot.plot_networkx_graph(self.adj_component_graph, overlay_image=True,
+    def create_graph_image(self, graph=None):
+        if not graph:
+            graph = self.adj_component_graph
+
+        filtered_figure = GraphPlot.plot_networkx_graph(graph, overlay_image=True,
                                                         scene_id=self.scene_id, project_name='altriaus')
         filtered_figure.update_layout(autosize=False, width=1000, height=800)
 
-        filtered_figure = self.add_polygons_to_condensed_graph(self.adj_component_graph, 'category', self.matches_df,
+        filtered_figure = self.add_polygons_to_condensed_graph(graph, 'category', self.matches_df,
                                                                filtered_figure)
 
         fig = MaskingPlot.plot_maskings(mpis_with_masking_df=self.matches_df.merge(self.pos_masking_data,
