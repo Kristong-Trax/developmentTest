@@ -13,11 +13,13 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.RINIELSENUS.TYSON.KPIGenerator import Generator
 
 PROJECT_PATH = os.path.dirname(__file__)
-SAMPLE_SIZE = 10
+RETEST_SESSIONS = 10
+NEW_SESSIONS = 5
 
 
 def run_sessions(sessions):
     for i, session in enumerate(sessions, start=1):
+        print("======================================== {} ========================================".format(session))
         data_provider.load_session_data(session)
         output = Output()
         Generator(data_provider, output).main_function()
@@ -30,23 +32,37 @@ if __name__ == '__main__':
     project_name = 'rinielsenus'
     data_provider = KEngineDataProvider(project_name)
 
+    # run specific sessions
     test_sessions = [
         '3c0abb33-5f80-447c-9d94-80d399930cf2',
         '70fcb7e9-72bd-4799-afea-4d018e142c5b', '79eb1a47-25b3-4aa6-9266-221d20b2e553',
         'ea434336-4144-4e82-ae34-2e8307c1004f',
         'daf7fd47-fadb-455e-acd6-9926ed71ee73', 'b9cdc474-ccae-424b-a12c-c0c0a1195af1'
     ]
-
     run_sessions(test_sessions)
 
-    with open(os.path.join(PROJECT_PATH, "Utils", "tyson_relevant_sessions.csv")) as csv_file:
+    # run random selection of sessions previously run
+    with open(os.path.join(PROJECT_PATH, "Utils", "tested_sessions.csv"), 'rb') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        tested_sessions = [row[0] for row in csv_reader if row[0] not in test_sessions]
+    retest_sessions = random.sample(tested_sessions, RETEST_SESSIONS)
+    run_sessions(tested_sessions)
+
+    # run random selection of relevant sessions
+    with open(os.path.join(PROJECT_PATH, "Utils", "tyson_relevant_sessions.csv"), 'rb') as csv_file:
         csv_reader = csv.reader(csv_file)
         next(csv_reader)
-        relevant_sessions = [row[0] for row in csv_reader]
-
-    # maybe add filter
-    sample_sessions = random.sample(relevant_sessions, SAMPLE_SIZE)
+        relevant_sessions = [row[0] for row in csv_reader if row[0] not in test_sessions+tested_sessions]
+    sample_sessions = random.sample(relevant_sessions, NEW_SESSIONS)
     run_sessions(sample_sessions)
+
+    # store all calculated sessions
+    tested_sessions = set(tested_sessions + test_sessions + sample_sessions)
+    with open(os.path.join(PROJECT_PATH, "Utils", "tested_sessions.csv"), 'wb') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerows([[session] for session in tested_sessions])
+
+    print("Done")
 
 # def save_scene_item_facts_to_data_provider(data_provider, output):
 #     scene_item_facts_obj = output.get_facts()

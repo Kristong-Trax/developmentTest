@@ -3,7 +3,7 @@ KPIs = {
     ('scrambles', 'irrelevant'): 'SIMPLE_SCRAMBLES_SHELVED_WITH_IRRELEVANT',
     ('ore ida', 'breakfast meat'): 'JUST_CRACK_AN_EGG_SHELVED_WITH_BREAKFAST_MEATS',
     ('ore ida', 'irrelevant'): 'JUST_CRACK_AN_EGG_SHELVED_WITH_IRRELEVANT',
-    ('scrambles', 'ore ida'): 'UPDATE_ME',
+    ('scrambles', 'ore ida'): 'SIMPLE_SCRAMBLES_ADJACENT_TO_JUST_CRACK_AN_EGG',
     ('breakfast meat', 'irrelevant'): 'BREAKFAST_MEAT_ADJACENT_TO_IRRELEVANT'
 }
 

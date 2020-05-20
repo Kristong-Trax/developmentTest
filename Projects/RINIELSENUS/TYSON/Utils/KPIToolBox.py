@@ -1,7 +1,9 @@
+import pandas as pd
 import numpy as np
 import itertools
 
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Algo.Calculations.Core.DataProvider import Data
 
 import Projects.RINIELSENUS.TYSON.Utils.Const as Const
@@ -16,8 +18,9 @@ COLUMNS = ['product_fk', 'product_name', 'bay_number', 'scene_fk', 'brand_fk', '
 class TysonToolBox:
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
-        self.output = output
         self.common = Common(data_provider)
+        self.output = output
+        self.ps_data_provider = PsDataProvider(data_provider, output)
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.products = self.data_provider[Data.PRODUCTS]
@@ -53,7 +56,7 @@ class TysonToolBox:
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
         brand_id = self.get_brand_id_from_brand_name(Const.BRANDs.get(target))
 
-        result = self.neighbors(target, neighbor, 'product') if neighbor == 'irrelevant' \
+        result = self.neighbors(target, neighbor, neighbor_type='product') if neighbor == 'irrelevant' \
             else self.neighbors(target, neighbor)
 
         self.common.write_to_db_result(
@@ -109,8 +112,6 @@ class TysonToolBox:
         result = self.neighbors(target, neighbor,
                                 target_type='category', neighbor_type='product', same_bay=False)
 
-        # probe group id
-
         self.common.write_to_db_result(
             fk=kpi_id,
             numerator_id=self.manufacturer_id,
@@ -147,15 +148,20 @@ class TysonToolBox:
         elif neighbor_type == 'product':
             neighbor_ids = [self.get_product_id_from_product_name(product) for product in Const.PRODUCTS[neighbor]]
 
-        products = self.filter_df(self.mpis, target_type+'_fk', target_ids).drop_duplicates()
-        categories = self.filter_df(self.mpis, neighbor_type+'_fk', neighbor_ids).drop_duplicates()
+        target_products = self.filter_df(self.mpis, target_type+'_fk', target_ids).drop_duplicates()
+        neighbor_products = self.filter_df(self.mpis, neighbor_type+'_fk', neighbor_ids).drop_duplicates()
 
         if same_bay:
-            neighbors = products.merge(categories, how='inner', on=['scene_fk', 'bay_number'])
+            neighbors = target_products.merge(neighbor_products, how='inner', on=['scene_fk', 'bay_number'])
         else:
-            scene_neighbors = products.merge(categories, how='inner', on=['scene_fk'])
+            scenes = pd.concat([target_products['scene_fk'], neighbor_products['scene_fk']]).unique()
+            probe_groups = self.get_probe_groups(scenes)
+            target_products = target_products.merge(probe_groups, on=['scene_fk', 'product_fk'])
+            neighbor_products = neighbor_products.merge(probe_groups, on=['scene_fk', 'product_fk'])
+            scene_neighbors = target_products.merge(neighbor_products, on=['scene_fk'], suffixes=['', '_y'])
             neighbors = scene_neighbors.apply(
-                lambda row: 1 if abs(int(row['bay_number_x']) - int(row['bay_number_y'])) < 2 else np.nan,
+                lambda row: 1 if abs(int(row['bay_number']) - int(row['bay_number_y'])) < 2
+                and row['group_id'] == row['group_id_y'] else np.nan,
                 axis='columns'
             ).dropna()
 
@@ -179,6 +185,8 @@ class TysonToolBox:
     @staticmethod
     def filter_df(df, column, values):
         """
+        Returns a subset of `df` whose values are in `values`.
+
         :param df: DataFrame to filter
         :param column: Column name to filter on
         :param values: Values list to filter by
@@ -195,8 +203,9 @@ class TysonToolBox:
     def get_max_block_from_products(self, products):
         """
         Get max block based on list of product names.
+
         :param products: List of product names.
-        :return: Max block graph.
+        :return: (Max block graph, scene_fk).
         """
 
         product_ids = [self.get_product_id_from_product_name(product) for product in products]
@@ -211,8 +220,25 @@ class TysonToolBox:
         blocks.sort_values(by=['block_facings', 'facing_percentage'], ascending=False, inplace=True)
 
         max_block = scene_id = None
-        if not blocks.empty:
+        if not blocks.empty and any(blocks['is_block']):
             max_block = blocks['cluster'].iloc[0]
             scene_id = blocks['scene_fk'].iloc[0]
 
         return max_block, scene_id
+
+    def get_probe_groups(self, scenes):
+        """
+        Retrieves from probedata.stitching_probe_info the probe groups for all products in `scenes`.
+
+        :param scenes: np.ndarray of scene_fk.
+        :return: dataframe containing product_fk, scene_fk, and group_id of products in `scenes`.
+        """
+
+        query = """
+            SELECT DISTINCT mpip.product_fk, spi.group_id, ssi.scene_fk 
+                FROM probedata.stitching_probe_info AS spi
+                LEFT JOIN probedata.stitching_scene_info AS ssi ON ssi.pk = spi.stitching_scene_info_fk
+                LEFT JOIN probedata.match_product_in_probe AS mpip ON mpip.probe_fk = spi.probe_fk
+                WHERE ssi.scene_fk IN ({});
+        """.format(", ".join([str(scene) for scene in scenes]))
+        return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
