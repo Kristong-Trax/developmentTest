@@ -66,10 +66,10 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         self.calculate_adjacency_within_bay()
-        self.calculate_max_block_directional()
         self.calculate_sku_count()
         self.calculate_facing_count()
         self.calculate_smart_tags()
+        self.calculate_max_block_directional()
         self.calculate_base_measurement()
         self.calculate_liner_measure()
         self.calculate_horizontal_shelf_position()
@@ -147,31 +147,33 @@ class ToolBox(GlobalSessionToolBox):
 
             # dataset a: main block products
             relevant_product_fks_with_parent_brand_all_and_non_sensitive = \
-                self._get_product_fks_with_filter(self.scif,
+                self._get_product_fks_with_filter(self.mpis,
                                                   {'Parent Brand': ['ALL'], 'Sensitive': ['NOT SENSITIVE SKIN'],
-                                                   'product_type': ['SKU']})
+                                                   'product_type': ['SKU']}, additional_display=True)
             # dataset b: adjacent block products
             relevant_product_fks_with_parent_brand_all_and_sensitive = \
-                self._get_product_fks_with_filter(self.scif, {'Parent Brand': ['ALL'], 'Sensitive': ['SENSITIVE SKIN'],
-                                                              'product_type': ['SKU']})
+                self._get_product_fks_with_filter(self.mpis, {'Parent Brand': ['ALL'], 'Sensitive': ['SENSITIVE SKIN'],
+                                                              'product_type': ['SKU']}, additional_display=True)
 
             result = 19
             if relevant_product_fks_with_parent_brand_all_and_non_sensitive.size != 0 and relevant_product_fks_with_parent_brand_all_and_sensitive.size != 0:
+                # 'Smart Tag': 'additional display'
                 relevant_filters_for_blocka = {
                     'product_fk': relevant_product_fks_with_parent_brand_all_and_non_sensitive}  # products of dataset a
                 additional_filter_blocka = {'allowed_edge_type': ['connected'],
                                             'use_masking_only': True, 'calculate_all_scenes': True,
-                                            'allow_products_filters': {
-                                                'product_type': ['Empty', 'Other'], 'minimum_facing_for_block': 1,
-                                                'Smart Tag': 'additional display'}}
+                                            'allowed_products_filters': {'product_type': ['Empty', 'Other']},
+                                            'minimum_facing_for_block': 1,
+                                            'minimum_block_ratio': .01
+                                            }
 
                 relevant_filters_for_blockb = {
                     'product_fk': relevant_product_fks_with_parent_brand_all_and_sensitive}  # products of dataset b
                 additional_filter_blockb = {'allowed_edge_type': ['connected'], 'use_masking_only': True,
                                             'calculate_all_scenes': True, 'allow_products_filters': {
-                        'product_type': ['Empty', 'Other'], 'minimum_facing_for_block': 1,
-                        'Smart Tag': 'additional display'}}
-
+                        'product_type': ['Empty', 'Other']}, 'minimum_facing_for_block': 1, 'minimum_block_ratio': .01
+                                            }
+                # minimum_block_ratio
                 dataseta_block = self._get_block(relevant_filters_for_blocka,
                                                  additional_filter=additional_filter_blocka)
                 datasetb_block = self._get_block(relevant_filters_for_blockb,
@@ -901,12 +903,14 @@ class ToolBox(GlobalSessionToolBox):
                     edges_filter.append(self._get_shortest_path(adj_g, edges))
         return edges_filter
 
-    @staticmethod
-    def _get_product_fks_with_filter(scif, input_dict):
+    def _get_product_fks_with_filter(self, scif, input_dict, additional_display=False):
         for column, value in input_dict.items():
             if not isinstance(value, list):
                 value = [value]
             scif = scif[scif[column].isin(value)]
+
+        if additional_display:
+            scif = scif[scif['product_fk'].isin(set(self.smart_tags_product_fks))]
         return scif.product_fk.unique()
 
     def _get_shortest_path(self, adj_g, edges_to_check):
