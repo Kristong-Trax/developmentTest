@@ -6,10 +6,10 @@ from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
 import pandas as pd
 
 
-class HeroSKUAvailabilityByHeroTypeKpi(UnifiedCalculationsScript):
+class SecondaryHeroLengthByHeroTypeKpi(UnifiedCalculationsScript):
 
     def __init__(self, data_provider, config_params=None, **kwargs):
-        super(HeroSKUAvailabilityByHeroTypeKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
+        super(SecondaryHeroLengthByHeroTypeKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
         self.kpi_name = self._config_params['kpi_type']
 

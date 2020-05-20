@@ -4,10 +4,10 @@ from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts
 import numpy as np
 
 
-class LinearSpacePerProductKpi(UnifiedCalculationsScript):
+class SecondaryLinearSpacePerProductKpi(UnifiedCalculationsScript):
 
     def __init__(self, data_provider, config_params=None, **kwargs):
-        super(LinearSpacePerProductKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
+        super(SecondaryLinearSpacePerProductKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
         self.kpi_name = self._config_params['kpi_type']
 

@@ -45,10 +45,11 @@ class SecondaryHeroSOSofCategorySKUKpi(UnifiedCalculationsScript):
             hero_display_location_df['cat_len'] = hero_display_location_df['cat_len'].fillna(0)
             hero_display_location_df['sos'] = hero_display_location_df.apply(self.calculate_sos, axis=1)
             for i, row in hero_display_location_df.iterrows():
-                self.write_to_db_result(fk=self.kpi_name, numerator_id=self.util.own_manuf_fk,
+                self.write_to_db_result(fk=self.kpi_name, numerator_id=row[ScifConsts.PRODUCT_FK],
                                         numerator_result=row['updated_gross_length'],
-                                        denominator_id=row[ScifConsts.CATEGORY_FK],
-                                        denominator_result=row['cat_len'], result=row['sos'])
+                                        denominator_id=row[ScifConsts.TEMPLATE_FK],
+                                        denominator_result=row['cat_len'], result=row['sos'],
+                                        context_id=row['store_area'])
 
         # add a function that resets to secondary scif and matches
         self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()

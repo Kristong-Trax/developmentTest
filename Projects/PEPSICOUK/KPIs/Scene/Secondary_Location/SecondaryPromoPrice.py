@@ -3,10 +3,10 @@ from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalcula
 from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
 
 
-class PromoPriceKpi(UnifiedCalculationsScript):
+class SeondaryPromoPriceKpi(UnifiedCalculationsScript):
 
     def __init__(self, data_provider, config_params=None, **kwargs):
-        super(PromoPriceKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
+        super(SeondaryPromoPriceKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
         self.kpi_name = self._config_params['kpi_type']
 

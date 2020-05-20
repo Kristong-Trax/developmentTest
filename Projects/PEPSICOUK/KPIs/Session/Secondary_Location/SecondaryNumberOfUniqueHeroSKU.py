@@ -6,10 +6,10 @@ import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 
 
-class HeroAvailabilityKpi(UnifiedCalculationsScript):
+class SecondaryNumberofUniqueHeroSKUKpi(UnifiedCalculationsScript):
 
     def __init__(self, data_provider, config_params=None, **kwargs):
-        super(HeroAvailabilityKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
+        super(SecondaryNumberofUniqueHeroSKUKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PepsicoUtil(None, data_provider)
         self.kpi_name = self._config_params['kpi_type']
 
