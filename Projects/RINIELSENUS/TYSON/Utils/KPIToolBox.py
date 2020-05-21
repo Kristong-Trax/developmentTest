@@ -5,6 +5,7 @@ import itertools
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Utils.Logging.Logger import Log
 
 import Projects.RINIELSENUS.TYSON.Utils.Const as Const
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
@@ -155,13 +156,21 @@ class TysonToolBox:
             neighbors = target_products.merge(neighbor_products, how='inner', on=['scene_fk', 'bay_number'])
         else:
             scenes = pd.concat([target_products['scene_fk'], neighbor_products['scene_fk']]).unique()
-            probe_groups = self.get_probe_groups(scenes)
-            target_products = target_products.merge(probe_groups, on=['scene_fk', 'product_fk'])
-            neighbor_products = neighbor_products.merge(probe_groups, on=['scene_fk', 'product_fk'])
+
+            try:
+                probe_groups = pd.DataFrame()
+                for scene in scenes:
+                    probe_groups = pd.concat([probe_groups, self.get_probe_groups(scene)])
+                target_products = target_products.merge(probe_groups, on=['scene_fk', 'product_fk'])
+                neighbor_products = neighbor_products.merge(probe_groups, on=['scene_fk', 'product_fk'])
+            except:
+                Log.warning("Probe Group query failed.")
+
             scene_neighbors = target_products.merge(neighbor_products, on=['scene_fk'], suffixes=['', '_y'])
             neighbors = scene_neighbors.apply(
                 lambda row: 1 if abs(int(row['bay_number']) - int(row['bay_number_y'])) < 2
-                and row['group_id'] == row['group_id_y'] else np.nan,
+                and ('group_id' not in scene_neighbors.columns or row['group_id'] == row['group_id_y'])
+                else np.nan,
                 axis='columns'
             ).dropna()
 
@@ -226,19 +235,23 @@ class TysonToolBox:
 
         return max_block, scene_id
 
-    def get_probe_groups(self, scenes):
+    def get_probe_groups(self, scene):
         """
         Retrieves from probedata.stitching_probe_info the probe groups for all products in `scenes`.
 
-        :param scenes: np.ndarray of scene_fk.
+        :param scene: np.ndarray of scene_fk.
         :return: dataframe containing product_fk, scene_fk, and group_id of products in `scenes`.
         """
 
         query = """
-            SELECT DISTINCT mpip.product_fk, spi.group_id, ssi.scene_fk 
+            SELECT DISTINCT mpip.product_fk, spi.group_id, ssi.scene_fk
                 FROM probedata.stitching_probe_info AS spi
                 LEFT JOIN probedata.stitching_scene_info AS ssi ON ssi.pk = spi.stitching_scene_info_fk
                 LEFT JOIN probedata.match_product_in_probe AS mpip ON mpip.probe_fk = spi.probe_fk
-                WHERE ssi.scene_fk IN ({});
-        """.format(", ".join([str(scene) for scene in scenes]))
+                WHERE ssi.scene_fk = {};
+        """.format(scene)
+
         return pd.read_sql_query(query, self.ps_data_provider.rds_conn.db)
+
+    def commit_results(self):
+        self.common.commit_results_data()
