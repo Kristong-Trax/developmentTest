@@ -12,8 +12,7 @@ class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_BRANDS_BRAND_KPI)
         own_manufacturer_skus = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
-        own_manufacturer_skus = own_manufacturer_skus[(~own_manufacturer_skus['product_type'].isin(['Empty'])) &
-                                                      (~own_manufacturer_skus['brand'].isin(['Other']))]
+        own_manufacturer_skus = own_manufacturer_skus[~own_manufacturer_skus['product_type'].isin(['Empty'])]
         brands = set(own_manufacturer_skus['brand_fk'])
         for brand_fk in brands:
             brand_df = own_manufacturer_skus[own_manufacturer_skus['brand_fk'] == brand_fk]
