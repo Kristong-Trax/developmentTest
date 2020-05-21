@@ -4,7 +4,7 @@ from Projects.RINIELSENUS.Utils.KPIToolBox import MarsUsDogMainMealWet
 from Projects.RINIELSENUS.Utils.Utils import log_runtime
 from Projects.RINIELSENUS.PURINA.KPIToolBox import PURINAToolBox
 from Projects.RINIELSENUS.MILLERCOORS.Utils.KPIToolBox import MILLERCOORSToolBox
-
+from Projects.RINIELSENUS.TYSON.Utils.KPIToolBox import TysonToolBox
 
 __author__ = 'nethanel'
 
@@ -19,6 +19,7 @@ class MarsUsGenerator:
         self.tool_box = MarsUsDogMainMealWet(self.data_provider, self.output)
         # self.purina_tool_box = PURINAToolBox(self.data_provider, self.output)
         self.millercoors_tool_box = MILLERCOORSToolBox(self.data_provider, self.output)
+        self.tyson_tool_box = TysonToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -47,3 +48,9 @@ class MarsUsGenerator:
         #     self.millercoors_tool_box.commit_results()
         # except:
         #     Log.error('MillerCoors KPIs not calculated')
+
+        try:
+            self.tyson_tool_box.main_calculation()
+            self.tyson_tool_box.commit_results()
+        except:
+            Log.error('Tyson KPIs not calculated')
