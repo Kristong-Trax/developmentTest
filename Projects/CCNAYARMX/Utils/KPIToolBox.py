@@ -360,10 +360,19 @@ class ToolBox(GlobalSessionToolBox):
                                            result=count_of_bays_in_template)
 
     def calculate_platformas_scoring(self, row):
+        result_dict_list = []
         result_container = self._get_kpi_name_and_fk(row)
         kpi_name = result_container[0]
         kpi_fk = result_container[1]
         df = self.prereq[self.prereq['KPI Name'] == kpi_name]
+
+        # for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name].iterrows():
+        #     child_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
+        #     if not df.empty:
+        #         child_result = df[child_row['data_column']].iloc[0]
+
+
+
         resut_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk}
         if df.empty:
             resut_dict['result'] = np.nan
@@ -813,7 +822,7 @@ class ToolBox(GlobalSessionToolBox):
 
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        if kpi_name == 'Puerta Dedicada - Sabores':
+        if kpi_name == 'SOCI':
             a = 1
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
@@ -823,7 +832,7 @@ class ToolBox(GlobalSessionToolBox):
         denominator_entity = row[DENOMINATOR_ENTITY]
 
         product_type = self.sanitize_values(row[PRODUCT_TYPE])
-        target = str(row['target'])
+        target = row['target']
         numerator_param1 = row[NUMERATOR_PARAM_1]
         denominator_param1 = row[DENOMINATOR_PARAM_1]
         ignore_stacking = row[IGNORE_STACKING]
@@ -1311,10 +1320,13 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_availability(self, row):
         relevant_scif = self._filter_scif(row, self.scif)
+        if row[KPI_NAME] == 'Materiales Fijos':
+            a = '1'
         result = 0 if relevant_scif.empty else 1
         if pd.notna(row[RELEVANT_QUESTION_FK]):
             relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
             result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
+            result = float(result)/3
 
         return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': return_holder[2],
@@ -1478,18 +1490,21 @@ class ToolBox(GlobalSessionToolBox):
 
     @staticmethod
     def calculate_score_for_sos(target, result):
-        if len(target) > 3:
-            min_target, max_target = target.split('-')
-            if result * 100 >= int(min_target) and result * 100 <= int(max_target):
-                score = 1
+        if pd.notna(target):
+            target = str(target)
+            if len(target) > 3:
+                min_target, max_target = target.split('-')
+                if result * 100 >= int(min_target) and result * 100 <= int(max_target):
+                    score = 1
+                else:
+                    score = 0
             else:
-                score = 0
+                if result * 100 >= int(target):
+                    score = 1
+                else:
+                    score = 0
         else:
-            if result * 100 >= int(target):
-                score = 1
-            else:
-                score = 0
-
+            score = 0
         return score
 
     def _get_kpi_name_and_fk(self, row, generic_num_dem_id=False):
@@ -1599,9 +1614,9 @@ class ToolBox(GlobalSessionToolBox):
         container_for_results = []
         for prod_short_name, min_facings in facings_dict.items():
             count_of_facings_for_prod = scif[scif.product_short_name.isin([prod_short_name])].facings.sum()
-            temporary_result = 1 if count_of_facings_for_prod >= int(min_facings) else 0
+            temporary_result = 0 if count_of_facings_for_prod >= int(min_facings) else 1
             container_for_results.append(temporary_result)
-        result = 0 if 0 in container_for_results else 1
+        result = 1 if 1 in container_for_results else 0
         return result
 
     def calculate_prereq_ejecucion(self):
