@@ -26,6 +26,57 @@ def run_sessions(sessions):
         print("Completed {}% of local test sessions".format(round(float(i)/len(sessions)*100, 2)))
 
 
+def run_tested_sessions(num_sessions=True):
+    """
+    Run random selection of sessions previously run
+    or all previously run sessions if `num_sessions` is True.
+
+    :param num_sessions: Number of previously run sessions to run.
+    """
+
+    with open(os.path.join(PROJECT_PATH, "Utils", "tested_sessions.csv"), 'rb') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        tested_sessions = [row[0] for row in csv_reader if row[0] not in sessions]
+
+    if num_sessions is True:
+        retest_sessions = tested_sessions
+    else:
+        retest_sessions = random.sample(tested_sessions, num_sessions)
+
+    run_sessions(retest_sessions)
+
+    return retest_sessions
+
+
+def run_random_sessions(num_session):
+    """
+    Run random selection of relevant sessions.
+
+    :param num_session: Number of new sessions to run.
+    "return: The list of chosen sessions.
+    """
+
+    with open(os.path.join(PROJECT_PATH, "Utils", "tyson_relevant_sessions.csv"), 'rb') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        next(csv_reader)
+        relevant_sessions = [row[0] for row in csv_reader if row[0] not in sessions + retested_sessions]
+    random_sessions = random.sample(relevant_sessions, num_session)
+    run_sessions(random_sessions)
+
+    return random_sessions
+
+
+def write_tested_session(test_sessions, tested_sessions, sample_sessions):
+    """
+    Store all calculated sessions.
+    """
+
+    tested_sessions = set(tested_sessions + test_sessions + sample_sessions)
+    with open(os.path.join(PROJECT_PATH, "Utils", "tested_sessions.csv"), 'wb') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerows([[session] for session in tested_sessions])
+
+
 if __name__ == '__main__':
     LoggerInitializer.init('Tyson calculations')
     Config.init()
@@ -33,35 +84,19 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
 
     # run specific sessions
-    test_sessions = [
-        '3c0abb33-5f80-447c-9d94-80d399930cf2',
-        '70fcb7e9-72bd-4799-afea-4d018e142c5b', '79eb1a47-25b3-4aa6-9266-221d20b2e553',
-        'ea434336-4144-4e82-ae34-2e8307c1004f',
-        'daf7fd47-fadb-455e-acd6-9926ed71ee73', 'b9cdc474-ccae-424b-a12c-c0c0a1195af1'
+    sessions = [
+        # '70fcb7e9-72bd-4799-afea-4d018e142c5b',
+        # '3c0abb33-5f80-447c-9d94-80d399930cf2',
+        # '79eb1a47-25b3-4aa6-9266-221d20b2e553',
+        # 'ea434336-4144-4e82-ae34-2e8307c1004f',
+        # 'daf7fd47-fadb-455e-acd6-9926ed71ee73',
+        # 'b9cdc474-ccae-424b-a12c-c0c0a1195af1'
     ]
-    run_sessions(test_sessions)
 
-    # run random selection of sessions previously run
-    with open(os.path.join(PROJECT_PATH, "Utils", "tested_sessions.csv"), 'rb') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        tested_sessions = [row[0] for row in csv_reader if row[0] not in test_sessions]
-    retest_sessions = random.sample(tested_sessions, RETEST_SESSIONS)
-    run_sessions(tested_sessions)
-
-    # run random selection of relevant sessions
-    with open(os.path.join(PROJECT_PATH, "Utils", "tyson_relevant_sessions.csv"), 'rb') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        next(csv_reader)
-        relevant_sessions = [row[0] for row in csv_reader if row[0] not in test_sessions+tested_sessions]
-    sample_sessions = random.sample(relevant_sessions, NEW_SESSIONS)
-    run_sessions(sample_sessions)
-
-    # store all calculated sessions
-    tested_sessions = set(tested_sessions + test_sessions + sample_sessions)
-    with open(os.path.join(PROJECT_PATH, "Utils", "tested_sessions.csv"), 'wb') as csv_file:
-        csv_writer = csv.writer(csv_file)
-        csv_writer.writerows([[session] for session in tested_sessions])
-
+    run_sessions(sessions)
+    retested_sessions = run_tested_sessions(RETEST_SESSIONS)
+    sample_sessions = run_random_sessions(NEW_SESSIONS)
+    write_tested_session(sessions, retested_sessions, sample_sessions)
     print("Done")
 
 # def save_scene_item_facts_to_data_provider(data_provider, output):

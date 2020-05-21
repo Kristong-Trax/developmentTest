@@ -35,8 +35,7 @@ PRODUCTS = {
 }
 
 CATEGORIES = {
-    'bacon': "Bacon",
-    'breakfast meat': "Packaged Meats/Breakfast Sausage"
+    'breakfast meat': ["Bacon", "Packaged Meats/Breakfast Sausage"]
 }
 
 

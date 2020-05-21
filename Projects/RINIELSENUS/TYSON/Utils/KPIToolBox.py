@@ -145,7 +145,7 @@ class TysonToolBox:
             target_ids = [self.get_category_id_from_category_name(Const.CATEGORIES[target])]
 
         if neighbor_type == 'category':
-            neighbor_ids = [self.get_category_id_from_category_name(category) for category in Const.CATEGORIES.values()]
+            neighbor_ids = [self.get_category_id_from_category_name(category) for category in Const.CATEGORIES[neighbor]]
         elif neighbor_type == 'product':
             neighbor_ids = [self.get_product_id_from_product_name(product) for product in Const.PRODUCTS[neighbor]]
 
@@ -155,9 +155,8 @@ class TysonToolBox:
         if same_bay:
             neighbors = target_products.merge(neighbor_products, how='inner', on=['scene_fk', 'bay_number'])
         else:
-            scenes = pd.concat([target_products['scene_fk'], neighbor_products['scene_fk']]).unique()
-
             try:
+                scenes = pd.concat([target_products['scene_fk'], neighbor_products['scene_fk']]).unique()
                 probe_groups = pd.DataFrame()
                 for scene in scenes:
                     probe_groups = pd.concat([probe_groups, self.get_probe_groups(scene)])
