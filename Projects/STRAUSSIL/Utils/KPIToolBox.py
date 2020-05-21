@@ -18,7 +18,8 @@ class ToolBox(GlobalSessionToolBox):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.assortment = Assortment(self.data_provider, self.output)
         self.ps_data = PsDataProvider(self.data_provider, self.output)
-        self.kpi_external_targets = self.ps_data.get_kpi_external_targets()
+        self.kpi_external_targets = self.ps_data.get_kpi_external_targets(key_fields=Consts.KEY_FIELDS,
+                                                                          data_fields=Consts.DATA_FIELDS)
 
     def main_calculation(self):
         self.calculate_score_sos()
@@ -81,7 +82,7 @@ class ToolBox(GlobalSessionToolBox):
         denominator = len(product_fks)
         dis_result = self.get_result(dis_numerator, denominator)
         if denominator == 0:
-            oos_result = 0
+            oos_result = dis_result = None
         else:
             oos_result = 1 - dis_result
         oos_numerator = denominator - dis_numerator

@@ -1,10 +1,10 @@
 
 
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.BATRU.Tests.Data.test_data_batru_sanity import ProjectsSanityData
-# from Projects.BATRU.Calculations import BATRUCalculations
+from Projects.BATRU.Calculations import BATRUCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
-# from Projects.BATRU.Tests.Data.kpi_results import BATRUKpiResults
+from Projects.BATRU.Tests.Data.kpi_results import BATRUKpiResults
 # import os
 # import json
 
@@ -27,18 +27,18 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
     @PsSanityTestsFuncs.seeder.seed(["batru_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_batru_sanity(self):
         self.add_mocks()
-        # project_name = ProjectsSanityData.project_name
-        # data_provider = KEngineDataProvider(project_name)
-        # sessions = {'fffc4533-2b49-472b-b25c-30af62123bdd': []}
-        # kpi_results = BATRUKpiResults().get_kpi_results()
-        # for session in sessions.keys():
-        #     data_provider.load_session_data(str(session))
-        #     output = Output()
-        #     BATRUCalculations(data_provider, output).run_project_calculations()
-        #     # for scene in sessions[session]:
-        #     # data_provider.load_scene_data(str(session), scene_id=scene)
-        #     # SceneCalculations(data_provider).calculate_kpis()
-        # self._assert_test_results_matches_reality(kpi_results, ignore_kpis=['Assortment'])
-        # # self._assert_old_tables_kpi_results_filled()
-        # # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
-        # # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
+        project_name = ProjectsSanityData.project_name
+        data_provider = KEngineDataProvider(project_name)
+        sessions = {'AF410EF7-90D8-431A-AF12-60DE6ED7438B': []}
+        kpi_results = BATRUKpiResults().get_kpi_results()
+        for session in sessions.keys():
+            data_provider.load_session_data(str(session))
+            output = Output()
+            BATRUCalculations(data_provider, output).run_project_calculations()
+            # for scene in sessions[session]:
+            # data_provider.load_scene_data(str(session), scene_id=scene)
+            # SceneCalculations(data_provider).calculate_kpis()
+        self._assert_test_results_matches_reality(kpi_results, ignore_kpis=['Assortment'])
+        # self._assert_old_tables_kpi_results_filled()
+        # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
+        # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)

@@ -5,6 +5,7 @@ from Projects.INBEVNL.Tests.Data.data_test_inbevnl_sanity import ProjectsSanityD
 from Projects.INBEVNL.Calculations import INBEVNLINBEVBECalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.INBEVNL.Tests.Data.kpi_results import INBEVNLKpiResults
+from Trax.Utils.Testing.Case import skip
 # import os
 # import json
 
@@ -25,6 +26,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.mock_object('save_latest_templates', path='KPIUtils.INBEV.ToolBox.ToolBox')
         return
 
+    @skip("Deploy new KPIs")
     @PsSanityTestsFuncs.seeder.seed(["inbevnl_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_inbevnl_sanity(self):
         self.add_mocks()

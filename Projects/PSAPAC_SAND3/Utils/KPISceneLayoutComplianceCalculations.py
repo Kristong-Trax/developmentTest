@@ -28,6 +28,13 @@ class SceneLayoutComplianceCalc(object):
         self.match_product_data = self.match_product_in_scene.merge(self.products, on='product_fk', how='left')
         self.block = Block(self.data_provider, self.output)
 
+    def ensure_as_list(self, template_fks):
+        if isinstance(template_fks, list):
+            ext_target_template_fks = template_fks
+        else:
+            ext_target_template_fks = list([template_fks])
+        return ext_target_template_fks
+
     def get_relevant_custom_entity_data(self):
         Log.info("Getting custom entity data for the present super brands and store banner...")
         query = """ select * from static.custom_entity where pk in {custom_entity_pks};"""
@@ -79,7 +86,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for banner and template match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                     or banner of current store -> {store_b} != target banner -> {targ_b}
@@ -133,6 +140,7 @@ class SceneLayoutComplianceCalc(object):
                                 super_id=super_brand_pk,
                                 scat=sub_category_pk,
                             ))
+                        continue
                     else:
                         Log.info(
                             "Found brand blocked for super brand: {super_b} "
@@ -155,7 +163,8 @@ class SceneLayoutComplianceCalc(object):
                         context_id=sub_category_pk,
                         numerator_result=biggest_block_facings_count,
                         denominator_result=total_facings_count,
-                        target=result,
+                        target=block_threshold_perc,
+                        result=result,
                         score=score,
                         by_scene=True,
                     )
@@ -178,7 +187,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for template and banner match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                 or banner of current store -> {store_b} != target banner -> {targ_b}
@@ -286,9 +295,9 @@ class SceneLayoutComplianceCalc(object):
                     denominator_id=brand_pk_to_check,
                     context_id=sub_category_pk,
                     result=result,
-                    numerator_result=1,
+                    numerator_result=result,
                     denominator_result=1,
-                    score=1,
+                    score=result,
                     target=1,
                     by_scene=True,
                 )
@@ -312,7 +321,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for template and banner match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                 or banner of current store -> {store_b} != target banner -> {targ_b}
@@ -351,12 +360,18 @@ class SceneLayoutComplianceCalc(object):
                         (scif_with_products['Super Brand'] == super_brand_name) &
                         (scif_with_products['sub_category_fk'] == sub_category_pk)][facings_field].sum()
                     result = round((numerator / float(denominator)) * 100, 2)
+                else:
+                    Log.info("{kpi}: No products with sub cat: {scat} found. Save zero.".format(
+                        kpi=kpi_details.iloc[0][KPI_TYPE_COL],
+                        scat=sub_category_pk
+                    ))
+                    continue
                 if result >= each_target.threshold:
                     score = 1
                 self.common.write_to_db_result(
                     fk=kpi_details.iloc[0].pk,
                     numerator_id=store_banner_pk,
-                    denominator_id=brand_pk,
+                    denominator_id=super_brand_pk,
                     context_id=sub_category_pk,
                     numerator_result=numerator,
                     denominator_result=denominator,
@@ -404,7 +419,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for banner and template match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                                 or banner of current store -> {store_b} != target banner -> {targ_b}
@@ -480,6 +495,7 @@ class SceneLayoutComplianceCalc(object):
                         scat=sub_category_pk,
                         brand=brand_pk,
                     ))
+                    continue
 
                 self.common.write_to_db_result(
                     fk=kpi_details.iloc[0].pk,
@@ -513,7 +529,7 @@ class SceneLayoutComplianceCalc(object):
                 # check for banner and template match in target
                 target_banner_name = self.custom_entity_data[
                     self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in each_target.template_fks or \
+                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
                         target_banner_name != self.store_banner_name:
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
                                                 or banner of current store -> {store_b} != target banner -> {targ_b}
@@ -548,11 +564,20 @@ class SceneLayoutComplianceCalc(object):
                 denominator = scif_with_products[
                     (scif_with_products['Super Brand'] == super_brand_name) &
                     (scif_with_products['sub_category_fk'] == sub_category_pk)][facings_field].sum()
+                numerator = self.scif[
+                    (self.scif['brand_fk'] == brand_pk) &
+                    (self.scif['sub_category_fk'] == sub_category_pk)][facings_field].sum()
                 if denominator:
-                    numerator = self.scif[
-                        (self.scif['brand_fk'] == brand_pk) &
-                        (self.scif['sub_category_fk'] == sub_category_pk)][facings_field].sum()
                     result = round((numerator / float(denominator)) * 100, 2)
+                else:
+                    if numerator == 0:
+                        Log.info("{kpi}: No products with sub cat: {scat} brand: {brand} found. Save zero.".format(
+                            kpi=kpi_details.iloc[0][KPI_TYPE_COL],
+                            scat=sub_category_pk,
+                            brand=brand_pk,
+                        ))
+                        continue
+
                 if result >= each_target.threshold:
                     score = 1
                 self.common.write_to_db_result(

@@ -6,7 +6,7 @@ class BATRUKpiResults:
     @staticmethod
     def get_kpi_results():
         return {
-            'numerator_id': {
+            u'numerator_id': {
                 0: 2,
                 1: 2,
                 2: 0,
@@ -39,7 +39,7 @@ class BATRUKpiResults:
                 29: 317,
                 30: 24,
                 31: 24},
-            'kpi_level_2_fk': {
+            u'kpi_level_2_fk': {
                 0: 1000,
                 1: 1001,
                 2: 1002,
@@ -72,7 +72,7 @@ class BATRUKpiResults:
                 29: 1029,
                 30: 1330,
                 31: 1331},
-            'context_id': {
+            u'context_id': {
                 0: None,
                 1: None,
                 2: None,
@@ -105,7 +105,7 @@ class BATRUKpiResults:
                 29: None,
                 30: 9628147.0,
                 31: 9628147.0},
-            'client_name': {
+            u'client_name': {
                 0: u'Share of Shelf / Assortment',
                 1: u'Share of  Assortment \u2013 BAT',
                 2: u'Share of  Assortment \u2013 Competitors',
@@ -138,7 +138,7 @@ class BATRUKpiResults:
                 29: u'POSM Rest Display',
                 30: u'1. \u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u0435 \u043a\u043e\u043d\u043a\u0443\u0440\u0435\u043d\u0442\u043e\u0432',
                 31: u'3. \u041d\u0435\u0442 \u043f\u0443\u0441\u0442\u044b\u0445 \u043c\u0435\u0441\u0442'},
-            'session_fk': {
+            u'session_fk': {
                 0: 11860557,
                 1: 11860557,
                 2: 11860557,
@@ -171,7 +171,7 @@ class BATRUKpiResults:
                 29: 11860557,
                 30: 11860557,
                 31: 11860557},
-            'numerator_result': {
+            u'numerator_result': {
                 0: 0,
                 1: 0,
                 2: 0,
@@ -204,7 +204,7 @@ class BATRUKpiResults:
                 29: 0,
                 30: 0,
                 31: 0},
-            'denominator_result': {
+            u'denominator_result': {
                 0: 0,
                 1: 0,
                 2: 0,
@@ -237,7 +237,7 @@ class BATRUKpiResults:
                 29: 0,
                 30: 0,
                 31: 0},
-            'result': {
+            u'result': {
                 0: 52.91,
                 1: 43.59,
                 2: 56.41,
@@ -270,7 +270,7 @@ class BATRUKpiResults:
                 29: 1.0,
                 30: 2.0,
                 31: 2.0},
-            'denominator_id': {
+            u'denominator_id': {
                 0: 107755,
                 1: 107755,
                 2: 107755,
