@@ -115,7 +115,14 @@ class PEPSICOUK_Queries(object):
 
     @staticmethod
     def get_scene_store_area(session_uid):
-        return """SELECT ta.scene_fk, sta.name as store_area FROM probedata.scene_store_task_area_group_items ta
+        return """SELECT ta.scene_fk, sta.name as store_area, sta.pk as store_area_fk
+                  FROM probedata.scene_store_task_area_group_items ta
                   join static.store_task_area_group_items sta on ta.store_task_area_group_item_fk = sta.pk
                   where ta.scene_fk in 
                   (select pk from probedata.scene where session_uid='{}')""".format(session_uid)
+
+    @staticmethod
+    def get_all_store_areas():
+        return """SELECT name as store_area, pk as store_area_fk
+                  FROM static.store_task_area_group_items where is_used=1
+                """

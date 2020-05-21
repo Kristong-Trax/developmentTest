@@ -79,6 +79,7 @@ class PEPSICOUKCommonToolBox:
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS] # initial scif
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng) if rds_conn is None else rds_conn
         self.complete_scif_data()
+        self.store_areas = self.get_store_areas()
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -112,6 +113,11 @@ class PEPSICOUKCommonToolBox:
         self.filtered_matches_secondary = self.get_initial_secondary_matches()
         self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
                                                                   self.filtered_matches_secondary)
+
+    def get_store_areas(self):
+        query = PEPSICOUK_Queries.get_all_store_areas()
+        query_result = pd.read_sql_query(query, self.rds_conn.db)
+        return query_result
 
     def calculate_shelf_len_for_mixed_shelves(self):
         mix_displays = self.displays_template[self.displays_template[self.KPI_LOGIC] == 'Mix']\
@@ -301,7 +307,7 @@ class PEPSICOUKCommonToolBox:
         #
         aggregated_matches = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK], as_index=False). \
             agg({'facings_matches': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
-        scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
+        scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK], how='left')
         scif['facings'] = scif['updated_facings'] = scif['facings_matches']
         scif[ScifConsts.GROSS_LEN_ADD_STACK] = scif['updated_gross_len'] = scif[
             MatchesConsts.WIDTH_MM_ADVANCE]
@@ -324,7 +330,7 @@ class PEPSICOUKCommonToolBox:
     def assign_bays_to_bins(self):
         if not self.scene_display.empty:
             scene_display = self.scene_display[self.scene_display['display_name'] == 'Top Left Corner']
-            scene_display = scene_display[0:3] # REMOVE!!!!!!!!
+            # scene_display = scene_display[0:3] # REMOVE!!!!!!!!
             scene_display = scene_display.sort_values(['scene_fk', 'rect_x'])
             scene_display = scene_display.assign(rect_x_end=scene_display.groupby('scene_fk').rect_x.shift(-1)). \
                 fillna({'rect_x_end': np.inf})
@@ -341,7 +347,7 @@ class PEPSICOUKCommonToolBox:
         matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(bin_bay_displays)]
         bin_bay_scif = scif
         bin_bay_matches = matches
-        if not matches.empty:
+        if not  bin_bay_matches.empty:
             bin_bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER],
                                                          keep='last')
             bin_bay_scif, bin_bay_matches = self.calculate_product_length_on_display(bin_bay_scif, bin_bay_matches)
@@ -512,6 +518,8 @@ class PEPSICOUKCommonToolBox:
                               template_filters.keys())
         scene_keys = filter(lambda x: x in self.all_templates.columns.values.tolist(),
                             template_filters.keys())
+        scene_keys.extend(filter(lambda x: x in self.store_areas.columns.values.tolist(),
+                            template_filters.keys()))
         product_filters = {}
         scene_filters = {}
         for key in product_keys:

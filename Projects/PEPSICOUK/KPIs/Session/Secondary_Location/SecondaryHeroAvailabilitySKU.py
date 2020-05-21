@@ -30,17 +30,18 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
         lvl3_ass_res = self.util.lvl3_ass_result
         if lvl3_ass_res.empty:
             return
+        kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
         ass_list = lvl3_ass_res[ScifConsts.PRODUCT_FK].values.tolist()
         filtered_scif = self.util.filtered_scif_secondary[self.util.filtered_scif_secondary[ScifConsts.PRODUCT_FK]. \
             isin(ass_list)]
         # products_in_session = filtered_scif.loc[filtered_scif['facings'] > 0]['product_fk'].values
         # lvl3_ass_res.loc[lvl3_ass_res['product_fk'].isin(products_in_session), 'in_store'] = 1
-        assortment_scif = filtered_scif.drop_duplicates(subset=[ScifConsts.TEMPLATE_FK, 'store_area',
+        assortment_scif = filtered_scif.drop_duplicates(subset=[ScifConsts.TEMPLATE_FK, 'store_area_fk',
                                                                 ScifConsts.PRODUCT_FK])
         for i, result in assortment_scif.iterrows():
             score = 100
             custom_res = self.util.commontools.get_yes_no_result(score)
-            self.write_to_db_result(fk=self.kpi_name, numerator_id=result.product_fk,
+            self.write_to_db_result(fk=kpi_fk, numerator_id=result.product_fk,
                                     numerator_result=1, result=custom_res,
                                     denominator_id=result.template_fk, denominator_result=1, score=score,
-                                    context_id=result.store_area)
+                                    context_id=result.store_area_fk)
