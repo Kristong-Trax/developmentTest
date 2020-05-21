@@ -1,6 +1,6 @@
 
 
-from Projects.PS1_SAND.Calculations import PS1SandCalculation
+from Projects.PS1_SAND.Calculations import DIAGEOTWCalculations
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
@@ -14,4 +14,4 @@ if __name__ == '__main__':
     session = '70b69c85-61a6-4ce4-ad60-f0d174ced645'
     data_provider.load_session_data(session)
     output = Output()
-    PS1SandCalculation(data_provider, output).run_project_calculations()
+    DIAGEOTWCalculations(data_provider, output).run_project_calculations()

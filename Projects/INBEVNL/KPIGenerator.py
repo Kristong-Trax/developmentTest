@@ -4,14 +4,14 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from KPIUtils.INBEV.INBEVToolBox import INBEVToolBox
+from KPIUtils.INBEV.INBEVToolBox_v2 import INBEVToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
 __author__ = 'urid'
 
 
 class INBEVNLINBEVBEGenerator:
-    def __init__(self, data_provider, output, template=None):
+    def __init__(self, data_provider, output):
         self.k_engine = BaseCalculationsGroup(data_provider, output)
         self.data_provider = data_provider
         self.project_name = data_provider.project_name
@@ -22,7 +22,7 @@ class INBEVNLINBEVBEGenerator:
         self.session_info = SessionInfo(data_provider)
         self.store_id = self.data_provider[Data.STORE_FK]
         self.common = Common(self.data_provider)
-        self.tool_box = INBEVToolBox(self.data_provider, self.output, template, common=self.common)
+        self.tool_box = INBEVToolBox(self.data_provider, self.output, common=self.common)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
