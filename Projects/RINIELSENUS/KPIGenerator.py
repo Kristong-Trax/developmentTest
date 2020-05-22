@@ -34,7 +34,7 @@ class MarsUsGenerator:
             import time
             s = time.time()
             self.tool_box.calculate_scores()
-            print('_______________________ Calculations took {} ______________________'.format(time.time() - s))
+            print('______________________ Calculations took {} _____________________'.format(round(time.time() - s), 2))
         except:
             Log.error('Mars US kpis not calculated')
 
