@@ -4,17 +4,28 @@ import random
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
+from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
 # from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 # from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
-#
+from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 # from Projects.RINIELSENUS.SceneKpis.SceneCalculations import SceneCalculations
-from Projects.RINIELSENUS.TYSON.KPIGenerator import Generator
+from Projects.RINIELSENUS.TYSON.KPIGenerator import TysonGenerator
 
 PROJECT_PATH = os.path.dirname(__file__)
 RETEST_SESSIONS = 10
 NEW_SESSIONS = 5
+
+
+class TysonCalculations(BaseCalculationsScript):
+    def run_project_calculations(self):
+        self.timer.start()
+        try:
+            TysonGenerator(self.data_provider, self.output).main_function()
+        except Exception:
+            Log.error("Tyson KPIs not calculated.")
+        self.timer.stop('KPIGenerator.run_project_calculations')
 
 
 def run_sessions(sessions):
@@ -22,7 +33,7 @@ def run_sessions(sessions):
         print("======================================== {} ========================================".format(session))
         data_provider.load_session_data(session)
         output = Output()
-        Generator(data_provider, output).main_function()
+        TysonCalculations(data_provider, output).run_project_calculations()
         print("Completed {}% of local test sessions".format(round(float(i)/len(sessions)*100, 2)))
 
 

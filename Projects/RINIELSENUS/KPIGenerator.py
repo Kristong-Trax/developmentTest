@@ -52,5 +52,5 @@ class MarsUsGenerator:
         try:
             self.tyson_tool_box.main_calculation()
             self.tyson_tool_box.commit_results()
-        except:
+        except Exception:
             Log.error('Tyson KPIs not calculated')
