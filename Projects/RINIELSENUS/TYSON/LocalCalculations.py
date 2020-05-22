@@ -45,7 +45,7 @@ def run_tested_sessions(num_sessions=True):
 
     run_sessions(retest_sessions)
 
-    return retest_sessions
+    return tested_sessions
 
 
 def run_random_sessions(num_session):
