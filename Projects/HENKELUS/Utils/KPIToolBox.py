@@ -65,29 +65,22 @@ class ToolBox(GlobalSessionToolBox):
         self.block_parent_results = {}
 
     def main_calculation(self):
-        # self.calculate_adjacency_within_bay()
-        # self.calculate_max_block_directional()
-        # self.calculate_sku_count()
-        # self.calculate_facing_count()
-        # self.calculate_smart_tags()
-        # self.calculate_base_measurement()
-        # self.calculate_liner_measure()
-        # self.calculate_horizontal_shelf_position()
-        # self.calculate_vertical_shelf_position()
-        # self.calculate_max_block_directional()
-        # self.calculate_sku_count()
-        # self.calculate_facing_count()
-        # self.calculate_smart_tags()
-        # self.calculate_base_measurement()
-        # self.calculate_liner_measure()
-        # self.calculate_horizontal_shelf_position()
-        # self.calculate_vertical_shelf_position()
-
-        # self.calculate_blocking_comp()
+        self.calculate_adjacency_within_bay()
+        self.calculate_max_block_directional()
+        self.calculate_sku_count()
+        self.calculate_facing_count()
+        self.calculate_smart_tags()
+        self.calculate_base_measurement()
+        self.calculate_liner_measure()
+        self.calculate_horizontal_shelf_position()
+        self.calculate_vertical_shelf_position()
+        self.calculate_max_block_directional()
+        self.calculate_blocking_comp()
 
         self.calculate_blocking()
         self.calculate_blocking_orientation()
         self.calculate_blocking_sequence()
+
         self.calculate_max_blocking_adj()
         self.calculate_negative_max_blocking_adj()
 
@@ -300,6 +293,8 @@ class ToolBox(GlobalSessionToolBox):
             custom_text = 'Not blocked'
             result = 0
 
+            param_data_list = []
+            param_data_type = "" #either parent brand or format for list
             param_dict = {}
             allow_connected_dict = {}
             exclude_dict = {}
@@ -314,11 +309,24 @@ class ToolBox(GlobalSessionToolBox):
                     elif 'EXCLUDE' in param:
                         exclude_dict[data_param] = data_value
                     else:
-                        param_dict[data_param] = data_value
+
+                        if not pd.isna(data_param) and pd.isna(data_value):
+                            param_data_type = data_param
+                            param_data_list = self.scif[data_param].unique().tolist()
+                            if None in param_data_list:
+                                param_data_list.remove(None)
+                        else:
+                            if len(param_dict.keys()) == 0 and param_data_type == "":
+                                param_data_type = data_param
+                                param_data_list = data_value
+                            else:
+                                param_dict[data_param] = data_value
 
             allowed_connected_pk_list = self.generate_pk_list_for_connected_exclude_block(allow_connected_dict)
             exclude_pk_list = self.generate_pk_list_for_connected_exclude_block(exclude_dict)
             allow_connected_block = {'product_fk': allowed_connected_pk_list}
+
+
             exclude_filter = {'product_fk': exclude_pk_list}
 
             additional_block_params = {'include_stacking': True,
@@ -328,20 +336,29 @@ class ToolBox(GlobalSessionToolBox):
                                        'vertical_horizontal_methodology': ['bucketing', 'percentage_of_shelves'],
                                        'shelves_required_for_vertical': 1.0}
 
-            block_result = self.block.network_x_block_together(param_dict, additional=additional_block_params)
-            if not block_result.empty:
-                result = 1
-                orientation_list = block_result[block_result['is_block'] == True].orientation.tolist()
-                if 'Vertical' in orientation_list:
-                    custom_text = 'Vertical'
-                else:
-                    custom_text = 'Horizontal'
 
-            custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
-            self.block_parent_results[kpi_fk] = result
-            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
-                             numerator_result=result,
-                             denominator_result=1, result=custom_result_fk, score=0)
+            for item in param_data_list:
+                param_dict[param_data_type] = [item]
+
+                block_result = self.block.network_x_block_together(param_dict, additional=additional_block_params)
+
+                if not block_result.empty:
+                    result = 1
+                    orientation_list = block_result[block_result['is_block'] == True].orientation.tolist()
+                    if 'Vertical' in orientation_list:
+                        custom_text = 'Vertical'
+                    else:
+                        custom_text = 'Horizontal'
+
+                custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
+                numerator_id_value = self.scif['product_fk'][self.scif[param_data_type] == item].iloc[0]
+                param_dict.pop(param_data_type)
+
+                self.block_parent_results[kpi_fk] = result
+                self.write_to_db(fk=kpi_fk, numerator_id=numerator_id_value, denominator_id=self.store_id,
+                                 numerator_result=result,
+                                 denominator_result=1, result=custom_result_fk, score=0)
+
 
     def calculate_blocking_sequence(self):
         template = self.kpi_template[Consts.BLOCKING_SEQUENCE]
@@ -436,33 +453,35 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            Params1 = row['DATASET A PARAM 1']
-            Value1 = self.sanitize_row(row['DATASET A VALUE 1'])
+            params1 = row['DATASET A PARAM 1']
+            value1 = self.sanitize_row(row['DATASET A VALUE 1'])
 
             reduced_scif = self.scif[~self.scif['Scent'].isnull()
                                      | (~self.scif['Format'].isnull())]
 
-            for scent in reduced_scif['Scent'].tolist():
+            for scent in reduced_scif['Scent'].unique().tolist():
+                # print(scent)
                 filtered_scif = reduced_scif[reduced_scif['Scent'] == scent]
-                product_fk = self.scif.product_fk.iloc[0]
+                product_fk = filtered_scif.product_fk.iloc[0]
                 result = 0
                 custom_result_fk = Consts.CUSTOM_RESULTS['No']
                 block_result_list = []
 
                 for scene in filtered_scif.scene_fk.unique().tolist():
+                    # print(scene)
                     general_filter = {}
                     filtered_scif = filtered_scif[filtered_scif['scene_fk'] == scene]
-                    if not pd.isna(Params1):
+                    if not pd.isna(params1):
 
-                        general_filter[Params1] = Value1
+                        general_filter[params1] = value1
                         general_filter['scene_fk'] = [scene]
 
                         block_result_df = self.block.network_x_block_together(population=general_filter,
                                                                               additional={
                                                                                   'allowed_edge_type': ['connected'],
-                                                                                  'minimum_facing_for_block': 1,
+                                                                                  # 'minimum_facing_for_block': 1,
                                                                                   'allowed_products_filters': {
-                                                                                      'product_type': 'sku'},
+                                                                                      'product_type': 'SKU'},
 
                                                                                   'include_stacking': True})
 
@@ -656,10 +675,6 @@ class ToolBox(GlobalSessionToolBox):
             Block_Exlude_Params1 = row['BLOCK EXCLUDE PARAM 1']
             Block_Exclude_Value1 = self.sanitize_row(row['BLOCK EXCLUDE VALUE 1'])
 
-            # is_aggregate = row['aggregate']
-            #
-            # if is_aggregate == 'yes':
-            #     pass
 
             connect_dict = {}
             excluded_dict = {}
@@ -690,9 +705,6 @@ class ToolBox(GlobalSessionToolBox):
             excluded_dict = {Exlude_Params1: Exclude_Value1, Exlude_Params2: Exclude_Value2,
                              Block_Exlude_Params1: Block_Exclude_Value1}
 
-            # for param_key in param_dict.keys():
-            #     if not pd.isna(param_key):
-            #         general_filters[param_key] = param_dict[param_key]
 
             general_filters = self.remove_nans_dict(param_dict)
             excluded_filters = self.remove_nans_dict(excluded_dict)
