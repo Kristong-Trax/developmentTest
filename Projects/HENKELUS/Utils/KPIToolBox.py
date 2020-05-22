@@ -146,31 +146,37 @@ class ToolBox(GlobalSessionToolBox):
 
             # dataset a: main block products
             relevant_product_fks_with_parent_brand_all_and_non_sensitive = \
-                self._get_product_fks_with_filter(self.scif,
+                self._get_product_fks_with_filter(self.mpis,
                                                   {'Parent Brand': ['ALL'], 'Sensitive': ['NOT SENSITIVE SKIN'],
                                                    'product_type': ['SKU']})
             # dataset b: adjacent block products
             relevant_product_fks_with_parent_brand_all_and_sensitive = \
-                self._get_product_fks_with_filter(self.scif, {'Parent Brand': ['ALL'], 'Sensitive': ['SENSITIVE SKIN'],
+                self._get_product_fks_with_filter(self.mpis, {'Parent Brand': ['ALL'], 'Sensitive': ['SENSITIVE SKIN'],
                                                               'product_type': ['SKU']})
 
             result = 19
             if relevant_product_fks_with_parent_brand_all_and_non_sensitive.size != 0 and relevant_product_fks_with_parent_brand_all_and_sensitive.size != 0:
+                # 'Smart Tag': 'additional display'
                 relevant_filters_for_blocka = {
                     'product_fk': relevant_product_fks_with_parent_brand_all_and_non_sensitive}  # products of dataset a
-                additional_filter_blocka = {'allowed_edge_type': ['connected'],
+                additional_filter_blocka = {'allowed_edge_type': ['encapsulated'],
                                             'use_masking_only': True, 'calculate_all_scenes': True,
-                                            'allow_products_filters': {
-                                                'product_type': ['Empty', 'Other'], 'minimum_facing_for_block': 1,
-                                                'Smart Tag': 'additional display'}}
+                                            'allowed_products_filters': {'product_type': ['Empty', 'Other']},
+                                            'minimum_facing_for_block': 1,
+                                            'minimum_block_ratio': .01
+                                            }
 
                 relevant_filters_for_blockb = {
                     'product_fk': relevant_product_fks_with_parent_brand_all_and_sensitive}  # products of dataset b
-                additional_filter_blockb = {'allowed_edge_type': ['connected'], 'use_masking_only': True,
-                                            'calculate_all_scenes': True, 'allow_products_filters': {
-                        'product_type': ['Empty', 'Other'], 'minimum_facing_for_block': 1,
-                        'Smart Tag': 'additional display'}}
+                additional_filter_blockb = {'allowed_edge_type': ['encapsulated'], 'use_masking_only': True,
+                                            'calculate_all_scenes': True, 'allowed_products_filters': {
+                        'product_type': ['Empty', 'Other']}, 'minimum_facing_for_block': 1, 'minimum_block_ratio': .01
+                                            }
+                if self.smart_tags_product_fks:
+                    additional_filter_blocka['allowed_products_filters']['product_fk'] = set(self.smart_tags_product_fks)
+                    additional_filter_blockb['allowed_products_filters']['product_fk'] = set(self.smart_tags_product_fks)
 
+                # minimum_block_ratio
                 dataseta_block = self._get_block(relevant_filters_for_blocka,
                                                  additional_filter=additional_filter_blocka)
                 datasetb_block = self._get_block(relevant_filters_for_blockb,
@@ -178,8 +184,8 @@ class ToolBox(GlobalSessionToolBox):
 
                 if (not dataseta_block.empty) and (not datasetb_block.empty):
                     if any(np.in1d(dataseta_block.scene_fk, datasetb_block.scene_fk)):
-                        dataseta_block = dataseta_block.sort_values('total_facings', ascending=False)
-                        datasetb_block = datasetb_block.sort_values('total_facings', ascending=False)
+                        dataseta_block = dataseta_block.sort_values('block_facings', ascending=False)
+                        datasetb_block = datasetb_block.sort_values('block_facings', ascending=False)
                         result = self._get_adjacent_node_direction(dataseta_block, datasetb_block)
 
             self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=1,
@@ -945,12 +951,12 @@ class ToolBox(GlobalSessionToolBox):
                     edges_filter.append(self._get_shortest_path(adj_g, edges))
         return edges_filter
 
-    @staticmethod
-    def _get_product_fks_with_filter(scif, input_dict):
+    def _get_product_fks_with_filter(self, scif, input_dict):
         for column, value in input_dict.items():
             if not isinstance(value, list):
                 value = [value]
             scif = scif[scif[column].isin(value)]
+
         return scif.product_fk.unique()
 
     def _get_shortest_path(self, adj_g, edges_to_check):
@@ -1004,7 +1010,7 @@ class ToolBox(GlobalSessionToolBox):
                                 result_direction = node_data['direction']
                                 count_of_directions[result_direction] = count_of_directions[result_direction] + 1
 
-                        if count_of_directions.keys():
+                        if np.sum(count_of_directions.values())>0:
                             direction_with_max_facings = \
                                 max(count_of_directions.iteritems(), key=operator.itemgetter(1))[0]
                             result = result_dict[direction_with_max_facings]
