@@ -2,7 +2,7 @@
 from Trax.Utils.Logging.Logger import Log
 from Projects.RINIELSENUS.Utils.KPIToolBox import MarsUsDogMainMealWet
 from Projects.RINIELSENUS.Utils.Utils import log_runtime
-from Projects.RINIELSENUS.PURINA.KPIToolBox import PURINAToolBox
+# from Projects.RINIELSENUS.PURINA.KPIToolBox import PURINAToolBox
 from Projects.RINIELSENUS.MILLERCOORS.Utils.KPIToolBox import MILLERCOORSToolBox
 from Projects.RINIELSENUS.TYSON.Utils.KPIToolBox import TysonToolBox
 
@@ -34,7 +34,7 @@ class MarsUsGenerator:
             import time
             s = time.time()
             self.tool_box.calculate_scores()
-            print('______________________ Calculations took {} _____________________'.format(round(time.time() - s), 2))
+            print('__________________ Calculations took {} _________________'.format(round(time.time() - s)))
         except:
             Log.error('Mars US kpis not calculated')
 
