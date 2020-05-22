@@ -4,7 +4,7 @@ __author__ = 'Nicolas Keeton'
 
 
 class Consts(object):
-    template_file_name = 'KPI Template - Working 5-11-2020 v6.xlsx'
+    template_file_name = 'Henkel QA Status 5-21-2020.xlsx'
     KPI_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                      template_file_name)
 
@@ -23,12 +23,13 @@ class Consts(object):
     NEGATIVE_BLOCK_ADJ_SHEET = 'Negative Block Adjacency'
     MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET = 'Max Block Directional Adjacency'
     ADJACENCY_WITHIN_BAY = 'Adjacency Within Bay'
+    BLOCK_ORIENTATION = 'Block Orientation'
 
     relevant_kpi_sheets = [FACING_COUNT_SHEET, SKU_COUNT_SHEET, SMART_TAG_SHEET,BLOCKING_SEQUENCE,
                            LINEAR_SHEET, BASE_MEASURE_SHEET,
                            VERTICAL_SHELF_SHEET, BLOCKING_SHEET, HORIZONTAL_SHELF_SHEET, SHELF_MAP_SHEET,
                            BLOCK_COMPOSITION_SHEET, MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET, MAX_BLOCK_ADJ_SHEET, NEGATIVE_BLOCK_ADJ_SHEET,
-                            ADJACENCY_WITHIN_BAY
+                            ADJACENCY_WITHIN_BAY, BLOCK_ORIENTATION
                            ]
 
     OWN_MANUFACTURER_FK = 49
@@ -84,3 +85,17 @@ class Consts(object):
         'DATASET {} BLOCK ALLOW-CONNECTED {} 3',
         #  'DATASET {}  BLOCK EXCLUDE {} 1',
     ]
+
+    BLOCK_ORIENTATION_DATA_COLUMNS = [
+        '{} 1',
+        '{} 2',
+        'EXCLUDE {} 1',
+        'EXCLUDE {} 2',
+        'BLOCK ALLOW-CONNECTED {} 1',
+        'BLOCK ALLOW-CONNECTED {} 2',
+        'BLOCK ALLOW-CONNECTED {} 3',
+        #  'DATASET {}  BLOCK EXCLUDE {} 1',
+    ]
+
+
+

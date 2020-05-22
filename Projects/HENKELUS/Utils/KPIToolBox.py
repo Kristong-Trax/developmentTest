@@ -65,15 +65,15 @@ class ToolBox(GlobalSessionToolBox):
         self.block_parent_results = {}
 
     def main_calculation(self):
-        self.calculate_adjacency_within_bay()
-        self.calculate_max_block_directional()
-        self.calculate_sku_count()
-        self.calculate_facing_count()
-        self.calculate_smart_tags()
-        self.calculate_base_measurement()
-        self.calculate_liner_measure()
-        self.calculate_horizontal_shelf_position()
-        self.calculate_vertical_shelf_position()
+        # self.calculate_adjacency_within_bay()
+        # self.calculate_max_block_directional()
+        # self.calculate_sku_count()
+        # self.calculate_facing_count()
+        # self.calculate_smart_tags()
+        # self.calculate_base_measurement()
+        # self.calculate_liner_measure()
+        # self.calculate_horizontal_shelf_position()
+        # self.calculate_vertical_shelf_position()
         # self.calculate_max_block_directional()
         # self.calculate_sku_count()
         # self.calculate_facing_count()
@@ -87,7 +87,6 @@ class ToolBox(GlobalSessionToolBox):
 
         self.calculate_blocking()
         self.calculate_blocking_orientation()
-        #
         self.calculate_blocking_sequence()
         self.calculate_max_blocking_adj()
         self.calculate_negative_max_blocking_adj()
@@ -288,14 +287,55 @@ class ToolBox(GlobalSessionToolBox):
                                      denominator_id=self.store_id, result=result)
 
     def calculate_blocking_orientation(self):
-        template = self.kpi_template[Consts.BASE_MEASURE_SHEET]
-        # for i, row in template.iterrows():
-        #     kpi_name = row['KPI Name'].strip()
-        #     kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-        #     Params1 = row['PARAM 1']
+        template = self.kpi_template[Consts.BLOCK_ORIENTATION]
+        for i, row in template.iterrows():
+            kpi_name = row['KPI Name'].strip()
+            kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
+            custom_text = 'Not blocked'
+            result = 0
 
-        # debug
-        self.block_parent_results[623] = 1
+            param_dict = {}
+            allow_connected_dict = {}
+            exclude_dict = {}
+
+            for param in Consts.BLOCK_ORIENTATION_DATA_COLUMNS:
+                data_param = row[param.format('PARAM')]
+                data_value = self.sanitize_row(row[param.format('VALUE')])
+
+                if not pd.isna(data_param):
+                    if 'CONNECTED' in param:
+                        allow_connected_dict[data_param] = data_value
+                    elif 'EXCLUDE' in param:
+                        exclude_dict[data_param] = data_value
+                    else:
+                        param_dict[data_param] = data_value
+
+            allowed_connected_pk_list = self.generate_pk_list_for_connected_exclude_block(allow_connected_dict)
+            exclude_pk_list = self.generate_pk_list_for_connected_exclude_block(exclude_dict)
+            allow_connected_block = {'product_fk': allowed_connected_pk_list}
+            exclude_filter = {'product_fk': exclude_pk_list}
+
+            additional_block_params = {'include_stacking': True,
+                                       'allowed_edge_type': ['connected'],
+                                       'allowed_products_filters': allow_connected_block,
+                                       'exclude_filter': exclude_filter,
+                                       'vertical_horizontal_methodology': ['bucketing', 'percentage_of_shelves'],
+                                       'shelves_required_for_vertical': 1.0}
+
+            block_result = self.block.network_x_block_together(param_dict, additional=additional_block_params)
+            if not block_result.empty:
+                result = 1
+                orientation_list = block_result[block_result['is_block'] == True].orientation.tolist()
+                if 'Vertical' in orientation_list:
+                    custom_text = 'Vertical'
+                else:
+                    custom_text = 'Horizontal'
+
+            custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
+            self.block_parent_results[kpi_fk] = result
+            self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
+                             numerator_result=result,
+                             denominator_result=1, result=custom_result_fk, score=0)
 
     def calculate_blocking_sequence(self):
         template = self.kpi_template[Consts.BLOCKING_SEQUENCE]
@@ -374,6 +414,7 @@ class ToolBox(GlobalSessionToolBox):
             product_fks = self.smart_tags_product_fks
 
         additional_block_params = {'minimum_facing_for_block': 2,
+                                   'allowed_edge_type': ['connected'],
                                    'include_stacking': True,
                                    'allowed_products_filters': {'product_type': ['SKU', 'Other', 'Empty'],
                                                                 'product_fk': product_fks}}
@@ -412,6 +453,7 @@ class ToolBox(GlobalSessionToolBox):
 
                         block_result_df = self.block.network_x_block_together(population=general_filter,
                                                                               additional={
+                                                                                  'allowed_edge_type': ['connected'],
                                                                                   'minimum_facing_for_block': 1,
                                                                                   'allowed_products_filters': {
                                                                                       'product_type': 'sku'},
@@ -468,7 +510,7 @@ class ToolBox(GlobalSessionToolBox):
                         else:
                             param_dict[data_param] = data_value
 
-                allowed_connected_pk_list = self.generate_pk_list_for_connected_block(allow_connected_dict)
+                allowed_connected_pk_list = self.generate_pk_list_for_connected_exclude_block(allow_connected_dict)
                 allow_connected_block = {'product_fk': allowed_connected_pk_list}
 
                 block_sequence_filter_dict[letter] = param_dict
@@ -527,7 +569,7 @@ class ToolBox(GlobalSessionToolBox):
                         else:
                             param_dict[data_param] = data_value
 
-                allowed_connected_pk_list = self.generate_pk_list_for_connected_block(allow_connected_dict)
+                allowed_connected_pk_list = self.generate_pk_list_for_connected_exclude_block(allow_connected_dict)
                 allow_connected_block = {'product_fk': allowed_connected_pk_list}
 
                 block_sequence_filter_dict[letter] = param_dict
@@ -554,7 +596,7 @@ class ToolBox(GlobalSessionToolBox):
                              numerator_result=result,
                              denominator_result=1, result=custom_result_fk, score=0)
 
-    def generate_pk_list_for_connected_block(self, connected_dict):
+    def generate_pk_list_for_connected_exclude_block(self, connected_dict):
 
         product_pk_list = []
         for param in connected_dict.keys():
@@ -572,6 +614,7 @@ class ToolBox(GlobalSessionToolBox):
         block_result = self.block.network_x_block_together(
             population=filter_dict,
             additional={
+                'allowed_edge_type': ['connected'],
                 'allowed_products_filters': allowed_connected_dict,
                 'include_stacking': True})
 
@@ -654,6 +697,7 @@ class ToolBox(GlobalSessionToolBox):
             block_result = self.block.network_x_block_together(
                 population=general_filters,
                 additional={'minimum_block_ratio': minimum_block_ratio,
+                            'allowed_edge_type': ['connected'],
                             'allowed_products_filters': {'product_type': connected_product_pks},
                             'include_stacking': True,
                             'exclude_filter': excluded_filters})
@@ -663,7 +707,7 @@ class ToolBox(GlobalSessionToolBox):
             total_facings = total_facings_df['total_facings'].sum()
             if not is_blocked.empty:
                 for i, row in is_blocked.iterrows():
-                    ratio = row.block_facings / total_facings
+                    ratio = row.block_facings / float(total_facings)
                     if ratio >= minimum_block_ratio:
                         result = 1
                         result_value = 'Yes'
