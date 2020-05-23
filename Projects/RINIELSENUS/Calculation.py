@@ -4,7 +4,6 @@ import time
 
 from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
 # from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
-from Projects.RINIELSENUS.TYSON.KPIGenerator import TysonGenerator
 
 # from KPIUtils.DB.Common import Common
 
@@ -95,34 +94,13 @@ if __name__ == '__main__':
     #     'a419ffbd-ecb2-46b4-b5f0-e33bf07e64ec',
     #
     # ]
-    #
-    # sessions = [
-    #     '7c66fc40-0631-44fe-b92b-4f4d0b4cf1c5',
-    #     '8d6c5d91-5a2a-4321-b728-9fe61d88e7b8',
-    #     'aae4e2c3-2c59-488a-8e62-68ec5c041f98',
-    #     '7e3e6225-8fe3-4f31-adcd-50160f0c0ab6',
-    #
-    # ]
 
     sessions = [
-        # '0d41903f-12bf-4cba-98de-efa8234d561f'
-    ]
-
-    for session in sessions:
-        print
-        print('*******************************************************************')
-        print('--------------{}-------------'.format(session))
-        s = time.time()
-        Log.info('starting session : {}'.format(session))
-
-        # session = Common(data_provider).get_session_id(session)
-        data_provider.load_session_data(session)
-        output = Output()
-        MarsUsCalculations(data_provider, output).run_project_calculations()
-
-        print('session took {} minutes to calculate'.format((time.time() - s)/60.0))
-
-    tyson_sessions = [
+        '7c66fc40-0631-44fe-b92b-4f4d0b4cf1c5',
+        '8d6c5d91-5a2a-4321-b728-9fe61d88e7b8',
+        'aae4e2c3-2c59-488a-8e62-68ec5c041f98',
+        '7e3e6225-8fe3-4f31-adcd-50160f0c0ab6',
+        '0d41903f-12bf-4cba-98de-efa8234d561f',
         '70fcb7e9-72bd-4799-afea-4d018e142c5b',
         '3c0abb33-5f80-447c-9d94-80d399930cf2',
         '79eb1a47-25b3-4aa6-9266-221d20b2e553',
@@ -131,11 +109,15 @@ if __name__ == '__main__':
         'b9cdc474-ccae-424b-a12c-c0c0a1195af1'
     ]
 
-    for session in tyson_sessions:
-        print("===================== {} =====================".format(session))
-        Log.info("Starting session {}".format(session))
-        start = time.time()
+    for session in sessions:
+        print('')
+        print('------------------- {} ------------------'.format(session))
+        s = time.time()
+        Log.info('starting session : {}'.format(session))
+
+        # session = Common(data_provider).get_session_id(session)
         data_provider.load_session_data(session)
         output = Output()
         MarsUsCalculations(data_provider, output).run_project_calculations()
-        print("Session took {} minutes to calculate.".format((time.time() - start)/60.))
+
+        print('session took {} minutes to calculate'.format(round((time.time() - s)/60.0)))
