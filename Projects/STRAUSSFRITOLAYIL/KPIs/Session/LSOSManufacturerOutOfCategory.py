@@ -1,4 +1,4 @@
-from Projects.STRAUSSFRITOLAYIL.KPIs.Util import StraussfritolayilUtil
+from Projects.STRAUSSFRITOLAYIL.KPIs.Utils import StraussfritolayilUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
 

@@ -32,9 +32,18 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.kpi_external_targets = self.ps_data.get_kpi_external_targets(key_fields=Consts.KEY_FIELDS,
                                                                           data_fields=Consts.DATA_FIELDS)
+        self.add_sub_brand_to_scif()
         self.assortment = Assortment(self.data_provider, self.output)
         self.lvl3_assortment = self.assortment.get_lvl3_relevant_ass()
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+
+    def add_sub_brand_to_scif(self):
+        sub_brand_df = self.ps_data.get_custom_entities_df(entity_type_name='sub_brand')
+        sub_brand_df['entity_name'] = sub_brand_df['entity_name'].str.lower()
+        sub_brand_df.rename({'entity_fk': 'sub_brand_fk'}, axis='columns', inplace=True)
+        # delete duplicates by name and entity_type_fk to avoid recognition duplicates.
+        sub_brand_df.drop_duplicates(subset=['entity_name', 'sub_brand_fk'], keep='first', inplace=True)
+        self.scif = self.scif.merge(sub_brand_df, left_on="sub_brand", right_on="entity_name", how="left")
 
     # def calculate_sos(self, sos_filters, **general_filters):
     #     numerator_linear = self.calculate_share_space(**dict(sos_filters, **general_filters))
