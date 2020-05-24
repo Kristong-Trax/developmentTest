@@ -7,13 +7,12 @@ if __name__ == '__main__':
     LoggerInitializer.init('straussfritolayil calculations')
     Config.init()
     project_name = 'straussfritolayil'
-    session_uid = 'e20e0ba1-7be2-433a-9606-c6bf60e2c9e1'
-    session_id = 19
-    scene_uid = 'd188cff1-262c-4e16-8d28-191e037ac5e3'
+    session_uid = '865aa384-4b22-4f37-90cd-d9fd2d6b9072'
+    session_id = 78
 
     message_session = {'event_name': 'SESSION_PROCESSED', 'timestamp': '', 'project_name': project_name,
                        'session_uid': session_uid, 'session_id': session_id, 'scene_ids': [], 'scene_uids': [],
-                       'number_of_scenes': 5, 'attributes': {'ApproximateReceiveCount': 1}, 'wave_type': 'primary',
+                       'number_of_scenes': 4, 'attributes': {'ApproximateReceiveCount': 1}, 'wave_type': 'primary',
                        'wave_uid': ''}
 
 

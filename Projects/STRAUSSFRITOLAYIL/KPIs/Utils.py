@@ -39,10 +39,12 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
 
     def add_sub_brand_to_scif(self):
         sub_brand_df = self.ps_data.get_custom_entities_df(entity_type_name='sub_brand')
-        sub_brand_df['entity_name'] = sub_brand_df['entity_name'].str.lower()
+        sub_brand_df = sub_brand_df[['entity_name', 'entity_fk']]
+        # sub_brand_df['entity_name'] = sub_brand_df['entity_name'].str.lower()
         sub_brand_df.rename({'entity_fk': 'sub_brand_fk'}, axis='columns', inplace=True)
         # delete duplicates by name and entity_type_fk to avoid recognition duplicates.
-        sub_brand_df.drop_duplicates(subset=['entity_name', 'sub_brand_fk'], keep='first', inplace=True)
+        sub_brand_df.drop_duplicates(subset=['entity_name'], keep='first', inplace=True)
+        self.scif['sub_brand'] = self.scif['sub_brand'].fillna('no value')
         self.scif = self.scif.merge(sub_brand_df, left_on="sub_brand", right_on="entity_name", how="left")
 
     # def calculate_sos(self, sos_filters, **general_filters):
