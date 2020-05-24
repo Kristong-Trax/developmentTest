@@ -22,7 +22,7 @@ class SeondaryPromoPriceKpi(UnifiedCalculationsScript):
         filtered_matches = self.util.filtered_matches_secondary
         product_display = filtered_matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, 'display_id'])
         if not product_display.empty:
-            store_area = self.util.filtered_scif_secondary['store_area'].values[0]
+            store_area = self.util.filtered_scif_secondary['store_area_fk'].values[0]
             kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
             for i, row in product_display.iterrows():
                 price = 0

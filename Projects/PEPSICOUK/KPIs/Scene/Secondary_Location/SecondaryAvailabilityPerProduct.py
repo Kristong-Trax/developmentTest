@@ -21,8 +21,8 @@ class SecondaryAvailabilityPerProductKpi(UnifiedCalculationsScript):
                                                                                  self.kpi_name)
         if not self.util.filtered_matches_secondary.empty:
             kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
-            filtered_matches = self.util.filtered_matches.copy()
-            store_area = self.util.filtered_scif_secondary['store_area'].values[0]
+            filtered_matches = self.util.filtered_matches_secondary.copy()
+            store_area = filtered_matches['store_area_fk'].values[0]
             product_display = filtered_matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, 'display_id'])
             for i, row in product_display.iterrows():
                 self.write_to_db_result(fk=kpi_fk, result=1,  numerator_id=row[MatchesConsts.PRODUCT_FK],

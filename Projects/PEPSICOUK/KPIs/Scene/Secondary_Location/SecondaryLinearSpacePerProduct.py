@@ -22,7 +22,7 @@ class SecondaryLinearSpacePerProductKpi(UnifiedCalculationsScript):
         if not self.util.filtered_matches_secondary.empty:
             kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
             filtered_matches = self.util.filtered_matches_secondary.copy()
-            store_area = self.util.filtered_scif_secondary['store_area'].values[0]
+            store_area = self.util.filtered_scif_secondary['store_area_fk'].values[0]
 
             result_df = filtered_matches.groupby([MatchesConsts.PRODUCT_FK, 'display_id'],
                                                  as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum})

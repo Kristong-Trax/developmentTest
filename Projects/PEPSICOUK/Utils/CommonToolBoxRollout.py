@@ -125,6 +125,8 @@ class PEPSICOUKCommonToolBox:
         mix_scenes = self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(mix_displays)][ScifConsts.SCENE_FK].unique()
         mix_matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK].isin(mix_scenes)]
         shelf_len_df = pd.DataFrame(columns=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER, 'shelf_length'])
+        shelf_len_df[MatchesConsts.SCENE_FK] = shelf_len_df[MatchesConsts.SCENE_FK].astype('float')
+        shelf_len_df[MatchesConsts.BAY_NUMBER] = shelf_len_df[MatchesConsts.BAY_NUMBER].astype('float')
         if not mix_matches.empty:
             scenes_bays = mix_matches.drop_duplicates(subset=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])
             for i, row in scenes_bays.iterrows():
@@ -168,33 +170,62 @@ class PEPSICOUKCommonToolBox:
         matches = matches.merge(self.displays_template, left_on=ScifConsts.TEMPLATE_NAME,
                                 right_on=self.DISPLAY_NAME_TEMPL, how='left')
         matches['facings_matches'] = 1
-        matches = self.construct_display_id(matches)
+        if not matches.empty:
+            matches = self.place_posms_at_bay_minus_one_to_bays(matches)
+            matches = self.construct_display_id(matches)
 
-        bin_bay_scif, bin_bay_matches = self.calculate_displays_by_bin_bay_logic(scif, matches)
-        bin_bin_scif, bin_bin_matches = self.calculate_displays_by_bin_bin_logic(scif, matches)
-        bin_shelf_scif, bin_shelf_matches = self.calculate_displays_by_mix_logic(scif, matches)
-        shelf_scif, shelf_matches = self.calculate_displays_by_shelf_logic(scif, matches)
+            bin_bay_scif, bin_bay_matches = self.calculate_displays_by_bin_bay_logic(scif, matches)
+            bin_bin_scif, bin_bin_matches = self.calculate_displays_by_bin_bin_logic(scif, matches)
+            bin_shelf_scif, bin_shelf_matches = self.calculate_displays_by_mix_logic(scif, matches)
+            shelf_scif, shelf_matches = self.calculate_displays_by_shelf_logic(scif, matches)
 
-        scif = bin_bay_scif.append(bin_bin_scif)
-        scif = scif.append(bin_shelf_scif)
-        scif = scif.append(shelf_scif)
-        scif.reset_index(drop=True, inplace=True)
+            scif = bin_bay_scif.append(bin_bin_scif)
+            scif = scif.append(bin_shelf_scif)
+            scif = scif.append(shelf_scif)
+            scif.reset_index(drop=True, inplace=True)
 
-        matches = bin_bay_matches.append(bin_bin_matches)
-        matches = matches.append(bin_shelf_matches)
-        matches = matches.append(shelf_matches)
-        matches.reset_index(drop=True, inplace=True)
-        # maybe remove extra columns from scif and matches
+            matches = bin_bay_matches.append(bin_bin_matches)
+            matches = matches.append(bin_shelf_matches)
+            matches = matches.append(shelf_matches)
+            matches.reset_index(drop=True, inplace=True)
+            # maybe remove extra columns from scif and matches
         return scif, matches
+
+    def place_posms_at_bay_minus_one_to_bays(self, matches):
+        bay_number_minus_one = matches[matches[MatchesConsts.BAY_NUMBER] == -1]
+        if not bay_number_minus_one.empty:
+            filtered_matches = matches[~(matches[MatchesConsts.BAY_NUMBER] == -1)]
+            bay_borders = filtered_matches.assign(start_x=filtered_matches['rect_x'],
+                                                  end_x=filtered_matches['rect_x']).groupby([MatchesConsts.SCENE_FK,
+                            MatchesConsts.BAY_NUMBER], as_index=False).agg({'start_x': np.min, 'end_x': np.max})
+            bay_number_minus_one['new_bay_number'] = bay_number_minus_one.apply(self.find_bay_for_posm,
+                                                                                args=(bay_borders,), axis=1)
+            matches = matches.merge(bay_number_minus_one[[MatchesConsts.PROBE_MATCH_FK, 'new_bay_number']],
+                                    on=MatchesConsts.PROBE_MATCH_FK, how='left')
+            matches.loc[(matches[MatchesConsts.BAY_NUMBER] == -1), MatchesConsts.BAY_NUMBER] = \
+                matches['new_bay_number']
+            matches.drop('new_bay_number', axis=1, inplace=True)
+            matches = matches[~(matches[MatchesConsts.BAY_NUMBER].isnull())]
+        return matches
+
+    def find_bay_for_posm(self, row, bay_borders):
+        bay_df = bay_borders[(bay_borders[MatchesConsts.SCENE_FK] == row[MatchesConsts.SCENE_FK]) &
+                             (bay_borders['start_x']<=row['rect_x']) & (bay_borders['end_x']>=row['rect_x'])]
+        bay_number = bay_df[MatchesConsts.BAY_NUMBER].values[0] if not bay_df.empty else None
+        return bay_number
 
     def construct_display_id(self, matches):
         # matches['display_id'] = matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])\
         #     .cumcount()
-        scene_bay = matches[[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER]].values.tolist()
-        scene_bay = enumerate(set(map(lambda x: tuple(x), scene_bay)))
+        scene_bay = matches[[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER]].drop_duplicates()
+        scene_bay = scene_bay.sort_values(by=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])
+        scene_bay = scene_bay.values.tolist()
+        scene_bay = set(map(lambda x: tuple(x), scene_bay))
         display_dict = {}
-        for i, value in scene_bay:
+        i = 0
+        for value in scene_bay:
             display_dict[value] = i+1
+            i += 1
         matches['display_id'] = matches.apply(self.assign_diplay_id, args=(display_dict, ), axis=1)
         return matches
 
@@ -219,7 +250,7 @@ class PEPSICOUKCommonToolBox:
                                 how='left')
         mix_scif = scif
         mix_matches = matches
-        if not matches.empty:
+        if not mix_matches.empty:
             bottom_shelf = matches[MatchesConsts.SHELF_NUMBER].max()
             display_matches = mix_matches[mix_matches[MatchesConsts.SHELF_NUMBER] == bottom_shelf]
             shelf_matches = mix_matches[~(mix_matches[MatchesConsts.SHELF_NUMBER] == bottom_shelf)]
@@ -349,7 +380,7 @@ class PEPSICOUKCommonToolBox:
         bin_bay_matches = matches
         if not  bin_bay_matches.empty:
             bin_bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER],
-                                                         keep='last')
+                                                      keep='last')
             bin_bay_scif, bin_bay_matches = self.calculate_product_length_on_display(bin_bay_scif, bin_bay_matches)
             # bay_sku = bin_bay_matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
             #                                      as_index=False).agg({'facings_matches': np.sum})
@@ -401,6 +432,8 @@ class PEPSICOUKCommonToolBox:
         # template_store_area = template_store_area.drop_duplicates(subset=[ScifConsts.TEMPLATE_FK], keep='last')
         # self.all_templates = self.all_templates.merge(template_store_area, on=ScifConsts.TEMPLATE_FK, how='left')
         self.scif = self.scif.merge(scene_store_area, on=ScifConsts.SCENE_FK, how='left')
+        self.match_product_in_scene = self.match_product_in_scene.merge(scene_store_area, on=ScifConsts.SCENE_FK,
+                                                                        how='left')
 
     @staticmethod
     def split_and_strip(value):

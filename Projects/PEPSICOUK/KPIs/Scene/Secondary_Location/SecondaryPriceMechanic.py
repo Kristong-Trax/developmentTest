@@ -18,11 +18,14 @@ class SecondaryPriceMechanicKpi(UnifiedCalculationsScript):
             self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif_secondary,
                                                                                  self.util.filtered_matches_secondary,
                                                                                  self.kpi_name)
-        filtered_matches = self.util.filtered_matches_secondary[self.util.filtered_matches_secondary[ScifConsts.PRODUCT_TYPE] \
+        filtered_matches = self.util.filtered_matches_secondary.merge(self.util.all_products, on=[ScifConsts.PRODUCT_FK],
+                                                                      how='left')
+        filtered_matches = filtered_matches[filtered_matches[ScifConsts.PRODUCT_TYPE] \
                                                           == 'POS'].drop_duplicates(subset=[ScifConsts.PRODUCT_FK])
+
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
         for i, row in filtered_matches.iterrows():
             self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.PRODUCT_FK],
                                     denominator_id=row['display_id'], denominator_result='display_id',
-                                    context_id=row['store_area'], result=1)
+                                    context_id=row['store_area_fk'], result=1)
         self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()
