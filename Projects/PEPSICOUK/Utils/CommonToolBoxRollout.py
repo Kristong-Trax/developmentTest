@@ -379,7 +379,7 @@ class PEPSICOUKCommonToolBox:
         bin_bay_scif = scif
         bin_bay_matches = matches
         if not  bin_bay_matches.empty:
-            bin_bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER],
+            bin_bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER, MatchesConsts.SCENE_FK],
                                                       keep='last')
             bin_bay_scif, bin_bay_matches = self.calculate_product_length_on_display(bin_bay_scif, bin_bay_matches)
             # bay_sku = bin_bay_matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
