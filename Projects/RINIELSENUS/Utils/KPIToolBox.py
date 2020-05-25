@@ -40,7 +40,10 @@ class MarsUsDogMainMealWet(object):
         self._data_provider.trace_container = pd.DataFrame(columns=['kpi_display_text', 'scene_id',
                                                                     'products&brands', 'allowed_products', 'kpi_pass'])
         self._tools = MarsUsGENERALToolBox(self._data_provider, self._output, ignore_stacking=True)
-        self._data_provider['common'] = self.common
+        try:
+            self._data_provider['common'] = self.common
+        except NameError:
+            pass
 
 
 
