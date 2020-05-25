@@ -562,10 +562,12 @@ class Test_PEPSICOUK(TestFunctionalCase):
         sos_vs_target_segment.calculate()
         kpi_results = pd.DataFrame(sos_vs_target_segment.kpi_results)
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
-        self.assertEquals(len(kpi_results), 1)
+        self.assertEquals(len(kpi_results), 2)
         expected_list = list()
-        expected_list.append({'kpi_level_2_fk': 295, 'numerator_id': 2, 'denominator_id': 2, 'numerator_result': 315,
-                              'denominator_result': 435, 'result': round((float(315) / 435) * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 295, 'numerator_id': 5, 'denominator_id': 2, 'numerator_result': 300,
+                              'denominator_result': 435, 'result': round((float(300) / 435) * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 295, 'numerator_id': 14, 'denominator_id': 2, 'numerator_result': 135,
+                              'denominator_result': 435, 'result': round((float(135) / 435) * 100, 5)})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
