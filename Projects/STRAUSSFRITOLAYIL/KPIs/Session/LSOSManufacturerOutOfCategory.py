@@ -10,14 +10,23 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
         self.utils = StraussfritolayilUtil(None, data_provider)
 
     def calculate(self):
-        return
-        sku_results = self.dependencies_data
-        kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_SKUS_KPI)
-        result = len(sku_results)
-        self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
-                                result=result, denominator_id=self.utils.store_id)
-        # self.util.add_kpi_result_to_kpi_results_df(
-        #     [distribution_kpi_fk, self.util.own_manuf_fk, self.util.store_id, res, score])
+        kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.LSOS_OWN_BRAND_OUT_OF_CATEGORY_KPI)
+        # todo: implement target
+        # target = self.utils.kpi_external_targets['taregt']
+        target = 30
+        categories = set(self.utils.scif['category_fk'])
+        own_manufacturer_scif = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
+        for category_fk in categories:
+            own_skus_category_df = own_manufacturer_scif[own_manufacturer_scif['category_fk'] == category_fk]
+            store_category_df = self.utils.scif[self.utils.scif['category_fk'] == category_fk]
+            own_category_linear_length = own_skus_category_df['gross_len_ign_stack'].sum()
+            store_category_linear_length = store_category_df['gross_len_ign_stack'].sum()
+            sos_result = self.utils.calculate_sos_result(own_category_linear_length, store_category_linear_length)
+            kpi_score = 1 if (target <= sos_result) else 0
+            self.write_to_db_result(fk=kpi_fk, numerator_id=category_fk, denominator_id=self.utils.own_manuf_fk,
+                                    numerator_result=own_category_linear_length,
+                                    denominator_result=store_category_linear_length,
+                                    result=sos_result, score=kpi_score)
 
     def kpi_type(self):
         pass

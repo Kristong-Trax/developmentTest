@@ -13,7 +13,7 @@ class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_BRANDS_BRAND_KPI)
         own_manufacturer_skus = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
         own_manufacturer_skus = own_manufacturer_skus[~own_manufacturer_skus['product_type'].isin(['Empty'])]
-        # strauss are looking at sub_brand as brand in those KPIs
+        # strauss are looking at sub_brand as brand in this KPI
         sub_brands = set(own_manufacturer_skus['sub_brand_fk'])
         for sub_brand_fk in sub_brands:
             sub_brand_df = own_manufacturer_skus[own_manufacturer_skus['sub_brand_fk'] == sub_brand_fk]

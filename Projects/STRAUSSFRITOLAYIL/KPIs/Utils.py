@@ -47,6 +47,13 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.scif['sub_brand'] = self.scif['sub_brand'].fillna('no value')
         self.scif = self.scif.merge(sub_brand_df, left_on="sub_brand", right_on="entity_name", how="left")
 
+    @staticmethod
+    def calculate_sos_result(numerator, denominator):
+        if denominator == 0:
+            return 0
+        result = numerator / float(denominator)
+        return result
+
     # def calculate_sos(self, sos_filters, **general_filters):
     #     numerator_linear = self.calculate_share_space(**dict(sos_filters, **general_filters))
     #     denominator_linear = self.calculate_share_space(**general_filters)

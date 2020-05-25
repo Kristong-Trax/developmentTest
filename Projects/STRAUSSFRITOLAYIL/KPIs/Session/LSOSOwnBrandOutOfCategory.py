@@ -10,14 +10,26 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
         self.utils = StraussfritolayilUtil(None, data_provider)
 
     def calculate(self):
-        return
-        sku_results = self.dependencies_data
-        kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.SOS_BRAND_OUT_OF_CATEGORY_KPI)
-        result = len(sku_results)
-        self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
-                                result=result, denominator_id=self.utils.store_id)
-        # self.util.add_kpi_result_to_kpi_results_df(
-        #     [distribution_kpi_fk, self.util.own_manuf_fk, self.util.store_id, res, score])
+        kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.LSOS_OWN_BRAND_OUT_OF_CATEGORY_KPI)
+        # todo: implement target
+        # target = self.utils.kpi_external_targets['taregt']
+        target = 30
+        target_range = 5
+        own_manufacturer_scif = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
+        categories = set(own_manufacturer_scif['category_fk'])
+        for category_fk in categories:
+            category_df = own_manufacturer_scif[own_manufacturer_scif['category_fk'] == category_fk]
+            category_linear_length = category_df['gross_len_ign_stack'].sum()
+            # strauss are looking at sub_brand as brand in this KPI
+            sub_brands = set(category_df['sub_brand_fk'])
+            for sub_brand_fk in sub_brands:
+                sub_brand_df = category_df[category_df['sub_brand_fk'] == sub_brand_fk]
+                sub_brand_linear_length = sub_brand_df['gross_len_ign_stack'].sum()
+                sos_result = self.utils.calculate_sos_result(sub_brand_linear_length, category_linear_length)
+                kpi_score = 1 if ((target - target_range) <= sos_result <= (target + target_range)) else 0
+                self.write_to_db_result(fk=kpi_fk, numerator_id=sub_brand_fk, denominator_id=category_fk,
+                                        numerator_result=sub_brand_linear_length,
+                                        denominator_result=category_linear_length, result=sos_result, score=kpi_score)
 
     def kpi_type(self):
         pass

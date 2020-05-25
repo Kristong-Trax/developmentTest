@@ -16,10 +16,11 @@ class NumberOfUniqueBrandsKpi(UnifiedCalculationsScript):
         # todo: implement target
         # target = self.utils.kpi_external_targets['taregt']
         target = 10
+        # strauss are looking at sub_brand as brand in this KPI
         number_of_sub_brands = len(sku_results)
-        result = 1 if number_of_sub_brands >= target else 0
+        score = 1 if number_of_sub_brands >= target else 0
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
-                                result=result, denominator_id=self.utils.store_id)
+                                result=number_of_sub_brands, denominator_id=self.utils.store_id, score=score)
         # self.util.add_kpi_result_to_kpi_results_df(
         #     [distribution_kpi_fk, self.util.own_manuf_fk, self.util.store_id, res, score])
 
