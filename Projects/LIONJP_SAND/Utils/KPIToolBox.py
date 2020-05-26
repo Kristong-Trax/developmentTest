@@ -2,6 +2,7 @@ import os
 import pandas as pd
 
 from Projects.LIONJP_SAND.Utils.SequenceCalculationsV2 import Sequence
+# from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.Constants import AdditionalAttr
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -180,6 +181,14 @@ class LIONJP_SANDToolBox:
     def build_ean_groups(self, adj_config, scene_fk):
         group_entities = adj_config['group_entity']
         entity_values = adj_config['entity_values']
+        extra = []
+        # include_pos: 0, include_empty: 0, include_others: 0, include_irrelevant: 0
+        if adj_config['include_empty'] == 0:
+            extra.append(Consts.GENERAL_EMPTY)
+            extra.append(Consts.EMPTY)
+
+        if adj_config['include_irrelevant'] == 0:
+            extra.append(Consts.IRRELEVANT)
 
         if group_entities.upper() == "Y":
             entity_values = [[u"{}".format(g) for g in group] for group in entity_values]
@@ -193,13 +202,13 @@ class LIONJP_SANDToolBox:
                     entities["entity_{}".format(entity_key)] = entity_value
                 else:
                     Log.warning("ean_codes are not in list of lists format")
-                    return
+                    return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
         else:
             for entity_key, entity_value in enumerate(entity_values):
                 entities["entity_{}".format(entity_key)] = entity_value
 
         for entity_key, entity_value in entities.items():
-            extra = [0, 1478, 1479]
+
             df_entity = self.data_provider.all_products[['product_fk', 'product_ean_code']].copy()
             df_entity = df_entity[['product_fk']][(df_entity['product_ean_code'].isin(entity_value))]
             if not df_entity.empty:
@@ -221,13 +230,16 @@ class LIONJP_SANDToolBox:
         else:
             df_custom_matches = self.data_provider.matches.copy()
             df_custom_matches = df_custom_matches.merge(df_entities, on="product_fk")
-
+            blocking_percentage = adj_config['block_percentage']
+            df = df_custom_matches[(~df_custom_matches['product_fk'].isin(extra)) &
+                                   (df_custom_matches['scene_fk'] == scene_fk)]
+            minimum_tags_per_entity = self.get_minimum_facings(df, blocking_percentage)
             population = {'entity': entities.keys()}
             exclude_filter, allowed_products_filter = self.exclude_and_include_filter(adj_config)
 
-            if adj_config['orientation'].upper() == "VERTICALLY":
+            if adj_config['orientation'].lower() == "vertical" or adj_config['orientation'].lower() == "vertically":
                 direction = "DOWN"
-            elif adj_config['orientation'].upper() == "HORIZONTALLY":
+            elif adj_config['orientation'].lower() == "horizontal" or adj_config['orientation'].lower() == "horizontally":
                 direction = "RIGHT"
             else:
                 Log.warning("Invalid direction:{}. Resetting to default orientation RIGHT".format(adj_config['orientation']))
@@ -240,9 +252,28 @@ class LIONJP_SANDToolBox:
                                AdditionalAttr.REPEATING_OCCURRENCES: True,
                                AdditionalAttr.INCLUDE_STACKING: True if adj_config['include_stacking'] == 1 else False,
                                AdditionalAttr.ALLOWED_PRODUCTS_FILTERS: allowed_products_filter,
-                               AdditionalAttr.MIN_TAGS_OF_ENTITY: adj_config['minimum_tagging']}
+                               AdditionalAttr.MIN_TAGS_OF_ENTITY: minimum_tags_per_entity}
 
             return population, sequence_params, df_custom_matches
+
+    @staticmethod
+    def get_minimum_facings(df, block_percentage):
+        facings = 0
+        if df.empty:
+            return facings
+
+        entities = df.groupby('entity')['product_fk'].count()
+        percentage = entities.apply(lambda entity_facings: entity_facings * (block_percentage / 100.00))
+        if len(percentage) > 1:
+            facings = percentage.min()
+        else:
+            facings = 0
+
+        if (facings > 0) and (facings < 1):
+            facings = 1
+        else:
+            facings = int(facings)
+        return facings
 
     def calculate_adjacency_per_scene(self, kpi_level_2_fk):
         kpi_config = self.targets[self.targets["kpi_fk"] == kpi_level_2_fk].copy()
@@ -265,16 +296,21 @@ class LIONJP_SANDToolBox:
                     location = {"scene_fk": scene_fk}
 
                     population, sequence_params, custom_matches = self.build_ean_groups(adj_config, scene_fk)
-
                     if custom_matches.empty:
                         print("scene_fk:{}, Custom Entities are not found in the scene.".format(scene_fk))
                         continue
 
-                    seq = Sequence(self.data_provider, custom_matches)
-                    sequence_res = seq.calculate_sequence(population, location, sequence_params)
-                    result_count = len(sequence_res)
-                    result = 1 if result_count > 0 else 0
-                    score = result
+                    if sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY] != 0:
+                        seq = Sequence(self.data_provider, custom_matches)
+                        sequence_res = seq.calculate_sequence(population, location, sequence_params)
+                        result_count = len(sequence_res)
+                        result = 1 if result_count > 0 else 0
+                        score = result
+                    else:
+                        result_count = 0
+                        result = 0
+                        score = 0
+
                     self.common.write_to_db_result(fk=kpi_level_2_fk,
                                                    numerator_id=adj_config['custom_entity_fk'],
                                                    denominator_id=template_fk,
@@ -282,7 +318,8 @@ class LIONJP_SANDToolBox:
                                                    numerator_result=result_count,
                                                    denominator_result=scene_fk,
                                                    result=result,
-                                                   score=score)
+                                                   score=score,
+                                                   target=sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY])
                 else:
                     Log.warning("Invalid entity:{}".format(adj_config['entity']))
 
