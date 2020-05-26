@@ -19,7 +19,7 @@ class MarsUsGenerator:
         self.tool_box = MarsUsDogMainMealWet(self.data_provider, self.output)
         # self.purina_tool_box = PURINAToolBox(self.data_provider, self.output)
         self.millercoors_tool_box = MILLERCOORSToolBox(self.data_provider, self.output)
-        # self.tyson_tool_box = TysonToolBox(self.data_provider, self.output)
+        self.tyson_tool_box = TysonToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -35,7 +35,7 @@ class MarsUsGenerator:
             s = time.time()
             self.tool_box.calculate_scores()
             print('__________________ Calculations took {} _________________'.format(round(time.time() - s)))
-        except:
+        except Exception:
             Log.error('Mars US kpis not calculated')
 
         # try:
@@ -49,8 +49,8 @@ class MarsUsGenerator:
         # except:
         #     Log.error('MillerCoors KPIs not calculated')
 
-        # try:
-        #     self.tyson_tool_box.main_calculation()
-        #     self.tyson_tool_box.commit_results()
-        # except Exception:
-        #     Log.error('Tyson KPIs not calculated')
+        try:
+            self.tyson_tool_box.main_calculation()
+            self.tyson_tool_box.commit_results()
+        except Exception:
+            Log.error('Tyson KPIs not calculated')
