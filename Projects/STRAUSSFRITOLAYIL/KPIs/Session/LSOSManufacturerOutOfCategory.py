@@ -11,10 +11,13 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.LSOS_OWN_BRAND_OUT_OF_CATEGORY_KPI)
+        # todo: implement category extraction
+        template_category_fks = [1, 2]
         # todo: implement target
         # target = self.utils.kpi_external_targets['taregt']
         target = 30
         categories = set(self.utils.scif['category_fk'])
+        category_fks = set(template_category_fks) - categories
         own_manufacturer_scif = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
         for category_fk in categories:
             own_skus_category_df = own_manufacturer_scif[own_manufacturer_scif['category_fk'] == category_fk]

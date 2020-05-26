@@ -14,6 +14,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_SKUS_KPI)
 
         number_of_fields = {1: 10, 2: 20, 3: 30}
+        # todo: implement category extraction
         category_fks = [1, 2]
 
         sku_results = self.dependencies_data

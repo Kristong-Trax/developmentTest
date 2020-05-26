@@ -10,16 +10,16 @@ class OOSMustHaveSKUKpi(UnifiedCalculationsScript):
         self.utils = StraussfritolayilUtil(None, data_provider)
 
     def calculate(self):
-        return
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.OOS_MUST_HAVE_SKU_KPI)
-        own_manufacturer_skus = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
-        own_manufacturer_skus = own_manufacturer_skus[~own_manufacturer_skus['product_type'].isin(['Other', 'Empty'])]
-        for i, sku_row in own_manufacturer_skus.iterrows():
+        assortment_df = self.utils.lvl3_assortment[self.utils.lvl3_assortment['kpi_fk_lvl2'] == kpi_fk]
+        # todo: handle replacment skus
+        for i, sku_row in assortment_df.iterrows():
             product_fk = sku_row['product_fk']
-            result = sku_row['facings']
-            score = 1 if result > 0 else 0
+            result = sku_row['in_store']
+            assortment_fk = sku_row['assortment_fk']
+            score = 1 if result == 1 else 0
             self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result,
-                                    denominator_id=self.utils.own_manuf_fk, score=score)
+                                    denominator_id=assortment_fk, score=score)
 
     def kpi_type(self):
         pass

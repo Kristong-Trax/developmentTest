@@ -34,7 +34,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
                                                                           data_fields=Consts.DATA_FIELDS)
         self.add_sub_brand_to_scif()
         self.assortment = Assortment(self.data_provider, self.output)
-        self.lvl3_assortment = self.assortment.get_lvl3_relevant_ass()
+        self.lvl3_assortment = self.assortment.calculate_lvl3_assortment()
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def add_sub_brand_to_scif(self):
@@ -51,7 +51,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
     def calculate_sos_result(numerator, denominator):
         if denominator == 0:
             return 0
-        result = numerator / float(denominator)
+        result = round((numerator / float(denominator)), 3)
         return result
 
     # def calculate_sos(self, sos_filters, **general_filters):

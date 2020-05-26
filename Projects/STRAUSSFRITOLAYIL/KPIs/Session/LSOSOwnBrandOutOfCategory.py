@@ -15,7 +15,10 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
         # target = self.utils.kpi_external_targets['taregt']
         target = 30
         target_range = 5
+        # todo: implement category extraction
+        category_fks = [1, 2]
         own_manufacturer_scif = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
+        own_manufacturer_scif = own_manufacturer_scif[own_manufacturer_scif['category_fk'].isin(category_fks)]
         categories = set(own_manufacturer_scif['category_fk'])
         for category_fk in categories:
             category_df = own_manufacturer_scif[own_manufacturer_scif['category_fk'] == category_fk]
