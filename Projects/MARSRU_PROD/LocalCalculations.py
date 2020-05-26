@@ -10,8 +10,7 @@ if __name__ == '__main__':
     project_name = 'marsru-prod'
     session_uids = [
 
-        'fffe707c-55f6-4f57-b8d1-67c76638f654',
-        'ffcd785d-c621-4f15-b202-581b8f73c13f',
+        '470aac6c-1e9b-461f-924a-a562e5c42ff7',
 
     ]
     data_provider = KEngineDataProvider(project_name)
