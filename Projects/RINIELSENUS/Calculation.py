@@ -22,7 +22,7 @@ class MarsUsCalculations(BaseCalculationsScript):
         self.timer.start()
         try:
             MarsUsGenerator(self.data_provider, self.output).main_function()
-        except:
+        except Exception:
             Log.error('Mars US kpis not calculated')
         self.timer.stop('KPIGenerator.run_project_calculations')
 
