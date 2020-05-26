@@ -19,5 +19,12 @@ class Consts:
     DIRECTION = 'direction'
     TEMPLATE_FKS = "template_fks"
 
+    INCLUDE_EMPTY = "include_empty"
+
+
+    GENERAL_EMPTY = 0
+    EMPTY = 1478
+    IRRELEVANT = 1479
+
     def __init__(self):
         pass
