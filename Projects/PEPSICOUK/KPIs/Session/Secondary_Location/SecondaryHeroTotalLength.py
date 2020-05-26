@@ -34,7 +34,7 @@ class SecondaryHeroTotalLengthKpi(UnifiedCalculationsScript):
             available_hero_list = lvl3_ass_res_df[(lvl3_ass_res_df['numerator_result'] == 1)] \
                 ['numerator_id'].unique().tolist()
             hero_len = self.util.filtered_scif_secondary[self.util.filtered_scif_secondary[ScifConsts.PRODUCT_FK].isin(available_hero_list)]\
-                        ['updated_gross_len'].sum()
+                        ['updated_gross_length'].sum()
             self.write_to_db_result(fk=kpi_fk, numerator_id=self.util.own_manuf_fk,
                                     denominator_id=self.util.store_id, result=hero_len, score=hero_len)
 

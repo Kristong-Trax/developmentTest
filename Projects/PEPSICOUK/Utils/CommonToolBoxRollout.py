@@ -266,7 +266,7 @@ class PEPSICOUKCommonToolBox:
                                             agg({'facings_matches': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
             mix_scif = mix_scif.merge(mix_matches_agg, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
             mix_scif['facings'] = mix_scif['updated_facings'] = mix_scif['facings_matches']
-            mix_scif[ScifConsts.GROSS_LEN_ADD_STACK] = mix_scif['updated_gross_len'] = mix_scif[
+            mix_scif[ScifConsts.GROSS_LEN_ADD_STACK] = mix_scif['updated_gross_length'] = mix_scif[
                 MatchesConsts.WIDTH_MM_ADVANCE]
 
         return mix_scif, mix_matches
@@ -340,7 +340,7 @@ class PEPSICOUKCommonToolBox:
             agg({'facings_matches': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
         scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK], how='left')
         scif['facings'] = scif['updated_facings'] = scif['facings_matches']
-        scif[ScifConsts.GROSS_LEN_ADD_STACK] = scif['updated_gross_len'] = scif[
+        scif[ScifConsts.GROSS_LEN_ADD_STACK] = scif['updated_gross_length'] = scif[
             MatchesConsts.WIDTH_MM_ADVANCE]
         return scif, matches
 
