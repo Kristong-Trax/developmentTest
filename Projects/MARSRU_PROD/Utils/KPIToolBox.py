@@ -246,7 +246,7 @@ class MARSRU_PRODKPIToolBox:
             .get_lvl3_relevant_ass()
         if not assortment_products.empty:
             #### ToDO workaround to be removed once fixed - Start - Sergey
-            assortment_products = assortment_products[assortment_products['assortment_fk'] == 4]
+            assortment_products = assortment_products[assortment_products['assortment_fk'] == 390]
             #### ToDO workaround to be removed once fixed - End Sergey
             assortment_groups = [0] + assortment_products['assortment_group_fk'].unique().tolist()
             assortment_group = self.kpi_fetcher.get_relevant_assortment_group(assortment_groups)

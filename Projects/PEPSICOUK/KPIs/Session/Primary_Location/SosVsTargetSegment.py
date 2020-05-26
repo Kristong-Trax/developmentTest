@@ -32,22 +32,22 @@ class SosVsTargetSegmentKpi(UnifiedCalculationsScript):
         cat_df = filtered_scif.groupby([ScifConsts.CATEGORY_FK],
                                        as_index=False).agg({'updated_gross_length': np.sum})
         cat_df.rename(columns={'updated_gross_length': 'cat_len'}, inplace=True)
-        filtered_scif = filtered_scif[filtered_scif[ScifConsts.MANUFACTURER_FK] == self.util.own_manuf_fk]
+        # filtered_scif = filtered_scif[filtered_scif[ScifConsts.MANUFACTURER_FK] == self.util.own_manuf_fk]
         location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
             [ScifConsts.LOCATION_TYPE_FK].values[0]
         if not filtered_scif.empty:
-            man_cat_df = filtered_scif.groupby([ScifConsts.MANUFACTURER_FK, ScifConsts.CATEGORY_FK],
-                                                as_index=False).agg({'updated_gross_length': np.sum})
-            if not man_cat_df.empty:
-                man_cat_df = man_cat_df.merge(cat_df, on=ScifConsts.CATEGORY_FK, how='left')
-                man_cat_df['sos'] = man_cat_df['updated_gross_length'] / man_cat_df['cat_len']
-                for i, row in man_cat_df.iterrows():
-                    self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.MANUFACTURER_FK],
+            sub_cat_df = filtered_scif.groupby([ScifConsts.SUB_CATEGORY_FK, ScifConsts.CATEGORY_FK],
+                                               as_index=False).agg({'updated_gross_length': np.sum})
+            if not sub_cat_df.empty:
+                sub_cat_df = sub_cat_df.merge(cat_df, on=ScifConsts.CATEGORY_FK, how='left')
+                sub_cat_df['sos'] = sub_cat_df['updated_gross_length'] / sub_cat_df['cat_len']
+                for i, row in sub_cat_df.iterrows():
+                    self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.SUB_CATEGORY_FK],
                                             numerator_result=row['updated_gross_length'],
                                             denominator_id=row[ScifConsts.CATEGORY_FK],
                                             denominator_result=row['cat_len'], result=row['sos'] * 100,
                                             context_id=location_type_fk)
                     self.util.add_kpi_result_to_kpi_results_df(
-                        [kpi_fk, row[ScifConsts.MANUFACTURER_FK], row[ScifConsts.CATEGORY_FK], row['sos'] * 100,
+                        [kpi_fk, row[ScifConsts.SUB_CATEGORY_FK], row[ScifConsts.CATEGORY_FK], row['sos'] * 100,
                          None, None])
 
