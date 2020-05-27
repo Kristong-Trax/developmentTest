@@ -37,6 +37,7 @@ NEGATIVE_ADJACENCY_RANGE = (2, 1000)
 POSITIVE_ADJACENCY_RANGE = (0, 1)
 
 OSA_KPI_NAME = 'OSA'
+OSA_SKU_KPI_NAME = 'OSA - SKU'
 
 PSERVICE_CUSTOM_SCIF = 'pservice.custom_scene_item_facts'
 SESSION_FK = 'session_fk'
@@ -245,9 +246,8 @@ class MARSRU_PRODKPIToolBox:
         assortment_products = Assortment(self.data_provider, self.output, common=self.common)\
             .get_lvl3_relevant_ass()
         if not assortment_products.empty:
-            #### ToDO workaround to be removed once fixed - Start - Sergey
-            assortment_products = assortment_products[assortment_products['assortment_fk'] == 390]
-            #### ToDO workaround to be removed once fixed - End Sergey
+            assortment_fks = self.kpi_fetcher.get_osa_assortment_fks(OSA_SKU_KPI_NAME)
+            assortment_products = assortment_products[assortment_products['assortment_fk'].isin(assortment_fks)]
             assortment_groups = [0] + assortment_products['assortment_group_fk'].unique().tolist()
             assortment_group = self.kpi_fetcher.get_relevant_assortment_group(assortment_groups)
             assortment_products = assortment_products[assortment_products['assortment_group_fk'] == assortment_group]
