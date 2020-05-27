@@ -46,6 +46,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_db_users()
         self.mock_various_project_connectors()
         self.project_connector_mock = self.mock_project_connector()
+        self.mock_scene_store_area()
 
         self.ps_dataprovider_project_connector_mock = self.mock_ps_data_provider_project_connector()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
@@ -69,6 +70,11 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_all_products()
         self.mock_all_templates()
         self.mock_position_graph()
+
+    def mock_scene_store_area(self):
+        sa = self.mock_object('PEPSICOUKCommonToolBox.get_scene_to_store_area_map',
+                                      path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        sa.return_value = pd.DataFrame(columns={'scene_fk', 'store_area', 'store_area_fk'})
 
     def mock_store_data(self):
         store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id',
