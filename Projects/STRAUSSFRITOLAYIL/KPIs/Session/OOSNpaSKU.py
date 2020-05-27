@@ -10,7 +10,6 @@ class OOSNpaSKUKpi(UnifiedCalculationsScript):
         self.utils = StraussfritolayilUtil(None, data_provider)
 
     def calculate(self):
-        return
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.OOS_NPA_SKU_KPI)
         own_manufacturer_skus = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
         own_manufacturer_skus = own_manufacturer_skus[~own_manufacturer_skus['product_type'].isin(['Other', 'Empty'])]

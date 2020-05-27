@@ -12,7 +12,6 @@ class OOSMustHaveSKUKpi(UnifiedCalculationsScript):
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.OOS_MUST_HAVE_SKU_KPI)
         assortment_df = self.utils.lvl3_assortment[self.utils.lvl3_assortment['kpi_fk_lvl2'] == kpi_fk]
-        # todo: handle replacment skus
         for i, sku_row in assortment_df.iterrows():
             product_fk = sku_row['product_fk']
             result = sku_row['in_store']
