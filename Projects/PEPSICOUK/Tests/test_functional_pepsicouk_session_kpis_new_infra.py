@@ -46,6 +46,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_db_users()
         self.mock_various_project_connectors()
         self.project_connector_mock = self.mock_project_connector()
+        self.mock_scene_store_area()
 
         self.ps_dataprovider_project_connector_mock = self.mock_ps_data_provider_project_connector()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
@@ -69,6 +70,11 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_all_products()
         self.mock_all_templates()
         self.mock_position_graph()
+
+    def mock_scene_store_area(self):
+        sa = self.mock_object('PEPSICOUKCommonToolBox.get_scene_to_store_area_map',
+                                      path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        sa.return_value = pd.DataFrame(columns={'scene_fk', 'store_area', 'store_area_fk'})
 
     def mock_store_data(self):
         store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id',
@@ -562,10 +568,12 @@ class Test_PEPSICOUK(TestFunctionalCase):
         sos_vs_target_segment.calculate()
         kpi_results = pd.DataFrame(sos_vs_target_segment.kpi_results)
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
-        self.assertEquals(len(kpi_results), 1)
+        self.assertEquals(len(kpi_results), 2)
         expected_list = list()
-        expected_list.append({'kpi_level_2_fk': 295, 'numerator_id': 2, 'denominator_id': 2, 'numerator_result': 315,
-                              'denominator_result': 435, 'result': round((float(315) / 435) * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 295, 'numerator_id': 5, 'denominator_id': 2, 'numerator_result': 300,
+                              'denominator_result': 435, 'result': round((float(300) / 435) * 100, 5)})
+        expected_list.append({'kpi_level_2_fk': 295, 'numerator_id': 14, 'denominator_id': 2, 'numerator_result': 135,
+                              'denominator_result': 435, 'result': round((float(135) / 435) * 100, 5)})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(kpi_results, expected_result) == 1)
