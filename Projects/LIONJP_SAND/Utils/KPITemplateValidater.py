@@ -6,12 +6,14 @@ from Trax.Utils.Conf.Configuration import Config
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from collections import Counter
+import sys
+import datetime
 
 
 class KPITemplateValidater:
     def __init__(self, project_name):
         self.project_name = project_name
-        self._template_path = Path(__file__).parent.parent/"Data/kpi_template.xlsx"
+        self._template_path = Path(__file__).parent.parent / "Data/kpi_template.xlsx"
         self.template = self.load_template()
         self.data_mapping = [
             {
@@ -120,7 +122,7 @@ class KPITemplateValidater:
             if not check.empty:
                 Log.error("Invalid input, allowed_values: {}".format(value))
                 for idx, row_data in check.iterrows():
-                    Log.error("row_number: {}, column_name: {}, value: {}".format(idx+3, name, row_data[name]))
+                    Log.error("row_number: {}, column_name: {}, value: {}".format(idx + 3, name, row_data[name]))
                 result = False
 
         if result:
@@ -155,16 +157,18 @@ class KPITemplateValidater:
 
                         df_result = pd.read_sql(query, dbcon.db)
                         if df_result.empty:
-                            Log.error("{xl_column_name}={values} not in table {table_name}".format(xl_column_name=xl_column_name,
-                                                                                                       values=values,
-                                                                                                       table_name=table_name))
+                            Log.error("{xl_column_name}={values} not in table {table_name}".format(
+                                xl_column_name=xl_column_name,
+                                values=values,
+                                table_name=table_name))
                             result = False
                         else:
                             if xl_column_type == "list":
                                 if len(df_result) != len(values):
                                     message = "{xl_column_name}={values}".format(xl_column_name=xl_column_name,
                                                                                  values=values)
-                                    message += " one or more values not found in table {table_name}".format(table_name=table_name)
+                                    message += " one or more values not found in table {table_name}".format(
+                                        table_name=table_name)
                                     Log.error(message)
                                     result = False
                     except Exception as ex:
@@ -182,11 +186,11 @@ class KPITemplateValidater:
             }
         else:
             entity = {
-                      'product': ('static_new.product', 'ean_code'),
-                      'brand': ('static_new.brand', 'name'),
-                      'category': ('static_new.category', 'name'),
-                      'sub_category': ('static_new.sub_category', 'name')
-                      }
+                'product': ('static_new.product', 'ean_code'),
+                'brand': ('static_new.brand', 'name'),
+                'category': ('static_new.category', 'name'),
+                'sub_category': ('static_new.sub_category', 'name')
+            }
 
         for row_num, row_data in self.template.iterrows():
             try:
@@ -210,7 +214,7 @@ class KPITemplateValidater:
                 values_count = Counter(values)
                 for value in values_count.items():
                     if value[1] > 1:
-                        Log.error("row_number:{} Duplicate(s) values={} found in {}".format(row_num+2,
+                        Log.error("row_number:{} Duplicate(s) values={} found in {}".format(row_num + 2,
                                                                                             entity_name_key,
                                                                                             value))
                         result = False
@@ -220,7 +224,7 @@ class KPITemplateValidater:
                 query = query.strip().replace(",)", ")")
                 df_result = pd.read_sql(query, dbcon.db)
                 if df_result.empty:
-                    message = "row_num:{row_num} {xl_column_name}={values} ".format(row_num=row_num+3,
+                    message = "row_num:{row_num} {xl_column_name}={values} ".format(row_num=row_num + 3,
                                                                                     xl_column_name=entity_column_name,
                                                                                     values=values)
                     message += " not in table {table_name}".format(table_name=entity_table_name)
@@ -231,7 +235,7 @@ class KPITemplateValidater:
                     entity_values_ck = set(values)
                     missing_values = list(entity_values_ck - entity_values_rt)
                     if len(missing_values) != 0:
-                        message = "row_number:{} {} =>{} missing values={}:".format(row_num+3,
+                        message = "row_number:{} {} =>{} missing values={}:".format(row_num + 3,
                                                                                     entity_name_key,
                                                                                     entity_column_name,
                                                                                     missing_values)
@@ -242,8 +246,68 @@ class KPITemplateValidater:
                 Log.error("{} {}".format(ex.message, ex.args))
         return result
 
+    @staticmethod
+    def validate_date_format(date_text):
+        result = True
+        try:
+            datetime.datetime.strptime(date_text, '%m/%d/%Y')  # 12/31/2030
+        except ValueError:
+            # Log.error("Error : {}".format(e))
+            result = False
+            Log.info("Incorrect data format for value {}, should be '%m/%d/%Y' - MM/DD/YYYY.".format(date_text))
+        return result
+
+    def check_start_date_and_end_date(self):
+        result = True
+        for column_name in ['start_date', 'end_date']:
+            empty_rows = self.template[self.template[column_name].isna()]
+            for idx, row in empty_rows.iterrows():
+                Log.error("Row: {row_num} - Column: {column} is null".format(
+                    row_num=row.name + 2,
+                    column=column_name))
+                result = False
+
+            valid_rows = self.template[~self.template[column_name].isna()]
+            for idx, row in valid_rows.iterrows():
+                if not self.validate_date_format(row[column_name]):
+                    Log.error("Row: {row_num} - Column: {column} - Invalid date format {value}".format(
+                        row_num=row.name + 2,
+                        column=column_name,
+                        value=row[column_name])
+                    )
+                result = False
+
+        group_by_obj = self.template.groupby("report_label")
+        for key, subset_df in group_by_obj:
+            if len(subset_df) > 1:
+                Log.info("Perform date interval overlap check")
+                subset_df = subset_df.sort_values(['start_date', 'end_date'], ascending=[True, False])
+
+                start_date = subset_df.start_date.iloc[0]
+                end_date = subset_df.end_date.iloc[0]
+                interval = pd.Interval(pd.Timestamp(start_date),
+                                       pd.Timestamp(end_date), closed='both')
+
+                for row_num, row_data in subset_df.iloc[1:, :].iterrows():
+                    if (pd.Timestamp(row_data.start_date) in interval) or (pd.Timestamp(row_data.end_date) in interval):
+                        message = "Duplicate report_label: {} found: Since the start_date: {}, end_date: {} " \
+                                  "overlaps with ref start_date {}, end_date {}"
+                        message = message.format(key,
+                                                 row_data.start_date,
+                                                 row_data.end_date,
+                                                 start_date, end_date)
+                        Log.error(message)
+                        result = False
+            else:
+                pass
+
+        return result
+
     def validate(self):
         result = True
+        if not self.check_start_date_and_end_date():
+            result = False
+        sys.exit(0)
         if not self.check_column_names():
             result = False
         if not self.check_allowed_values():
@@ -269,4 +333,3 @@ if __name__ == "__main__":
         Log.info("Template Validation check - Completed")
     else:
         Log.warning("Template Validation check - Failed")
-
