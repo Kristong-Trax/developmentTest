@@ -29,7 +29,7 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
             # kpi_file_name = '2019/MARS KPIs.xlsx'
             # kpi_range_targets_sheet_names = [4317, 4650, 4254]  # , 4388, 4389
             # kpi_channels = [kpi_file_name, 'channels', 'channels']
-            Log.error("Error: The visit date is out of date: {}. The sessions cannot be calculated."
+            Log.error("Error: The visit is out of date threshold [2019-12-29]: {} . The sessions cannot be calculated."
                       "".format(self.data_provider.visit_date.isoformat()))
             return
 
