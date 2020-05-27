@@ -257,7 +257,6 @@ class KPITemplateValidater:
         if not self.check_entity_values("others", 'include_other_ean_codes'):
             result = False
 
-
         return result
 
 
