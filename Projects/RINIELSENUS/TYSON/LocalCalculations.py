@@ -4,12 +4,10 @@ import random
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
-from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
 # from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 # from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
-from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 # from Projects.RINIELSENUS.SceneKpis.SceneCalculations import SceneCalculations
 from Projects.RINIELSENUS.TYSON.KPIGenerator import TysonGenerator
 
@@ -18,22 +16,12 @@ RETEST_SESSIONS = 10
 NEW_SESSIONS = 5
 
 
-class TysonCalculations(BaseCalculationsScript):
-    def run_project_calculations(self):
-        self.timer.start()
-        try:
-            TysonGenerator(self.data_provider, self.output).main_function()
-        except Exception:
-            Log.error("Tyson KPIs not calculated.")
-        self.timer.stop('KPIGenerator.run_project_calculations')
-
-
 def run_sessions(sessions):
     for i, session in enumerate(sessions, start=1):
         print("======================================== {} ========================================".format(session))
         data_provider.load_session_data(session)
         output = Output()
-        TysonCalculations(data_provider, output).run_project_calculations()
+        TysonGenerator(data_provider, output).main_function()
         print("Completed {}% of local test sessions".format(round(float(i)/len(sessions)*100, 2)))
 
 
@@ -96,12 +84,14 @@ if __name__ == '__main__':
 
     # run specific sessions
     sessions = [
+        # '1ca636d3-15e3-4c86-961c-d83b077d9b57',
+        # '5c0e8581-ee8a-436b-907e-be4d4537cbf8',
         # '70fcb7e9-72bd-4799-afea-4d018e142c5b',
         # '3c0abb33-5f80-447c-9d94-80d399930cf2',
         # '79eb1a47-25b3-4aa6-9266-221d20b2e553',
         # 'ea434336-4144-4e82-ae34-2e8307c1004f',
         # 'daf7fd47-fadb-455e-acd6-9926ed71ee73',
-        # 'b9cdc474-ccae-424b-a12c-c0c0a1195af1'
+        # 'b9cdc474-ccae-424b-a12c-c0c0a1195af1',
     ]
 
     run_sessions(sessions)

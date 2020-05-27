@@ -1,18 +1,17 @@
-# import pandas as pd
 # from mock import patch
 import time
 
-from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
-# from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
-
 # from KPIUtils.DB.Common import Common
 
-# from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Utils.Conf.Configuration import Config
+# from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
+
+from Projects.RINIELSENUS.KPIGenerator import MarsUsGenerator
+# from Projects.RINIELSENUS.Utils.ParseTemplates import ParseMarsUsTemplates
 
 __author__ = 'nethanel'
 
@@ -22,7 +21,7 @@ class MarsUsCalculations(BaseCalculationsScript):
         self.timer.start()
         try:
             MarsUsGenerator(self.data_provider, self.output).main_function()
-        except:
+        except Exception:
             Log.error('Mars US kpis not calculated')
         self.timer.stop('KPIGenerator.run_project_calculations')
 
