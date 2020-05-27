@@ -1,4 +1,3 @@
-import os
 from Trax.Algo.Calculations.Core.KPI.UnifiedKpiSingleton import UnifiedKPISingleton
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -8,10 +7,12 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
+import pandas as pd
+import json
+from pandas.io.json import json_normalize
 
 
 class StraussfritolayilUtil(UnifiedKPISingleton):
-
     def __init__(self, output, data_provider):
         super(StraussfritolayilUtil, self).__init__(data_provider)
         self.output = output
@@ -22,6 +23,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        # self.filter_scif_and_mpis_to_contain_only_primary_shelf()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
@@ -34,8 +36,42 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
                                                                           data_fields=Consts.DATA_FIELDS)
         self.add_sub_brand_to_scif()
         self.assortment = Assortment(self.data_provider, self.output)
-        self.lvl3_assortment = self.assortment.calculate_lvl3_assortment()
+        self.lvl3_assortment = self.set_updated_assortment()
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+
+    def set_updated_assortment(self):
+        assortment_result = self.assortment.get_lvl3_relevant_ass()
+        replacement_eans_df = pd.DataFrame([json_normalize(json.loads(js)).values[0] for js
+                                            in assortment_result['additional_attributes']])
+        replacement_eans_df.columns = [Consts.REPLACMENT_EAN_CODES]
+        replacement_eans_df = pd.DataFrame(replacement_eans_df[Consts.REPLACMENT_EAN_CODES].str.split(',').tolist(),
+                                           columns=[Consts.REPLACMENT_EAN_CODES])
+        replacement_eans_df = replacement_eans_df[Consts.REPLACMENT_EAN_CODES].apply(lambda row: [x.strip() for x in
+                                                                                                  row] if row else None)
+        assortment_result = assortment_result.join(replacement_eans_df)
+        products_in_session = self.scif.loc[self.scif['facings'] > 0]['product_fk'].values
+        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
+        self.handle_replacment_products_row(assortment_result)
+        return assortment_result
+
+    def handle_replacment_products_row(self, assortment_result):
+        missing_products_df = assortment_result[(assortment_result['in_store'] == 0) &
+                                                (~assortment_result[Consts.REPLACMENT_EAN_CODES].isnull())]
+        for i, row in missing_products_df.iterrows():
+            replacement_products = row[Consts.REPLACMENT_EAN_CODES]
+            for sku in replacement_products:
+                if sku in self.scif['product_ean_code'].values:
+                    product_fk = self.scif[self.scif['product_ean_code'] == sku]['product_fk']
+                    assortment_result.loc[i, 'product_fk'] = product_fk.values[0]
+                    assortment_result.loc[i, 'in_store'] = 1
+                    break
+
+    def filter_scif_and_mpis_to_contain_only_primary_shelf(self):
+        location_df = self.scif[['scene_fk', 'location_type']].drop_duplicates()
+        self.scif = self.scif[self.scif.location_type == Consts.PRIMARY_SHELF]
+        self.match_product_in_scene = self.match_product_in_scene.merge(location_df, on="scene_fk", how="left")
+        self.match_product_in_scene = self.match_product_in_scene[self.match_product_in_scene.location_type ==
+                                                                  Consts.PRIMARY_SHELF]
 
     def add_sub_brand_to_scif(self):
         sub_brand_df = self.ps_data.get_custom_entities_df(entity_type_name='sub_brand')

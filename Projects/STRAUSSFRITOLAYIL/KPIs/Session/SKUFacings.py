@@ -12,7 +12,6 @@ class SKUFacingsKpi(UnifiedCalculationsScript):
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.SKU_FACINGS_KPI)
         custom_scif = self.utils.scif.copy()
-        custom_scif = custom_scif[custom_scif['template_name'] == 'Primary Shelf']
         custom_scif = custom_scif[~custom_scif['product_type'].isin(['Irrelevant'])]
         custom_scif = custom_scif[['product_fk', 'manufacturer_fk', 'facings_ign_stack']]
         combined_scenes_scif = custom_scif.groupby(['product_fk', 'manufacturer_fk']).sum()

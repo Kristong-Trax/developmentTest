@@ -14,8 +14,11 @@ class Consts(object):
     NUMBER_OF_FACINGS_MUST_HAVE_KPI = 'Number of Facings_Must Have Assortment'
     SKU_FACINGS_KPI = 'SKU Facings'
     SKU_LINEAR_KPI = 'SKU Linear'
+
+    # Consts
+    PRIMARY_SHELF = 'Primary Shelf'
+    REPLACMENT_EAN_CODES = "Replacement Ean Codes"
+
     # external targets keys
-    KEY_FIELDS = ['store_type', 'numerator_type', 'denominator_value', 'additional_attribute_6', 'retailer',
-                  'additional_attribute_2', 'numerator_value', 'denominator_type', 'additional_attribute_8',
-                  'additional_attribute_12']
-    DATA_FIELDS = ['target_range', 'target']
+    KEY_FIELDS = ['Store Type', 'region', 'category', 'brand', 'EAN Code']
+    DATA_FIELDS = ['Field', 'Target']
