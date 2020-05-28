@@ -169,13 +169,16 @@ class AltriaGraphBuilder(object):
 
             node_matches = self.matches_df[self.matches_df['scene_match_fk'].isin(node_data['members'])]
             bay_groups = node_matches.groupby(['bay_number', 'shelf_number'], as_index=False)['scene_match_fk'].count()
+            # we will allow bays that have one extra facing since it's probably just a tag placement error
+            bay_groups = bay_groups[bay_groups['scene_match_fk'] > 1]
             bay_groups = bay_groups.groupby(['bay_number'], as_index=False)['shelf_number'].count()
             max_shelves = bay_groups['shelf_number'].max()
             bay_groups['orphaned'] = \
                 bay_groups['shelf_number'].apply(lambda x: True if x <= max_shelves * 0.5 else False)
 
             if len(bay_groups[bay_groups['orphaned']]) > 1:
-                Log.error("Unable to severe bay connections. Too many bays would be orphaned")
+                Log.error("Unable to severe bay connections for {} category. Too many bays would be orphaned".format(
+                    node_data['category'].value))
                 continue
             elif len(bay_groups[bay_groups['orphaned']]) == 0:
                 continue
@@ -222,11 +225,11 @@ class AltriaGraphBuilder(object):
         sub_graph = condensed_adj_graph.subgraph([node for node, node_data in condensed_adj_graph.nodes(data=True) if
                                                   node_data['category'].value != 'POS'])
         for node1, node2, edge_data in sub_graph.edges(data=True):
-            if edge_data['degree'] < 45.0 and edge_data['degree'] > -45.0:
+            if -50.0 < edge_data['degree'] < 50.0:
                 edges_to_remove.extend([(node1, node2), (node2, node1)])
-            elif edge_data['degree'] < 180.0 and edge_data['degree'] > 135.0:
+            elif 130.0 < edge_data['degree'] < 185.0:
                 edges_to_remove.extend([(node1, node2), (node2, node1)])
-            elif edge_data['degree'] > -180.0 and edge_data['degree'] < -135.0:
+            elif -185.0 < edge_data['degree'] < -130.0:
                 edges_to_remove.extend([(node1, node2), (node2, node1)])
 
         edges_to_keep = [edge for edge in condensed_adj_graph.edges() if edge not in edges_to_remove]
@@ -265,6 +268,7 @@ class AltriaGraphBuilder(object):
         edges_to_remove = []
         flip_sign_nodes = []
         header_nodes = []
+        orphaned_header_nodes = []
         for node_id, node_data in self.condensed_adj_graph.nodes(data=True):
             if node_data['category'].value != 'POS':
                 continue
@@ -286,17 +290,52 @@ class AltriaGraphBuilder(object):
                 header_nodes.append(node_id)
             elif parent_nodes:
                 flip_sign_nodes.append(node_id)
+            # if a POS item doesn't exist in a shadow or in a block, it must be a header
+            elif not shadow_parent_nodes and not parent_nodes:
+                orphaned_header_nodes.append(node_id)
 
         for node in header_nodes:
             self.condensed_adj_graph.nodes[node]['pos_type'] = NodeAttribute(['Header'])
         for node in flip_sign_nodes:
             self.condensed_adj_graph.nodes[node]['pos_type'] = NodeAttribute(['Flip-Sign'])
+        for node in orphaned_header_nodes:
+            self.condensed_adj_graph.nodes[node]['pos_type'] = NodeAttribute(['Header'])
+
+        if orphaned_header_nodes:
+            edges_for_most_likely_parents = \
+                self._get_most_likely_parent_edges_for_orphaned_headers(orphaned_header_nodes)
+            edges_to_remove = [edge for edge in edges_to_remove if edge not in edges_for_most_likely_parents]
 
         if edges_to_remove:
             edges_to_keep = [edge for edge in self.condensed_adj_graph.edges() if
                              edge not in edges_to_remove and (edge[1], edge[0]) not in edges_to_remove]
             self.condensed_adj_graph = self.condensed_adj_graph.edge_subgraph(edges_to_keep)
         return
+
+    def _get_most_likely_parent_edges_for_orphaned_headers(self, orphaned_header_nodes):
+        edges_for_most_likely_parents = []
+        for orphan_node_id in orphaned_header_nodes:
+            potential_parents = {}
+            orphan_bounds = self.condensed_adj_graph.nodes[orphan_node_id]['polygon'].bounds
+            orphan_box = box(orphan_bounds[0], orphan_bounds[3], orphan_bounds[2], 9999)
+
+            for node, node_data in self.condensed_adj_graph.nodes(data=True):
+                if node_data['category'] == 'POS':
+                    continue
+                if node == orphan_node_id:
+                    continue
+                node_bounds = node_data['polygon'].bounds
+                node_box = box(node_bounds[0], node_bounds[1], node_bounds[2], node_bounds[3])
+
+                if node_box.intersects(orphan_box):
+                    potential_parents[node_box.centroid.coords[0][1]] = node
+
+            if potential_parents:
+                closest_parent = sorted(potential_parents.items())[0][1]
+                edges_for_most_likely_parents.append((orphan_node_id, closest_parent))
+                edges_for_most_likely_parents.append((closest_parent, orphan_node_id))
+
+        return edges_for_most_likely_parents
 
     @staticmethod
     def cast_shadow_above(p, xoff, yoff):
@@ -504,7 +543,6 @@ class AltriaGraphBuilder(object):
         relevant_data = conversion_data[conversion_data['probe_group_id'] == probe_group_id]
         cigarettes_median = relevant_data[relevant_data['category'] == 'Cigarettes']['width'].median()
         cigarettes_avg = relevant_data[relevant_data['category'] == 'Cigarettes']['width'].mean()
-        # print("avg: {} median {}".format(cigarettes_avg, cigarettes_median))
         smokeless_median = relevant_data[relevant_data['category'] == 'Smokeless']['width'].median()
 
         cigarettes_one_ft = cigarettes_median * 5
@@ -567,7 +605,6 @@ class AltriaGraphBuilder(object):
                 self.adj_component_graph.nodes[parent_node].update({'product_above_header': NodeAttribute([True])})
 
         return
-
 
     # Plot Utils used for debugging
 
