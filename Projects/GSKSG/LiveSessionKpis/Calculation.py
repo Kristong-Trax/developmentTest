@@ -26,7 +26,7 @@ class CalculateKpi(LiveSessionBaseClass):
         self.common = LiveCommon(data_provider)
         self.store_fk = data_provider.store_fk
         self.current_date = datetime.now()
-        self.assortment = LiveAssortmentCalculation(data_provider, False)
+        self.assortment = LiveAssortmentCalculation(data_provider, False, False)
         self._own_manufacturer = self._get_own_manufacturer()
         self.result_value = self.common.get_result_values()
 
