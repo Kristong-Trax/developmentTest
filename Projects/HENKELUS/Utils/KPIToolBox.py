@@ -65,22 +65,22 @@ class ToolBox(GlobalSessionToolBox):
         self.block_parent_results = {}
 
     def main_calculation(self):
-        self.calculate_adjacency_within_bay()
-        self.calculate_max_block_directional()
-        self.calculate_sku_count()
-        self.calculate_facing_count()
-        self.calculate_smart_tags()
-        self.calculate_base_measurement()
-        self.calculate_liner_measure()
-        self.calculate_horizontal_shelf_position()
-        self.calculate_vertical_shelf_position()
-        self.calculate_blocking_comp()
+        # self.calculate_adjacency_within_bay()
+        # self.calculate_max_block_directional()
+        # self.calculate_sku_count()
+        # self.calculate_facing_count()
+        # self.calculate_smart_tags()
+        # self.calculate_base_measurement()
+        # self.calculate_liner_measure()
+        # self.calculate_horizontal_shelf_position()
+        # self.calculate_vertical_shelf_position()
+        # self.calculate_blocking_comp()
+        #
+        # self.calculate_blocking()
+        # self.calculate_blocking_orientation()
+        # self.calculate_blocking_sequence()
 
-        self.calculate_blocking()
-        self.calculate_blocking_orientation()
-        self.calculate_blocking_sequence()
-
-        self.calculate_max_blocking_adj()
+        # self.calculate_max_blocking_adj()
         self.calculate_negative_max_blocking_adj()
 
         score = 0
@@ -350,7 +350,7 @@ class ToolBox(GlobalSessionToolBox):
                         custom_text = 'Horizontal'
 
                 custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
-                numerator_id_value = self.scif['product_fk'][self.scif[param_data_type] == item].iloc[0]
+                numerator_id_value = self.all_products['product_fk'][self.all_products[param_data_type] == item].iloc[0]
                 param_dict.pop(param_data_type)
 
                 self.block_parent_results[kpi_fk] = result
@@ -552,6 +552,8 @@ class ToolBox(GlobalSessionToolBox):
                         passed_block_cluster = [max_block.cluster]
                         adj_mpis = self.generate_adjacent_matches(passed_block_cluster)
                         block_adj_mpis[letter] = adj_mpis.scene_match_fk.tolist()
+                    else:
+                        block_adj_mpis[letter] = []
                 else:
                     block_adj_mpis[letter] = []
 
