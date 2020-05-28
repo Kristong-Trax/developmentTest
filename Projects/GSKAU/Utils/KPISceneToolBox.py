@@ -3,6 +3,7 @@ import pandas as pd
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
+from Projects.GSKAU.Utils.KPISceneLayoutComplianceCalculations import SceneLayoutComplianceCalc
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
@@ -271,6 +272,16 @@ class GSKAUSceneToolBox:
                         display_per_sku_per_scene_calculated = self.save_display_presence_per_sku(
                             kpi=kpi_display_presence_sku,
                             numerator_result=0)  # 0--posm not recognized
+
+    def calculate_layout_compliance(self):
+        try:
+            current_scene_fk = self.scene_info.iloc[0].scene_fk
+            Log.info('Calculate Layout Compliance for session: {sess} - scene: {scene}'
+                     .format(sess=self.session_uid, scene=current_scene_fk))
+            scene_layout_calc_obj = SceneLayoutComplianceCalc(scene_toolbox_obj=self)
+            scene_layout_calc_obj.calculate_all()
+        except Exception as e:
+            Log.error("Error: {}".format(e))
 
     def get_ean_presence_rate(self, ean_list):
         """
