@@ -1,16 +1,16 @@
 from pathlib import Path
-import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Data.Projects.Connector import ProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from collections import Counter
-import sys
+import pandas as pd
 import datetime
 
 
 class KPITemplateValidater:
+
     def __init__(self, project_name):
         self.project_name = project_name
         self._template_path = Path(__file__).parent.parent / "Data/kpi_template.xlsx"
@@ -285,8 +285,7 @@ class KPITemplateValidater:
 
                 start_date = subset_df.start_date.iloc[0]
                 end_date = subset_df.end_date.iloc[0]
-                interval = pd.Interval(pd.Timestamp(start_date),
-                                       pd.Timestamp(end_date), closed='both')
+                interval = pd.Interval(pd.Timestamp(start_date), pd.Timestamp(end_date), closed='both')
 
                 for row_num, row_data in subset_df.iloc[1:, :].iterrows():
                     if (pd.Timestamp(row_data.start_date) in interval) or (pd.Timestamp(row_data.end_date) in interval):
@@ -307,7 +306,6 @@ class KPITemplateValidater:
         result = True
         if not self.check_start_date_and_end_date():
             result = False
-        sys.exit(0)
         if not self.check_column_names():
             result = False
         if not self.check_allowed_values():

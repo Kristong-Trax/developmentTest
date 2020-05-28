@@ -1,6 +1,7 @@
 
 class Consts:
     KPI_SHEET_NAME = 'kpi_list'
+    KPI_CONFIG_SHEET = "kpi_config"
     PS_KPI_FAMILY = 19
     KPI_FAMILY = 'kpi_family_fk'
     TYPE = 'type'
@@ -20,7 +21,6 @@ class Consts:
     TEMPLATE_FKS = "template_fks"
 
     INCLUDE_EMPTY = "include_empty"
-
 
     GENERAL_EMPTY = 0
     EMPTY = 1478
