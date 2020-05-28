@@ -360,18 +360,31 @@ class ToolBox(GlobalSessionToolBox):
                                            result=count_of_bays_in_template)
 
     def calculate_platformas_scoring(self, row):
-        result_dict_list = []
+        result_list = []
         result_container = self._get_kpi_name_and_fk(row)
         kpi_name = result_container[0]
         kpi_fk = result_container[1]
         df = self.prereq[self.prereq['KPI Name'] == kpi_name]
 
-        # for i, child_row in self.templates[PLATFORMAS][self.templates[PLATFORMAS][PARENT_KPI] == kpi_name].iterrows():
-        #     child_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
-        #     if not df.empty:
-        #         child_result = df[child_row['data_column']].iloc[0]
 
+        plat_template = self.templates[PLATFORMAS]
+        plataformas = self.platformas_data
+        relevant_platformas = plataformas[(plataformas['Platform Name'] == kpi_name) & (plataformas.consumed == 'no')]
+        for i, child_row in plat_template[plat_template[PARENT_KPI] == kpi_name].iterrows():
+            child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
+            if not relevant_platformas.empty:
+                child_result = relevant_platformas[child_row['Data_Column']].iloc[0]
+                scene_id = relevant_platformas['scene_id'].iloc[0]
+                self.platformas_data.loc[relevant_platformas.index.values[0], 'consumed'] = 'yes'
+            else:
+                child_result = 0
+                scene_id = 0
 
+            result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
+                           'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
+                           'denominator_result': scene_id,
+                           'result': child_result}
+            result_list.append(result_dict)
 
         resut_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk}
         if df.empty:
@@ -381,7 +394,8 @@ class ToolBox(GlobalSessionToolBox):
             resut_dict['result'] = df.result.iloc[0]
             resut_dict['score'] = df.actual_score.iloc[0]
 
-        return resut_dict
+        result_list.append(result_dict)
+        return result_list
         # results_list = []
         # kpi_name = row[KPI_NAME]
         # kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
@@ -668,7 +682,7 @@ class ToolBox(GlobalSessionToolBox):
         survey_results = self.get_survey_results_for_POS(unique_scenes_in_platformas_data, 28)
         platformas_data = platformas_data.merge(survey_results[['scene_fk', 'selected_option_text']], how='left',
                                                 left_on='scene_id', right_on='scene_fk').drop(
-            columns=['scene_fk']).fillna(0).rename(columns={'selected_option_text': 'survey_result'})
+            columns=['scene_fk']).fillna(0).rename(columns={'selected_option_text': 'Survey Question'})
         return platformas_data
 
     def _get_coke_purity_for_scene(self, scene_scif, assortment_groups):
@@ -1673,13 +1687,13 @@ class ToolBox(GlobalSessionToolBox):
 
         final_df = pd.DataFrame()
         for index, row in platformas_data.iterrows():
-            relevant_template_name = self.scif[self.scif.scene_id == row.scene_id].template_name.iloc[0]
+            relevant_template_name = row.template_name
             relevant_preplat = pre_req_platformas[pre_req_platformas['Platform'].str.contains(row['Platform Name'])]
             relevant_preplat = relevant_preplat[relevant_preplat.template_name == relevant_template_name]
 
             result = (row['POS option present'] * .25) + (
                     row['Minimum facings met'] * .5 / 3 + row['Mandatory SKUs found'] * .5 / 3 + row[
-                'survey_result'] * .5 / 3) + (row['Coke purity'] * .25)
+                'Survey Question'] * .5 / 3) + (row['Coke purity'] * .25)
             relevant_preplat['actual_score'] = relevant_preplat['Score'] * result
             relevant_preplat['result'] = result
             relevant_preplat['scene_id'] = row.scene_id
