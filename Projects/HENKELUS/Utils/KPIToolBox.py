@@ -65,22 +65,22 @@ class ToolBox(GlobalSessionToolBox):
         self.block_parent_results = {}
 
     def main_calculation(self):
-        # self.calculate_adjacency_within_bay()
-        # self.calculate_max_block_directional()
-        # self.calculate_sku_count()
-        # self.calculate_facing_count()
-        # self.calculate_smart_tags()
-        # self.calculate_base_measurement()
-        # self.calculate_liner_measure()
-        # self.calculate_horizontal_shelf_position()
-        # self.calculate_vertical_shelf_position()
-        # self.calculate_blocking_comp()
-        #
-        # self.calculate_blocking()
-        # self.calculate_blocking_orientation()
-        # self.calculate_blocking_sequence()
+        self.calculate_adjacency_within_bay()
+        self.calculate_max_block_directional()
+        self.calculate_sku_count()
+        self.calculate_facing_count()
+        self.calculate_smart_tags()
+        self.calculate_base_measurement()
+        self.calculate_liner_measure()
+        self.calculate_horizontal_shelf_position()
+        self.calculate_vertical_shelf_position()
+        self.calculate_blocking_comp()
 
-        # self.calculate_max_blocking_adj()
+        self.calculate_blocking()
+        self.calculate_blocking_orientation()
+        self.calculate_blocking_sequence()
+
+        self.calculate_max_blocking_adj()
         self.calculate_negative_max_blocking_adj()
 
         score = 0
