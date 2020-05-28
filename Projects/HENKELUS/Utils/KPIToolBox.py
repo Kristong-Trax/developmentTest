@@ -350,7 +350,7 @@ class ToolBox(GlobalSessionToolBox):
                         custom_text = 'Horizontal'
 
                 custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
-                numerator_id_value = self.scif['product_fk'][self.scif[param_data_type] == item].iloc[0]
+                numerator_id_value = self.all_products['product_fk'][self.all_products[param_data_type] == item].iloc[0]
                 param_dict.pop(param_data_type)
 
                 self.block_parent_results[kpi_fk] = result
@@ -552,6 +552,8 @@ class ToolBox(GlobalSessionToolBox):
                         passed_block_cluster = [max_block.cluster]
                         adj_mpis = self.generate_adjacent_matches(passed_block_cluster)
                         block_adj_mpis[letter] = adj_mpis.scene_match_fk.tolist()
+                    else:
+                        block_adj_mpis[letter] = []
                 else:
                     block_adj_mpis[letter] = []
 
@@ -667,6 +669,7 @@ class ToolBox(GlobalSessionToolBox):
         block_result = self.block.network_x_block_together(
             population=filter_dict,
             additional={
+                'minimum_facing_for_block': 1,
                 'allowed_edge_type': ['connected'],
                 'allowed_products_filters': allowed_connected_dict,
                 'include_stacking': True})
