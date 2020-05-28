@@ -204,7 +204,7 @@ class ALTRIAUSToolBox:
             for neighbor in graph.neighbors(node):
                 neighbor_data = graph.nodes[neighbor]
                 try:
-                    if neighbor_data['pos_type'] != 'Flip-Sign':
+                    if neighbor_data['pos_type'].value != 'Flip-Sign':
                         continue
                 except KeyError:
                     continue
@@ -241,7 +241,9 @@ class ALTRIAUSToolBox:
                 continue
             if neighbor_data['pos_type'].value != 'Flip-Sign':
                 continue
-            # TODO exclude non Altria POS
+            # exclude 'General POS Other'
+            if neighbor_data['product_fk'].value == 9304:
+                continue
 
             neighbor_width = neighbor_data['calculated_width_ft'].value
             flip_sign_widths.append(neighbor_width)
@@ -293,7 +295,7 @@ class ALTRIAUSToolBox:
         proportions_dict = {}
 
         for i, slot in enumerate(f_slots):
-            proportions_dict["F{}".format(i+1)] = slot / sum(f_slots)
+            proportions_dict["F{}".format(i+1)] = slot / float(sum(f_slots))
 
         return proportions_dict
 

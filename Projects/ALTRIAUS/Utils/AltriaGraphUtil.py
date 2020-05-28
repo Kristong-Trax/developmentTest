@@ -91,7 +91,7 @@ class AltriaGraphBuilder(object):
 
         self.condensed_adj_graph = AdjacencyGraphBuilder.condense_graph_by_level('category', self.base_adj_graph)
         self.condensed_adj_graph = self.condensed_adj_graph.to_undirected()
-        self._remove_products_outside_core_rectangles()
+        self._severe_connections_across_weakly_related_bays()
         self._pair_signage_with_fixture_block()
         self._filter_pos_edges_to_closest()
         self._consume_fully_encapsulated_nodes()
@@ -159,14 +159,46 @@ class AltriaGraphBuilder(object):
             adj_graph.remove_edge(node_pair[0], node_pair[1])
         return adj_graph
 
-    def _remove_products_outside_core_rectangles(self):
-        # TODO implement logic to determine outlier MPIS items
-        mpis_fks_to_remove = [402157194, 402157017, 402157016, 402157015, 402157068]
-        if self.matches_df[self.matches_df['scene_match_fk'].isin(mpis_fks_to_remove)].empty:
-            return self.condensed_adj_graph
-        # mpis_fks_to_remove = [402157017, 402157016, 402157015, 402157068]
-        polygons_to_remove = self._get_polygons_by_mpis_fks(self.base_adj_graph, mpis_fks_to_remove)
-        self.condensed_adj_graph = self. _remove_polygons(self.condensed_adj_graph, polygons_to_remove)
+    def _severe_connections_across_weakly_related_bays(self):
+        edges_to_remove = []
+        # for every condensed node, find all edges that span across bays
+        for node, node_data in self.condensed_adj_graph.nodes(data=True):
+            bay_numbers = node_data['bay_number'].values
+            if len(bay_numbers) < 2:
+                continue
+
+            node_matches = self.matches_df[self.matches_df['scene_match_fk'].isin(node_data['members'])]
+            bay_groups = node_matches.groupby(['bay_number', 'shelf_number'], as_index=False)['scene_match_fk'].count()
+            bay_groups = bay_groups.groupby(['bay_number'], as_index=False)['shelf_number'].count()
+            max_shelves = bay_groups['shelf_number'].max()
+            bay_groups['orphaned'] = \
+                bay_groups['shelf_number'].apply(lambda x: True if x <= max_shelves * 0.5 else False)
+
+            if len(bay_groups[bay_groups['orphaned']]) > 1:
+                Log.error("Unable to severe bay connections. Too many bays would be orphaned")
+                continue
+            elif len(bay_groups[bay_groups['orphaned']]) == 0:
+                continue
+
+            orphaned_bay = bay_groups[bay_groups['orphaned']]['bay_number'].iloc[0]
+
+            sub_graph = self.base_adj_graph.subgraph(node_data['members'])
+            for edge in sub_graph.edges():
+                node1_bay = sub_graph.nodes[edge[0]]['bay_number'].value
+                node2_bay = sub_graph.nodes[edge[1]]['bay_number'].value
+                if node1_bay == node2_bay:
+                    continue
+                elif node1_bay == orphaned_bay or node2_bay == orphaned_bay:
+                    edges_to_remove.append(edge)
+
+        if edges_to_remove:
+            edges_to_keep = [edge for edge in self.base_adj_graph.edges() if
+                             edge not in edges_to_remove and (edge[1], edge[0]) not in edges_to_remove]
+
+            self.base_adj_graph = self.base_adj_graph.edge_subgraph(edges_to_keep)
+
+            self.condensed_adj_graph = AdjacencyGraphBuilder.condense_graph_by_level('category', self.base_adj_graph)
+            self.condensed_adj_graph = self.condensed_adj_graph.to_undirected()
         return
 
     @staticmethod
@@ -330,7 +362,7 @@ class AltriaGraphBuilder(object):
         node_a_box = box(node_a_bounds[0], node_a_bounds[1], node_a_bounds[2], node_a_bounds[3])
         node_b_box = box(node_b_bounds[0], node_b_bounds[1], node_b_bounds[2], node_b_bounds[3])
         # return node_a_box.contains(node_b_box)
-        return (node_a_box.intersection(node_b_box).area / node_b_box.area) > 0.95
+        return (node_a_box.intersection(node_b_box).area / node_b_box.area) > 0.90
 
     @staticmethod
     def get_merged_node_attributes_from_nodes(selected_nodes, graph):
