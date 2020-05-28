@@ -83,6 +83,7 @@ class ALTRIAUSToolBox:
         self.adp = AltriaDataProvider(self.data_provider)
         self.active_kpis = self._get_active_kpis()
         self.external_targets = self.ps_data_provider.get_kpi_external_targets()
+        self.survey_dot_com_collected_this_session = self._get_survey_dot_com_collected_value()
         self._add_smart_attributes_to_mpis()
         self.scene_graphs = {}
 
@@ -465,6 +466,8 @@ class ALTRIAUSToolBox:
         return
 
     def calculate_register_type(self):
+        if self.survey_dot_com_collected_this_session:
+            return
         relevant_scif = self.scif[(self.scif['product_type'].isin(['POS', 'Other'])) &
                                   (self.scif['category'] == 'POS Machinery')]
         if relevant_scif.empty:
@@ -479,6 +482,8 @@ class ALTRIAUSToolBox:
                                           result=result)
 
     def calculate_age_verification(self):
+        if self.survey_dot_com_collected_this_session:
+            return
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Age Verification')
         relevant_scif = self.scif[self.scif['brand_name'].isin(['Age Verification'])]
 
@@ -517,6 +522,14 @@ class ALTRIAUSToolBox:
                                                                         match_product_in_probe_state_values_new])
 
         return
+
+    def _get_survey_dot_com_collected_value(self):
+        try:
+            sales_rep_fk = self.session_info['s_sales_rep_fk'].iloc[0]
+        except IndexError:
+            sales_rep_fk = 0
+
+        return int(sales_rep_fk) == 209050
 
     def get_category_fk_by_name(self, category_name):
         return self.all_products[self.all_products['category'] == category_name]['category_fk'].iloc[0]
