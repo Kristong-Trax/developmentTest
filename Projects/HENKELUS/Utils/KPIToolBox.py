@@ -669,6 +669,7 @@ class ToolBox(GlobalSessionToolBox):
         block_result = self.block.network_x_block_together(
             population=filter_dict,
             additional={
+                'minimum_facing_for_block': 1,
                 'allowed_edge_type': ['connected'],
                 'allowed_products_filters': allowed_connected_dict,
                 'include_stacking': True})
