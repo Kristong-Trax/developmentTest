@@ -1,8 +1,6 @@
 import os
 import pandas as pd
-
 from Projects.LIONJP_SAND.Utils.SequenceCalculationsV2 import Sequence
-# from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.CalculationsUtils.Constants import AdditionalAttr
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.DB.CommonV2 import Common
@@ -13,7 +11,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from Projects.LIONJP_SAND.Data.Consts import Consts
 
-
+is_debug = False
 __author__ = 'satya'
 
 
@@ -175,83 +173,6 @@ class LIONJP_SANDToolBox:
 
         return exclude_products_filters, allowed_products_filters
 
-    def build_ean_groups(self, adj_config, scene_fk):
-        group_entities = adj_config['group_entity']
-        entity_values = adj_config['entity_values']
-        extra = []
-        # include_pos: 0, include_empty: 0, include_others: 0, include_irrelevant: 0
-        if adj_config['include_empty'] == "exclude":
-            extra.append(Consts.GENERAL_EMPTY)
-            extra.append(Consts.EMPTY)
-
-        if adj_config['include_irrelevant'] == "exclude":
-            extra.append(Consts.IRRELEVANT)
-
-        if group_entities.upper() == "Y":
-            entity_values = [[u"{}".format(g) for g in group] for group in entity_values]
-        entities = {}
-
-        df_entities = pd.DataFrame()
-
-        if group_entities.upper() == "Y":
-            for entity_key, entity_value in enumerate(entity_values):
-                if isinstance(entity_value, list):
-                    entities["entity_{}".format(entity_key)] = entity_value
-                else:
-                    Log.warning("ean_codes are not in list of lists format")
-                    return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-        else:
-            for entity_key, entity_value in enumerate(entity_values):
-                entities["entity_{}".format(entity_key)] = entity_value
-
-        for entity_key, entity_value in entities.items():
-            df_entity = self.data_provider.all_products[['product_fk', 'product_ean_code']].copy()
-            df_entity = df_entity[['product_fk']][(df_entity['product_ean_code'].isin(entity_value))]
-            if not df_entity.empty:
-                df_entity_extra = df_entity[['product_fk']][(df_entity['product_fk'].isin(extra))].copy()
-                df_entity = df_entity.append(df_entity_extra)
-                df_entity.reset_index(drop=True)
-
-            df_entity['entity'] = entity_key
-            df_entities = df_entities.append(df_entity)
-
-        df_entities = df_entities.reset_index(drop=True)
-
-        product_pks = list(df_entities['product_fk'].unique())
-
-        df_scene_pks = self.scif[(self.scif['scene_id'] == scene_fk) & (self.scif['item_id'].isin(product_pks))]
-
-        if df_scene_pks.empty:
-            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-        else:
-            df_custom_matches = self.data_provider.matches.copy()
-            df_custom_matches = df_custom_matches.merge(df_entities, on="product_fk")
-            blocking_percentage = adj_config['block_percentage']
-            df = df_custom_matches[(~df_custom_matches['product_fk'].isin(extra)) &
-                                   (df_custom_matches['scene_fk'] == scene_fk)]
-            minimum_tags_per_entity = self.get_minimum_facings(df, blocking_percentage)
-            population = {'entity': entities.keys()}
-            exclude_filter, allowed_products_filter = self.exclude_and_include_filter(adj_config)
-
-            if adj_config['orientation'].lower() == "vertical":
-                direction = "DOWN"
-            elif adj_config['orientation'].lower() == "horizontal":
-                direction = "RIGHT"
-            else:
-                Log.warning("Invalid direction:{}. Resetting to default orientation RIGHT".format(adj_config['orientation']))
-                direction = "RIGHT"
-
-            sequence_params = {AdditionalAttr.DIRECTION: direction,
-                               AdditionalAttr.EXCLUDE_FILTER: exclude_filter,
-                               AdditionalAttr.CHECK_ALL_SEQUENCES: False,
-                               AdditionalAttr.STRICT_MODE: False,
-                               AdditionalAttr.REPEATING_OCCURRENCES: True,
-                               AdditionalAttr.INCLUDE_STACKING: False,
-                               AdditionalAttr.ALLOWED_PRODUCTS_FILTERS: allowed_products_filter,
-                               AdditionalAttr.MIN_TAGS_OF_ENTITY: minimum_tags_per_entity}
-
-            return population, sequence_params, df_custom_matches
-
     def build_entity_groups(self, adj_config, scene_fk):
         extra = []
         # include_empty
@@ -265,10 +186,10 @@ class LIONJP_SANDToolBox:
 
         # include_others
         if not pd.isnull(adj_config['include_other_ean_codes']):
-            include_others = [other.strip() for other in adj_config['include_other_ean_codes'].split(",")]
+            include_others = tuple([other.strip() for other in adj_config['include_other_ean_codes'].split(",")])
             if len(include_others) != 0:
-                for other in include_others:
-                    extra.append(other)
+                product_fks = self.get_product_fks(include_others)
+                extra.extend(product_fks)
 
         entity_1_type = adj_config['entity_1_type']
         entity_2_type = adj_config['entity_2_type']
@@ -307,20 +228,34 @@ class LIONJP_SANDToolBox:
 
         product_pks = list(df_entities['product_fk'].unique())
 
-        df_scene_pks = self.scif[(self.scif['scene_id'] == scene_fk) & (self.scif['item_id'].isin(product_pks))]
+        df_product_pks_in_scene = self.scif[(self.scif['scene_id'] == scene_fk) &
+                                            (self.scif['item_id'].isin(product_pks)) &
+                                            (self.scif['facings_ign_stack'] > 0)]
 
-        if df_scene_pks.empty:
+        if df_product_pks_in_scene.empty:
+            if is_debug:
+                Log.warning("Products:{} not in scene{}:scene_fk".format(product_pks, scene_fk))
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
         else:
             df_custom_matches = self.data_provider.matches.copy()
             df_custom_matches = df_custom_matches.merge(df_entities, on="product_fk")
-            df_custom_matches = df_custom_matches[df_custom_matches['scene_fk'] == scene_fk]
+            df_custom_matches = df_custom_matches[(df_custom_matches['scene_fk'] == scene_fk) &
+                                                  # (df_custom_matches['face_count'] > 0) &
+                                                  (df_custom_matches['stacking_layer'] == 1)]
+
             blocking_percentage = adj_config['min_block_percentage']
+
+            if int(adj_config['min_overlap_percentage']) != 0:
+                overlap_percentage = int(adj_config['min_overlap_percentage'])/100.00
+            else:
+                overlap_percentage = 0.1
+
             df = df_custom_matches[(~df_custom_matches['product_fk'].isin(extra)) &
                                    (df_custom_matches['scene_fk'] == scene_fk)]
             minimum_tags_per_entity = self.get_minimum_facings(df, blocking_percentage)
             population = {'entity': list(df_entities['entity'].unique())}
             exclude_filter, allowed_products_filter = self.exclude_and_include_filter(adj_config)
+
         if adj_config['orientation'].lower() == "vertical":
             direction = "DOWN"
         elif adj_config['orientation'].lower() == "horizontal":
@@ -332,12 +267,13 @@ class LIONJP_SANDToolBox:
 
         sequence_params = {AdditionalAttr.DIRECTION: direction,
                            AdditionalAttr.EXCLUDE_FILTER: exclude_filter,
-                           AdditionalAttr.CHECK_ALL_SEQUENCES: False,
+                           AdditionalAttr.CHECK_ALL_SEQUENCES: True,
                            AdditionalAttr.STRICT_MODE: False,
                            AdditionalAttr.REPEATING_OCCURRENCES: True,
                            AdditionalAttr.INCLUDE_STACKING: False,
                            AdditionalAttr.ALLOWED_PRODUCTS_FILTERS: allowed_products_filter,
-                           AdditionalAttr.MIN_TAGS_OF_ENTITY: minimum_tags_per_entity}
+                           AdditionalAttr.MIN_TAGS_OF_ENTITY: minimum_tags_per_entity,
+                           AdditionalAttr.ADJACENCY_OVERLAP_RATIO: overlap_percentage}
 
         return population, sequence_params, df_custom_matches
 
@@ -352,6 +288,7 @@ class LIONJP_SANDToolBox:
         if len(percentage) > 1:
             facings = percentage.min()
         else:
+            # when one of the entity is missing in the scene
             facings = 0
 
         if (facings > 0) and (facings < 1):
@@ -371,10 +308,15 @@ class LIONJP_SANDToolBox:
     def calculate_adjacency_per_scene(self, kpi_name):
         allowed_entities = ["product", "brand", "category", "sub_category"]
         kpi_config = self.kpi_template[self.kpi_template["kpi_name"] == kpi_name].copy()
+        kpi_config['visit_date'] = pd.Timestamp(self.visit_date)
+        kpi_config = kpi_config[kpi_config['visit_date'].between(kpi_config['start_date'],
+                                                                 kpi_config['end_date'],
+                                                                 inclusive=True)]
+
         kpi_level_2_fk = self.get_kpi_level_2_fk(kpi_name)
 
         if kpi_config.empty:
-            message = "kpi_level_2_fk:{}, kpi_name:{} ".format(kpi_name)
+            message = "kpi_name:{} ".format(kpi_name)
             message += " not found in static.kpi_level_2 table"
             Log.warning(message)
             return
@@ -393,7 +335,8 @@ class LIONJP_SANDToolBox:
                     population, sequence_params, custom_matches = self.build_entity_groups(adj_config, scene_fk)
 
                     if custom_matches.empty:
-                        # print("scene_fk:{}, Custom Entities are not found in the scene".format(scene_fk))
+                        if is_debug:
+                            Log.warning("scene_fk:{}, Custom Entities are not found in the scene".format(scene_fk))
                         continue
 
                     if sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY] == 0:
@@ -405,7 +348,8 @@ class LIONJP_SANDToolBox:
                     result = 1 if result_count > 0 else 0
                     score = result
                     if result > 0:
-                        print("scene_fk:{}, report_label:{}, result={}".format(scene_fk, adj_config['report_label'], result))
+                        if is_debug:
+                            Log.warning("scene_fk:{}, report_label:{}, result={}".format(scene_fk, adj_config['report_label'], result))
 
                     self.common.write_to_db_result(fk=kpi_level_2_fk,
                                                    numerator_id=custom_entity_pk,
@@ -418,3 +362,16 @@ class LIONJP_SANDToolBox:
                                                    target=sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY])
                 else:
                     Log.warning("Invalid entity:{}".format(adj_config['entity']))
+
+    def get_product_fks(self, ean_codes):
+        product_pks = []
+        query = """
+            SELECT pk FROM static_new.product
+            WHERE ean_code in '{}'
+            """.format(ean_codes)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        if data.empty:
+            return product_pks
+        else:
+            product_pks = list(data['pk'].unique())
+        return product_pks

@@ -61,8 +61,7 @@ class Sequence(BaseCalculation):
         graph_key, graph_value = self._prepare_data_for_graph_creation(population, sequence_params)
         for scene in scenes_to_check:
             adj_g = self._create_adjacency_graph(scene, population, sequence_params, graph_key)
-            result = self._find_sequence_per_scene(
-                scene, adj_g, sequence_params, graph_key, graph_value)
+            result = self._find_sequence_per_scene(scene, adj_g, sequence_params, graph_key, graph_value)
             if result and not sequence_params[AdditionalAttr.CHECK_ALL_SEQUENCES]:
                 break
 
@@ -78,8 +77,7 @@ class Sequence(BaseCalculation):
         node_entity_dict = nx.get_node_attributes(adj_g, graph_key)
         for path in all_paths:
             filtered_path = self._filter_allowed_product_filters_from_path(path, adj_g, seq_params)
-            result = self._check_if_path_is_a_sequence(
-                filtered_path, seq_params, graph_value, node_entity_dict, adj_g)
+            result = self._check_if_path_is_a_sequence(filtered_path, seq_params, graph_value, node_entity_dict, adj_g)
             if result:
                 cluster = adj_g.subgraph(path)
                 self._save_sequence_result(cluster, scene_fk, seq_params)
@@ -119,8 +117,7 @@ class Sequence(BaseCalculation):
         if sequence_params[AdditionalAttr.STRICT_MODE]:
             is_valid_sequence = path_by_seq_key == graph_value
         else:
-            is_valid_sequence = len(path_by_seq_key) == len(
-                graph_value) and set(path_by_seq_key) == set(graph_value)
+            is_valid_sequence = len(path_by_seq_key) == len(graph_value) and set(path_by_seq_key) == set(graph_value)
         if is_valid_sequence:
             is_valid_sequence = self._check_if_path_is_a_sequence_vertical(path, path_by_seq_key, sequence_params) if \
                 self._check_if_vertical(sequence_params) else \
@@ -153,8 +150,7 @@ class Sequence(BaseCalculation):
         is_valid_sequence = True
         if sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY] > 1:
             min_tags_per_entity = sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY]
-            is_valid_sequence = self._validate_minimum_tags_of_entity(
-                adj_g, path, min_tags_per_entity)
+            is_valid_sequence = self._validate_minimum_tags_of_entity(adj_g, path, min_tags_per_entity)
 
         return is_valid_sequence
 
@@ -176,7 +172,7 @@ class Sequence(BaseCalculation):
             node_direction = self._translate_direction(i, path)
             if direction_node_in_past:
                 if node_direction.issubset(direction_node_in_past) or direction_node_in_past.issubset(node_direction):
-                    return False
+                        return False
             else:
                 path_dict[curr_node] = node_direction
         self.nodes_repetition.update(path_dict)
@@ -221,8 +217,7 @@ class Sequence(BaseCalculation):
         and filters irrelevant paths.
         """
         relevant_paths = [path[1].values() for path in all_paths]
-        all_paths = [path for path_list in relevant_paths for path in path_list if len(
-            path) >= len(sequence_values)]
+        all_paths = [path for path_list in relevant_paths for path in path_list if len(path) >= len(sequence_values)]
         return all_paths
 
     def _create_adjacency_graph(self, scene_fk, population, sequence_params, graph_key):
@@ -241,8 +236,7 @@ class Sequence(BaseCalculation):
         graph_attr = self._get_additional_attribute_for_graph(graph_key, allowed_product_filters)
         kwargs = {'minimal_overlap_ratio': sequence_params[AdditionalAttr.ADJACENCY_OVERLAP_RATIO],
                   }  # AdditionalAttr.USE_MASKING_ONLY: True
-        adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(
-            filtered_matches, masking_df, graph_attr, **kwargs)
+        adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches, masking_df, graph_attr, **kwargs)
         adj_g = self._filter_adjacency_graph(adj_g, graph_key, sequence_params)
         return adj_g
 
@@ -259,15 +253,13 @@ class Sequence(BaseCalculation):
             if sequence_params[AdditionalAttr.DIRECTION] in ['RIGHT', 'LEFT']:
                 adj_g = AdjacencyGraphBuilder.condense_graph_by_level(ColumnNames.GRAPH_KEY, adj_g)
             use_degrees = True
-        adj_g = self._filter_graph_by_edge_direction(
-            adj_g, direction, include_stacking, use_degrees)
+        adj_g = self._filter_graph_by_edge_direction(adj_g, direction, include_stacking, use_degrees)
         return adj_g
 
     def _filter_graph_by_edge_direction(self, adj_g, direction_to_filter, include_stacking, use_degrees):
         """ This method creates a sub graph using only edges with the required direction"""
         if not use_degrees:
-            valid_edges = [(u, v) for u, v, c in adj_g.edges.data(
-                'direction') if c == direction_to_filter]
+            valid_edges = [(u, v) for u, v, c in adj_g.edges.data('direction') if c == direction_to_filter]
         else:
             valid_edges = self._filter_edges_by_degree(adj_g, direction_to_filter)
         if include_stacking and direction_to_filter in ['RIGHT', 'LEFT']:
@@ -331,8 +323,7 @@ class Sequence(BaseCalculation):
         Plus, it returns the relevant block_key for graph creation: In case there is only 1 entity in the population
         it will be the graph_key, else, graph_key will be equal to "graph_key".
         """
-        self._expand_matches_for_graph_creation(
-            population, sequence_params[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS])
+        self._expand_matches_for_graph_creation(population, sequence_params[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS])
         self._encode_matches_and_population(population)
         graph_key, graph_value = self._get_relevant_graph_key_and_value(population, sequence_params)
         return graph_key, graph_value
@@ -345,11 +336,9 @@ class Sequence(BaseCalculation):
         """
         # Todo: handle better multi population
         if len(population.keys()) > 1:
-            self._matches[ColumnNames.GRAPH_KEY] = self._matches[population.keys()].apply(
-                self._concat_values, axis=1)
+            self._matches[ColumnNames.GRAPH_KEY] = self._matches[population.keys()].apply(self._concat_values, axis=1)
             graph_key = ColumnNames.GRAPH_KEY
-            graph_value = ['_'.join(str(x) for x in elem)
-                           for elem in list(itertools.product(*population.values()))]
+            graph_value = ['_'.join(str(x) for x in elem) for elem in list(itertools.product(*population.values()))]
         else:
             graph_key = population.keys()[0]
             graph_value = population[graph_key]
@@ -383,12 +372,10 @@ class Sequence(BaseCalculation):
         avoid the ASCII issues.
         """
         for key in population.keys():
-            population_values = list(population[key]) if not isinstance(
-                population[key], list) else population[key]
+            population_values = list(population[key]) if not isinstance(population[key], list) else population[key]
             population[key] = [self._encode_value_if_possible(value) for value in population_values]
             if key in self._matches.columns:
-                self._matches[key] = self._matches[key].apply(
-                    lambda val: self._encode_value_if_possible(val))
+                self._matches[key] = self._matches[key].apply(lambda val: self._encode_value_if_possible(val))
 
     @staticmethod
     def _encode_value_if_possible(value):
@@ -400,13 +387,10 @@ class Sequence(BaseCalculation):
         match_product_in_scene DataFrame and of course the products' attribute from the population filter.
         """
         allowed_filters_col = allowed_filters.keys() if allowed_filters is not None else []
-        product_population_keys = set(population.keys()).intersection(
-            self.all_products.columns.to_list())
-        product_cols_to_add = set(list(product_population_keys) +
-                                  allowed_filters_col + [CalcConst.PRODUCT_FK])
+        product_population_keys = set(population.keys()).intersection(self.all_products.columns.to_list())
+        product_cols_to_add = set(list(product_population_keys) + allowed_filters_col + [CalcConst.PRODUCT_FK])
         product_attributes_df = self.data_provider.all_products[list(product_cols_to_add)]
-        self._matches = self._matches.merge(
-            product_attributes_df, how='inner', on=CalcConst.PRODUCT_FK)
+        self._matches = self._matches.merge(product_attributes_df, how='inner', on=CalcConst.PRODUCT_FK)
         self._matches.drop(MatchesConsts.PK, axis=1, inplace=True)
         self._matches.rename(columns={MatchesConsts.SCENE_MATCH_FK: MatchesConsts.PK}, inplace=True)
 
@@ -437,8 +421,7 @@ class Sequence(BaseCalculation):
         if location is not None:
             conditions = {self.input_parser.LOCATION: location}
             try:
-                relevant_scenes = self.input_parser.filter_df(
-                    conditions, self.scif).scene_id.unique().tolist()
+                relevant_scenes = self.input_parser.filter_df(conditions, self.scif).scene_id.unique().tolist()
             except (AttributeError, KeyError):
                 Log.debug("location parameter is not in the required structure.")
                 relevant_scenes = []
@@ -464,8 +447,7 @@ class Sequence(BaseCalculation):
             return 0
         if not sequence_params[AdditionalAttr.REPEATING_OCCURRENCES] and \
                 sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY] > 1:
-            Log.debug(
-                "In case repeating occurrences is False, minimum tags of facings param must be equal to 1")
+            Log.debug("In case repeating occurrences is False, minimum tags of facings param must be equal to 1")
             return 0
         return 1
 
@@ -476,8 +458,7 @@ class Sequence(BaseCalculation):
         """
         if population is None:
             return 0
-        valid_population_keys = set(self.all_products.columns.tolist() +
-                                    self._matches.columns.tolist())
+        valid_population_keys = set(self.all_products.columns.tolist() + self._matches.columns.tolist())
         return set(population.keys()).issubset(valid_population_keys)
 
     @staticmethod
@@ -497,32 +478,3 @@ class Sequence(BaseCalculation):
     @staticmethod
     def _get_results_df():
         return pd.DataFrame(columns=[ColumnNames.CLUSTER, ColumnNames.SCENE_FK, AdditionalAttr.DIRECTION])
-
-
-# For debugging:
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Trax.Utils.Conf.Configuration import Config
-
-# if __name__ == '__main__':
-#     LoggerInitializer.init('sequence calculations')
-#     Config.init()
-#     project_name = 'marsuae-sand'
-#     test_data_provider = KEngineDataProvider(project_name)
-#     session = '5fdd1d96-fa86-4567-98e9-80f6a4f6e056'
-#     test_data_provider.load_session_data(session)
-#     location = {MatchesConsts.SCENE_FK: 132238}
-#     population = {'brand_fk': [16, 12]}
-#     sequence_params = {AdditionalAttr.DIRECTION: 'DOWN',
-#                        AdditionalAttr.EXCLUDE_FILTER: None,
-#                        AdditionalAttr.CHECK_ALL_SEQUENCES: True,
-#                        AdditionalAttr.STRICT_MODE: False,
-#                        AdditionalAttr.REPEATING_OCCURRENCES: True,
-#                        AdditionalAttr.INCLUDE_STACKING: True,
-#                        AdditionalAttr.ALLOWED_PRODUCTS_FILTERS: {'brand_fk': 14},
-#                        AdditionalAttr.MIN_TAGS_OF_ENTITY: 1}
-#     sequence_res = Sequence(test_data_provider).calculate_sequence(population, location,
-#                                                                    sequence_params)
-#
-#     # test allow products
-#     print "Done"
