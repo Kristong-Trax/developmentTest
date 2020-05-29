@@ -151,7 +151,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
             adj_g = self._create_adjacency_graph_per_scene(scene_fk)
             paths = self._get_relevant_path_for_calculation(adj_g)
             total_score_per_sku += self._calculate_case_count(adj_g, paths)
-            self.create_graph_image(scene_fk, adj_g)
+            # self.create_graph_image(scene_fk, adj_g)
         for product_fk in self.target.keys():
             result = total_score_per_sku.get(product_fk, 0)
             # convert results ending in .99 to .00 - this unpleasant situation is caused by using float arithmetic
