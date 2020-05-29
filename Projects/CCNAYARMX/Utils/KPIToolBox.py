@@ -110,7 +110,7 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
                               MERCADEO_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplate2020v0.9.3.xlsx')
+                             'CCNayarTemplate2020v0.9.4.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v7.xlsx')
 
@@ -323,7 +323,11 @@ class ToolBox(GlobalSessionToolBox):
                     {'RETORNABILIDAD': 'mean'})
                 result = 1 if 1 in grouped_merge_mpis_prod.values else 0
         else:
-            result = 1 if self.results_df[self.results_df.kpi_name.isin(['Hidratacion'])].result.iloc[0] == 100 else 0
+            hidratacion_df = self.results_df[self.results_df.kpi_name.isin(['Hidratacion'])]
+            if not hidratacion_df.empty:
+                result = 1 if hidratacion_df.result.iloc[0] == 100 else 0
+            else:
+                result = 0
             # DO THE FORTH ROW OF THE SHEET
 
         return_holder = self._get_kpi_name_and_fk(row)
@@ -366,7 +370,6 @@ class ToolBox(GlobalSessionToolBox):
         kpi_fk = result_container[1]
         df = self.prereq[self.prereq['KPI Name'] == kpi_name]
 
-
         plat_template = self.templates[PLATFORMAS]
         plataformas = self.platformas_data
         relevant_platformas = plataformas[(plataformas['Platform Name'] == kpi_name) & (plataformas.consumed == 'no')]
@@ -374,25 +377,28 @@ class ToolBox(GlobalSessionToolBox):
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if not relevant_platformas.empty:
                 child_result = relevant_platformas[child_row['Data_Column']].iloc[0]
+                child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0]
                 scene_id = relevant_platformas['scene_id'].iloc[0]
                 self.platformas_data.loc[relevant_platformas.index.values[0], 'consumed'] = 'yes'
             else:
                 child_result = 0
                 scene_id = 0
+                child_score = 0
 
-            result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
-                           'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
-                           'denominator_result': scene_id,
-                           'result': child_result}
-            result_list.append(result_dict)
+            child_result_dict = {'kpi_name': child_row[KPI_NAME], 'kpi_fk': child_kpi_fk,
+                                 'numerator_id': self.own_manuf_fk, 'denominator_id': self.store_id,
+                                 'denominator_result': scene_id,
+                                 'result': child_result, 'score': child_score}
+            result_list.append(child_result_dict)
 
-        resut_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk}
+        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk}
         if df.empty:
-            resut_dict['result'] = np.nan
+            result_dict['result'] = 0
+            result_dict['score'] = 0
         else:
-            resut_dict['denominator_id'] = df.scene_id.iloc[0]
-            resut_dict['result'] = df.result.iloc[0]
-            resut_dict['score'] = df.actual_score.iloc[0]
+            result_dict['denominator_id'] = df.scene_id.iloc[0]
+            result_dict['result'] = df.result.iloc[0]
+            result_dict['score'] = df.actual_score.iloc[0]
 
         result_list.append(result_dict)
         return result_list
@@ -836,8 +842,6 @@ class ToolBox(GlobalSessionToolBox):
 
         kpi_name = row[KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        if kpi_name == 'SOCI':
-            a = 1
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
         numerator_value1 = row[NUMERATOR_VALUE_1]
@@ -1047,7 +1051,7 @@ class ToolBox(GlobalSessionToolBox):
             result = pd.np.nan
 
         else:
-            unique_bay_number = list(set(bay_count_scif[BAY_NUMBER]))
+            # unique_bay_number = list(set(bay_count_scif[BAY_NUMBER]))
 
             if pd.isna(iterate_by):
                 location_name = TEMPLATE_NAME
@@ -1055,37 +1059,35 @@ class ToolBox(GlobalSessionToolBox):
 
                 location = {location_name: location_id}
 
-                for j in unique_bay_number:
-                    if pd.notna(tamano_del_producto):
-                        relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-                                            TAMANDO_DEL_PRODUCTO: [tamano_del_producto], BAY_NUMBER: [j],
-                                            PRODUCT_NAME: relevant_product_names}
-                    else:
-                        relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-                                            BAY_NUMBER: [j]}
+                # for j in unique_bay_number:
+                if pd.notna(tamano_del_producto):
+                    relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
+                                        TAMANDO_DEL_PRODUCTO: [tamano_del_producto],
+                                        PRODUCT_NAME: relevant_product_names}
+                else:
+                    relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
 
-                    block = self.block.network_x_block_together(relevant_filters,
-                                                                location=location,
-                                                                additional={'minimum_block_ratio': 0.9,
-                                                                            'calculate_all_scenes': True,
-                                                                            'minimum_facing_for_block': 1,
-                                                                            'use_masking_only': True,
-                                                                            'include_stacking': True})
-                    if pd.notna(row['tagging']):
-                        probes_match = [node[1]['probe_match_fk'] for i in range(len(block.cluster)) for node in
-                                        block.cluster.reset_index().drop(columns=['index']).iloc[i, 0].node(data=True)]
-                        match_product_in_probe_state_fk = self._get_probe_state_by_kpi_level_2_fk(kpi_fk)
-                        lst_to_save = [x for sublist in probes_match for x in sublist]
-                        df_for_common = pd.DataFrame({self.common.MATCH_PRODUCT_IN_PROBE_FK: lst_to_save,
-                                                      self.common.MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK: match_product_in_probe_state_fk})
-                        self.common.match_product_in_probe_state_values = \
-                            self.common.match_product_in_probe_state_values.append(df_for_common)
+                block = self.block.network_x_block_together(relevant_filters,
+                                                            location=location,
+                                                            additional={'minimum_block_ratio': 0.9,
+                                                                        'calculate_all_scenes': True,
+                                                                        'minimum_facing_for_block': 1,
+                                                                        'use_masking_only': True,
+                                                                        'include_stacking': True})
+                if pd.notna(row['tagging']):
+                    probes_match = [node[1]['probe_match_fk'] for i in range(len(block.cluster)) for node in
+                                    block.cluster.reset_index().drop(columns=['index']).iloc[i, 0].node(data=True)]
+                    match_product_in_probe_state_fk = self._get_probe_state_by_kpi_level_2_fk(kpi_fk)
+                    lst_to_save = [x for sublist in probes_match for x in sublist]
+                    df_for_common = pd.DataFrame({self.common.MATCH_PRODUCT_IN_PROBE_FK: lst_to_save,
+                                                  self.common.MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK: match_product_in_probe_state_fk})
+                    self.common.match_product_in_probe_state_values = \
+                        self.common.match_product_in_probe_state_values.append(df_for_common)
 
-                    if False in block['is_block'].to_list():
-                        result = 0
-                        break
-                    else:
-                        result = 1
+                if False in block['is_block'].to_list():
+                    result = 0
+                else:
+                    result = 1
 
             else:
                 location_name = TEMPLATE_NAME
@@ -1093,32 +1095,31 @@ class ToolBox(GlobalSessionToolBox):
                 location = {location_name: location_id}
 
                 block_result_list = []
-                for j in unique_bay_number:
-                    relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category,
-                                        BAY_NUMBER: [j]}
+                # for j in unique_bay_number:
+                relevant_filters = {MANUFACTURER_NAME: manufacturer_name, SUB_CATEGORY: sub_category}
 
-                    sub_category_fk_in_session = list(set(bay_count_scif[iterate_by]))
-                    sub_category_fk_in_session = filter(None, sub_category_fk_in_session)
+                sub_category_fk_in_session = list(set(bay_count_scif[iterate_by]))
+                sub_category_fk_in_session = filter(None, sub_category_fk_in_session)
 
-                    for value in sub_category_fk_in_session:
-                        population = {iterate_by: value}
-                        final_relevant_filters = self.merge_two_dictionaries(relevant_filters, population)
-                        block = self.block.network_x_block_together(relevant_filters,
-                                                                    location=location,
-                                                                    additional={'minimum_block_ratio': 0.9,
-                                                                                'calculate_all_scenes': True,
-                                                                                'minimum_facing_for_block': 1})
-                        if False in block['is_block'].to_list():
-                            result = 0
-                        else:
-                            result = 1
+                for value in sub_category_fk_in_session:
+                    population = {iterate_by: value}
+                    final_relevant_filters = self.merge_two_dictionaries(relevant_filters, population)
+                    block = self.block.network_x_block_together(relevant_filters,
+                                                                location=location,
+                                                                additional={'minimum_block_ratio': 0.9,
+                                                                            'calculate_all_scenes': True,
+                                                                            'minimum_facing_for_block': 1})
+                    if False in block['is_block'].to_list():
+                        result = 0
+                    else:
+                        result = 1
 
-                        numerator_id = value
+                    numerator_id = value
 
-                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
-                                       'denominator_id': denominator_id,
-                                       'result': result}
-                        block_result_list.append(result_dict)
+                    result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+                                   'denominator_id': denominator_id,
+                                   'result': result}
+                    block_result_list.append(result_dict)
                 return block_result_list
 
         result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
@@ -1340,7 +1341,7 @@ class ToolBox(GlobalSessionToolBox):
         if pd.notna(row[RELEVANT_QUESTION_FK]):
             relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
             result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
-            result = float(result)/3
+            result = float(result) / 3
 
         return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': return_holder[2],
