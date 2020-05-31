@@ -45,20 +45,20 @@ class TysonToolBox:
         self.calculate_max_block_adjacency('scrambles', 'ore ida')
         self.calculate_adjacent_bay('breakfast meat', 'irrelevant')
 
-    def calculate_shelf_neighbors(self, target, neighbor):
+    def calculate_shelf_neighbors(self, anchor, target):
         """
-        Determines whether any products in `target` are located in the same scene and bay as any products in `neighbor`.
+        Determines whether any products in `anchor` are located in the same scene and bay as any products in `target`.
 
-        :param target: Key referencing the target product.
-        :param neighbor: Key referencing the products being compared.
+        :param anchor: Key referencing the anchor product.
+        :param target: Key referencing the products being compared.
         """
 
-        kpi = Const.KPIs[(target, neighbor)]
+        kpi = Const.KPIs[(anchor, target)]
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
-        brand_id = self.get_brand_id_from_brand_name(Const.BRANDs.get(target))
+        brand_id = self.get_brand_id_from_brand_name(Const.BRANDs.get(anchor))
 
-        result = self.neighbors(target, neighbor, neighbor_type='product') if neighbor == 'irrelevant' \
-            else self.neighbors(target, neighbor)
+        result = self.neighbors(anchor, target, target_type='product') if target == 'irrelevant' \
+            else self.neighbors(anchor, target)
 
         self.common.write_to_db_result(
             fk=kpi_id,
@@ -69,28 +69,37 @@ class TysonToolBox:
             result=result
         )
 
-    def calculate_max_block_adjacency(self, target, neighbor):
+    def calculate_max_block_adjacency(self, anchor, target):
         """
-        Calculates the Max Block Adjacency for `target` and `neighbor` products.
+        Calculates the Max Block Adjacency for `anchor` and `target` products.
 
-        :param target: Key for customer products.
-        :param neighbor: Key for competitor products.
+        :param anchor: Key for customer products.
+        :param target: Key for competitor products.
         """
 
         kpi = Const.KPIs[('scrambles', 'ore ida')]
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
+        anchor_max_block, anchor_scene = self.get_max_block_from_products(Const.PRODUCTS[anchor])
         target_max_block, target_scene = self.get_max_block_from_products(Const.PRODUCTS[target])
-        neighbor_max_block, neighbor_scene = self.get_max_block_from_products(Const.PRODUCTS[neighbor])
 
         result = 0
-        if target_max_block and neighbor_max_block and (target_scene == neighbor_scene):
-            possible_adjacencies = itertools.product(target_max_block.nodes, neighbor_max_block.nodes)
+        if anchor_max_block and target_max_block and (anchor_scene == target_scene):
+            possible_adjacencies = itertools.product(anchor_max_block.nodes, target_max_block.nodes)
             adj_graph = self.block.adj_graphs_by_scene
-            directed_edges = [list(adj_graph[key].edges) for key in adj_graph.keys() if int(key[0]) == target_scene][0]
+            directed_edges = [list(val.edges) for key, val in adj_graph.items() if str(anchor_scene) in key][0]
             complimentary_edges = [edge[::-1] for edge in directed_edges if edge[::-1] not in directed_edges]
             all_edges = directed_edges + complimentary_edges
             result = int(any(True for edge in possible_adjacencies if edge in all_edges))
 
+            if not result:
+                empty_matches = self.match_product_in_scene[
+                    (self.match_product_in_scene['product_fk'] == 0)
+                    & (self.match_product_in_scene['scene_fk'] == anchor_scene)]['scene_match_fk']
+                empty_edges = {match: [edge[1] for edge in all_edges if edge[0] == match] for match in empty_matches}
+                result = int(any([True for _, val in empty_edges.items()
+                                  if any([True for product in anchor_max_block.nodes if product in val])
+                                  and any([True for product in target_max_block.nodes if product in val])]))
+
         self.common.write_to_db_result(
             fk=kpi_id,
             numerator_id=self.manufacturer_id,
@@ -100,18 +109,18 @@ class TysonToolBox:
             result=result
         )
 
-    def calculate_adjacent_bay(self, target, neighbor):
+    def calculate_adjacent_bay(self, anchor, target):
         """
-        Determines whether any products in `target` are located in the same scene
-        and same or adjacent bay as any products in `neighbor`.
+        Determines whether any products in `anchor` are located in the same scene
+        and same or adjacent bay as any products in `target`.
 
-        :param target: Key referencing the target product.
-        :param neighbor: Key referencing the products being compared.
+        :param anchor: Key referencing the target product.
+        :param target: Key referencing the products being compared.
         """
-        kpi = Const.KPIs.get((target, neighbor))
+        kpi = Const.KPIs.get((anchor, target))
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
-        result = self.neighbors(target, neighbor,
-                                target_type='category', neighbor_type='product', same_bay=False)
+        result = self.neighbors(anchor, target,
+                                anchor_type='category', target_type='product', same_bay=False)
 
         self.common.write_to_db_result(
             fk=kpi_id,
@@ -122,50 +131,50 @@ class TysonToolBox:
             result=result
         )
 
-    def neighbors(self, target, neighbor, target_type='product', neighbor_type='category', same_bay=True):
+    def neighbors(self, anchor, target, anchor_type='product', target_type='category', same_bay=True):
         """
-        Determine whether any of the products in `target` and `neighbor` are
+        Determine whether any of the products in `anchor` and `target` are
             in the same scene and same bay (if `same_bay` is True)
         or  in the same scene and same or adjacent bay (if `same_bay`is False).
 
+        :param anchor:
         :param target:
-        :param neighbor:
+        :param anchor_type:
         :param target_type:
-        :param neighbor_type:
         :param same_bay: Indicates whether to count the same bay or also adjacent bays.
         :return: Returns 1 if any products are neighbors, else 0.
         """
 
+        anchor_ids = None
         target_ids = None
-        neighbor_ids = None
 
-        if target_type == 'product':
-            target_ids = [self.get_product_id_from_product_name(product) for product in Const.PRODUCTS[target]]
-        elif target_type == 'category':
-            target_ids = [self.get_category_id_from_category_name(Const.CATEGORIES[target])]
+        if anchor_type == 'product':
+            anchor_ids = self.get_product_id_from_product_name(Const.PRODUCTS[anchor])
+        elif anchor_type == 'category':
+            anchor_ids = self.get_category_id_from_category_name(Const.CATEGORIES[anchor])
 
-        if neighbor_type == 'category':
-            neighbor_ids = [self.get_category_id_from_category_name(category) for category in Const.CATEGORIES[neighbor]]
-        elif neighbor_type == 'product':
-            neighbor_ids = [self.get_product_id_from_product_name(product) for product in Const.PRODUCTS[neighbor]]
+        if target_type == 'category':
+            target_ids = self.get_category_id_from_category_name(Const.CATEGORIES[target])
+        elif target_type == 'product':
+            target_ids = self.get_product_id_from_product_name(Const.PRODUCTS[target])
 
-        target_products = self.filter_df(self.mpis, target_type+'_fk', target_ids).drop_duplicates()
-        neighbor_products = self.filter_df(self.mpis, neighbor_type+'_fk', neighbor_ids).drop_duplicates()
+        anchor_products = self.filter_df(self.mpis, anchor_type + '_fk', anchor_ids).drop_duplicates()
+        target_products = self.filter_df(self.mpis, target_type + '_fk', target_ids).drop_duplicates()
 
         if same_bay:
-            neighbors = target_products.merge(neighbor_products, how='inner', on=['scene_fk', 'bay_number'])
+            neighbors = anchor_products.merge(target_products, how='inner', on=['scene_fk', 'bay_number'])
         else:
             try:
-                scenes = pd.concat([target_products['scene_fk'], neighbor_products['scene_fk']]).unique()
+                scenes = pd.concat([anchor_products['scene_fk'], target_products['scene_fk']]).unique()
                 probe_groups = pd.DataFrame()
                 for scene in scenes:
                     probe_groups = pd.concat([probe_groups, self.get_probe_groups(scene)])
+                anchor_products = anchor_products.merge(probe_groups, on=['scene_fk', 'product_fk'])
                 target_products = target_products.merge(probe_groups, on=['scene_fk', 'product_fk'])
-                neighbor_products = neighbor_products.merge(probe_groups, on=['scene_fk', 'product_fk'])
-            except:
+            except Exception:
                 Log.warning("Probe Group query failed.")
 
-            scene_neighbors = target_products.merge(neighbor_products, on=['scene_fk'], suffixes=['', '_y'])
+            scene_neighbors = anchor_products.merge(target_products, on=['scene_fk'], suffixes=['', '_y'])
             neighbors = scene_neighbors.apply(
                 lambda row: 1 if abs(int(row['bay_number']) - int(row['bay_number_y'])) < 2
                 and ('group_id' not in scene_neighbors.columns or row['group_id'] == row['group_id_y'])
@@ -181,10 +190,10 @@ class TysonToolBox:
         return self.all_products[self.all_products['brand_name'] == brand_name].iloc[0].at['brand_fk']
 
     def get_product_id_from_product_name(self, product_name):
-        return self.all_products.set_index(['product_english_name']).loc[product_name, 'product_fk']
+        return self.all_products.set_index(['product_english_name']).loc[product_name, 'product_fk'].unique()
 
     def get_category_id_from_category_name(self, category_name):
-        return self.all_products.set_index(['category']).loc[category_name, 'category_fk'].iloc[0]
+        return self.all_products.set_index(['category']).loc[category_name, 'category_fk'].unique()
 
     def get_manufacturer_id_from_manufacturer_name(self, manufacturer_name):
         return self.all_products.loc[self.all_products['manufacturer_name'] == manufacturer_name,
@@ -202,7 +211,7 @@ class TysonToolBox:
         """
 
         filtered = None
-        if isinstance(values, list):
+        if hasattr(values, '__iter__'):
             filtered = df[df[column].isin(values)]
         elif isinstance(values, str):
             filtered = df[df[column] == values]
@@ -216,13 +225,13 @@ class TysonToolBox:
         :return: (Max block graph, scene_fk).
         """
 
-        product_ids = [self.get_product_id_from_product_name(product) for product in products]
+        product_ids = self.get_product_id_from_product_name(products)
         blocks = self.block.network_x_block_together(
             {'product_fk': product_ids},
             additional={
                 'calculate_all_scenes': True,
                 'use_masking_only': True,
-                'minimum_facing_for_block': 2
+                'minimum_facing_for_block': 2,
             }
         )
         blocks.sort_values(by=['block_facings', 'facing_percentage'], ascending=False, inplace=True)

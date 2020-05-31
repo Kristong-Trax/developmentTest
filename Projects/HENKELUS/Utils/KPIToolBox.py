@@ -190,8 +190,8 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            Params1 = row['PARAM 1']
-            Params2 = row['PARAM 2']
+            params1 = row['PARAM 1']
+            params2 = row['PARAM 2']
             sub_category_value = row['sub_category']
             shelf_map_df = self.kpi_template[Consts.SHELF_MAP_SHEET]
 
@@ -200,19 +200,19 @@ class ToolBox(GlobalSessionToolBox):
             if not pd.isna(sub_category_value):
                 mpis = mpis[mpis['sub_category'] == sub_category_value]
 
-            for value1 in mpis[Params1].unique().tolist():
-                filtered_mpis = mpis[mpis[Params1] == value1]
+            for value1 in mpis[params1].unique().tolist():
+                filtered_mpis = mpis[mpis[params1] == value1]
 
-                if not pd.isna(Params2):
-                    for value2 in mpis[Params2].unique().tolist():
-                        filtered_mpis = filtered_mpis[filtered_mpis[Params2] == value2]
+                if not pd.isna(params2):
+                    for value2 in mpis[params2].unique().tolist():
+                        filtered_mpis = filtered_mpis[filtered_mpis[params2] == value2]
                         self.calculate_position(kpi_fk=kpi_fk, mpis=mpis, filtered_mpis=filtered_mpis,
                                                 shelf_map_df=shelf_map_df,
-                                                param1=Params1)
+                                                param1=params1)
 
                 else:
                     self.calculate_position(kpi_fk=kpi_fk, mpis=mpis, filtered_mpis=filtered_mpis,
-                                            shelf_map_df=shelf_map_df, param1=Params1)
+                                            shelf_map_df=shelf_map_df, param1=params1)
 
     def calculate_position(self, kpi_fk=None, mpis=None, filtered_mpis=None, shelf_map_df=None, param1=None):
         shelf_positions = []
@@ -252,12 +252,12 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            Params1 = row['PARAM 1']
+            params1 = row['PARAM 1']
             mpis = self.mpis
 
-            for value1 in mpis[Params1].unique().tolist():
+            for value1 in mpis[params1].unique().tolist():
                 shelf_positions = []
-                filtered_mpis = mpis[mpis[Params1] == value1]
+                filtered_mpis = mpis[mpis[params1] == value1]
                 product_fk = filtered_mpis.product_fk.iloc[0]
 
                 for scene in list(filtered_mpis.scene_fk.unique()):
@@ -350,7 +350,7 @@ class ToolBox(GlobalSessionToolBox):
                         custom_text = 'Horizontal'
 
                 custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
-                numerator_id_value = self.scif['product_fk'][self.scif[param_data_type] == item].iloc[0]
+                numerator_id_value = self.all_products['product_fk'][self.all_products[param_data_type] == item].iloc[0]
                 param_dict.pop(param_data_type)
 
                 self.block_parent_results[kpi_fk] = result
@@ -488,7 +488,7 @@ class ToolBox(GlobalSessionToolBox):
                                                                                   'include_stacking': True})
 
                         passed_blocks = block_result_df[block_result_df['is_block'] == True].cluster.tolist()
-                        # filtered_scif = filtered_scif[filtered_scif[Params1].isin(Value1)]
+                        # filtered_scif = filtered_scif[filtered_scif[params1].isin(value1)]
 
                         scent_res = 0
 
@@ -519,11 +519,11 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            custom_text = 'No'
-            result = 0
+            custom_text = 'Yes'
+            result = 1
             block_sequence_filter_dict = {}
             block_adj_mpis = {}
-            sequence_letters = ['A', 'B']
+            sequence_letters = ['A', 'B', 'C']
             for letter in sequence_letters:
                 param_dict = {}
                 allow_connected_dict = {}
@@ -543,21 +543,30 @@ class ToolBox(GlobalSessionToolBox):
                 block_sequence_filter_dict[letter] = param_dict
 
                 block_result = self.calculate_blocking_for_max_block(param_dict, allow_connected_block, False)
-
+                block_result = block_result.reset_index()
                 if not block_result.empty:
-                    passed_blocks = block_result[block_result['is_block'] == True].cluster.tolist()
-                    adj_mpis = self.generate_adjacent_matches(passed_blocks)
-                    block_adj_mpis[letter] = adj_mpis
+                    blocks = block_result[block_result['is_block'] == True]
+                    if not blocks.empty:
+                        blocks = blocks.sort_values(by='facing_percentage', ascending=False)
+                        max_block = blocks.iloc[0]
+                        passed_block_cluster = [max_block.cluster]
+                        adj_mpis = self.generate_adjacent_matches(passed_block_cluster)
+                        block_adj_mpis[letter] = adj_mpis.scene_match_fk.tolist()
+                    else:
+                        block_adj_mpis[letter] = []
+                else:
+                    block_adj_mpis[letter] = []
 
-            if len(block_adj_mpis) == len(sequence_letters):
-                target_adj_mpis = block_adj_mpis[sequence_letters[0]].scene_match_fk.tolist()
-                side_adj_mpis = block_adj_mpis[sequence_letters[1]].scene_match_fk.tolist()
+            target_adj_mpis = block_adj_mpis[sequence_letters[0]]
+            b_side_adj_mpis = block_adj_mpis[sequence_letters[1]]
+            c_side_adj_mpis = block_adj_mpis[sequence_letters[2]]
 
-                side_adj = len(set(target_adj_mpis).intersection(side_adj_mpis))
+            b_side_adj = len(set(target_adj_mpis).intersection(b_side_adj_mpis))
+            c_side_adj = len(set(target_adj_mpis).intersection(c_side_adj_mpis))
 
-                if side_adj < 2:
-                    custom_text = 'Yes'
-                    result = 1
+            if b_side_adj > 0 or c_side_adj > 0:
+                custom_text = 'No'
+                result = 0
             custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
 
             self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
@@ -582,6 +591,7 @@ class ToolBox(GlobalSessionToolBox):
             block_sequence_filter_dict = {}
             block_adj_mpis = {}
             sequence_letters = ['A', 'B']
+            is_data_b_block = row['DATASET B IS BLOCK']
 
             for letter in sequence_letters:
                 param_dict = {}
@@ -599,24 +609,42 @@ class ToolBox(GlobalSessionToolBox):
                 allowed_connected_pk_list = self.generate_pk_list_for_connected_exclude_block(allow_connected_dict)
                 allow_connected_block = {'product_fk': allowed_connected_pk_list}
 
+                if letter == 'B' and is_data_b_block == 0:
+                    filtered_scif = self._filter_df(self.scif, param_dict)
+                    product_fks = filtered_scif.product_fk.unique().tolist()
+                    filtered_matches = self.matches[self.matches['product_fk'].isin(product_fks)]
+                    adj_mpis = filtered_matches['scene_match_fk']
+                    if not adj_mpis.empty:
+                        block_adj_mpis[letter] = adj_mpis.tolist()
+                    else:
+                        block_adj_mpis[letter] = []
+                    continue
                 block_sequence_filter_dict[letter] = param_dict
 
                 block_result = self.calculate_blocking_for_max_block(param_dict, allow_connected_block, False)
+                passed_blocks = block_result[block_result['is_block'] == True]
 
-                if not block_result.empty:
-                    passed_blocks = block_result[block_result['is_block'] == True].cluster.tolist()
+                if not passed_blocks.empty:
+                    passed_blocks = passed_blocks.cluster.tolist()
                     adj_mpis = self.generate_adjacent_matches(passed_blocks)
-                    block_adj_mpis[letter] = adj_mpis
-
+                    if not adj_mpis.empty:
+                        block_adj_mpis[letter] = adj_mpis.scene_match_fk.tolist()
+                    else:
+                        block_adj_mpis[letter] = []
+            # block of block code
             if len(block_adj_mpis) == len(sequence_letters):
-                target_adj_mpis = block_adj_mpis[sequence_letters[0]].scene_match_fk.tolist()
-                side_adj_mpis = block_adj_mpis[sequence_letters[1]].scene_match_fk.tolist()
+
+                target_adj_mpis = block_adj_mpis[sequence_letters[0]]
+                side_adj_mpis = block_adj_mpis[sequence_letters[1]]
 
                 side_adj = len(set(target_adj_mpis).intersection(side_adj_mpis))
 
                 if side_adj > 0:
                     custom_text = 'Yes'
                     result = 1
+
+            # if any facing code
+
             custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
 
             self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
@@ -641,6 +669,7 @@ class ToolBox(GlobalSessionToolBox):
         block_result = self.block.network_x_block_together(
             population=filter_dict,
             additional={
+                'minimum_facing_for_block': 1,
                 'allowed_edge_type': ['connected'],
                 'allowed_products_filters': allowed_connected_dict,
                 'include_stacking': True})
@@ -653,29 +682,29 @@ class ToolBox(GlobalSessionToolBox):
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
             result_value = 'No'
-            Params1 = row['PARAM 1']
-            Value1 = row['VALUE 1']
-            Params2 = row['PARAM 2']
+            params1 = row['PARAM 1']
+            value1 = row['VALUE 1']
+            params2 = row['PARAM 2']
             VALUE2 = row['VALUE 2']
             minimum_block_ratio = row['minimum_ratio']
 
-            Exlude_Params1 = row['EXCLUDE PARAM 1']
-            Exclude_Value1 = self.sanitize_row(row['EXCLUDE VALUE 1'])
+            exclude_params1 = row['EXCLUDE PARAM 1']
+            exclude_value1 = self.sanitize_row(row['EXCLUDE VALUE 1'])
 
-            Exlude_Params2 = row['EXCLUDE PARAM 2']
-            Exclude_Value2 = self.sanitize_row(row['EXCLUDE VALUE 2'])
+            exclude_params2 = row['EXCLUDE PARAM 2']
+            exclude_value2 = self.sanitize_row(row['EXCLUDE VALUE 2'])
 
-            Block_AllowConnected_Params1 = row['BLOCK ALLOW-CONNECTED PARAM 1']
-            Block_AllowConnected_Value1 = self.sanitize_row(row['BLOCK ALLOW-CONNECTED VALUE 1'])
+            block_allowconnected_params1 = row['BLOCK ALLOW-CONNECTED PARAM 1']
+            block_allowconnected_value1 = self.sanitize_row(row['BLOCK ALLOW-CONNECTED VALUE 1'])
 
-            Block_AllowConnected_Params2 = row['BLOCK ALLOW-CONNECTED PARAM 2']
-            Block_AllowConnected_Value2 = self.sanitize_row(row['BLOCK ALLOW-CONNECTED VALUE 2'])
+            block_allowconnected_params2 = row['BLOCK ALLOW-CONNECTED PARAM 2']
+            block_allowconnected_value2 = self.sanitize_row(row['BLOCK ALLOW-CONNECTED VALUE 2'])
 
-            Block_AllowConnected_Params3 = row['BLOCK ALLOW-CONNECTED PARAM 3']
-            Block_AllowConnected_Value3 = self.sanitize_row(row['BLOCK ALLOW-CONNECTED VALUE 3'])
+            block_allowconnected_params3 = row['BLOCK ALLOW-CONNECTED PARAM 3']
+            block_allowconnected_value3 = self.sanitize_row(row['BLOCK ALLOW-CONNECTED VALUE 3'])
 
-            Block_Exlude_Params1 = row['BLOCK EXCLUDE PARAM 1']
-            Block_Exclude_Value1 = self.sanitize_row(row['BLOCK EXCLUDE VALUE 1'])
+            block_exclude_params1 = row['BLOCK EXCLUDE PARAM 1']
+            block_exclude_value1 = self.sanitize_row(row['BLOCK EXCLUDE VALUE 1'])
 
             connect_dict = {}
             excluded_dict = {}
@@ -683,12 +712,12 @@ class ToolBox(GlobalSessionToolBox):
                 self.hdp.get_match_product_in_probe_state_values(self.matches['probe_match_fk'].unique().tolist())
             smart_tags_product_fks = smart_attribute_data_df.product_fk.tolist()
 
-            if Block_AllowConnected_Params1:
-                connect_dict.update({Block_AllowConnected_Params1: Block_AllowConnected_Value1})
-            if Block_AllowConnected_Params2:
-                connect_dict.update({Block_AllowConnected_Params2: Block_AllowConnected_Value2})
-            if Block_AllowConnected_Params3:
-                connect_dict.update({Block_AllowConnected_Params3: Block_AllowConnected_Value3})
+            if block_allowconnected_params1:
+                connect_dict.update({block_allowconnected_params1: block_allowconnected_value1})
+            if block_allowconnected_params2:
+                connect_dict.update({block_allowconnected_params2: block_allowconnected_value2})
+            if block_allowconnected_params3:
+                connect_dict.update({block_allowconnected_params3: block_allowconnected_value3})
 
             connected_product_pks = []
             for key in connect_dict.keys():
@@ -702,15 +731,15 @@ class ToolBox(GlobalSessionToolBox):
 
             result = 0
 
-            param_dict = {Params1: [Value1], Params2: [VALUE2]}
-            excluded_dict = {Exlude_Params1: Exclude_Value1, Exlude_Params2: Exclude_Value2,
-                             Block_Exlude_Params1: Block_Exclude_Value1}
+            param_dict = {params1: [value1], params2: [VALUE2]}
+            excluded_dict = {exclude_params1: exclude_value1, exclude_params2: exclude_value2,
+                             block_exclude_params1: block_exclude_value1}
 
             general_filters = self.remove_nans_dict(param_dict)
             excluded_filters = self.remove_nans_dict(excluded_dict)
-            if Block_Exlude_Params1 == 'Smart Tag':
+            if block_exclude_params1 == 'Smart Tag':
                 excluded_filters['product_fk'] = smart_tags_product_fks
-                del excluded_filters[Block_Exlude_Params1]
+                del excluded_filters[block_exclude_params1]
 
             block_result = self.block.network_x_block_together(
                 population=general_filters,
@@ -742,18 +771,18 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            Params1 = row['PARAM 1']
-            Params2 = row['PARAM 2']
+            params1 = row['PARAM 1']
+            params2 = row['PARAM 2']
 
-            parent_brand_list = self.remove_type_none_from_list(self.scif[Params1].unique().tolist())
-            relevant_scif = self.scif[self.scif[Params1].isin(parent_brand_list)]
+            parent_brand_list = self.remove_type_none_from_list(self.scif[params1].unique().tolist())
+            relevant_scif = self.scif[self.scif[params1].isin(parent_brand_list)]
             matches_no_stacking = self.matches[self.matches['stacking_layer'] == 1]
             mpis = pd.merge(relevant_scif, matches_no_stacking, how='left', on='product_fk')
 
             for parent_brand in parent_brand_list:
-                for format in mpis[Params2][mpis[Params1] == parent_brand].unique().tolist():
+                for format in mpis[params2][mpis[params1] == parent_brand].unique().tolist():
                     if not pd.isna(format):
-                        relevant_mpis = mpis[(mpis[Params2] == format) & (mpis[Params1] == parent_brand)]
+                        relevant_mpis = mpis[(mpis[params2] == format) & (mpis[params1] == parent_brand)]
 
                         linear_per_format_sum_mm = relevant_mpis['width_mm_advance'].sum()
                         product_fk = relevant_mpis.product_fk.iloc[0]
@@ -769,12 +798,12 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            Params1 = row['PARAM 1']
+            params1 = row['PARAM 1']
 
             sub_category_list = self.remove_type_none_from_list(self.scif.sub_category_fk.unique().tolist())
             mpis = pd.merge(self.all_products, self.matches, how='right', on='product_fk')
             for sub_category_fk in sub_category_list:
-                relevant_mpis = mpis[(mpis[Params1] == sub_category_fk) & (mpis['stacking_layer'] == 1)]
+                relevant_mpis = mpis[(mpis[params1] == sub_category_fk) & (mpis['stacking_layer'] == 1)]
                 bay_measure = []
                 bay_mm_total = 0
                 bays = relevant_mpis.bay_number.unique().tolist()
@@ -795,8 +824,8 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            Params1 = row['PARAM 1']
-            Value1 = row['VALUE 1']
+            params1 = row['PARAM 1']
+            value1 = row['VALUE 1']
 
             relevant_mpis = self.matches
 
@@ -807,7 +836,7 @@ class ToolBox(GlobalSessionToolBox):
 
             smart_tags_df = pd.DataFrame()
             try:
-                smart_tags_df = smart_attribute_data_df[smart_attribute_data_df[Params1] == Value1]
+                smart_tags_df = smart_attribute_data_df[smart_attribute_data_df[params1] == value1]
             except:
                 pass
 
@@ -823,15 +852,15 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            Params1 = row['PARAM 1']
-            Params2 = row['PARAM 2']
+            params1 = row['PARAM 1']
+            params2 = row['PARAM 2']
 
-            param1_list = self.remove_type_none_from_list(list(self.scif[Params1].unique()))
-            param2_list = self.remove_type_none_from_list(list(self.scif[Params2].unique()))
+            param1_list = self.remove_type_none_from_list(list(self.scif[params1].unique()))
+            param2_list = self.remove_type_none_from_list(list(self.scif[params2].unique()))
             for value1 in param1_list:
-                filtered_scif_df = self.scif[self.scif[Params1] == value1]
+                filtered_scif_df = self.scif[self.scif[params1] == value1]
                 for value2 in param2_list:
-                    reduce_scif_df = filtered_scif_df[filtered_scif_df[Params2] == value2]
+                    reduce_scif_df = filtered_scif_df[filtered_scif_df[params2] == value2]
                     if not reduce_scif_df.empty:
                         product_fk = reduce_scif_df['product_fk'].iloc[0]
                         result = len(reduce_scif_df['product_fk'].unique())
@@ -846,15 +875,15 @@ class ToolBox(GlobalSessionToolBox):
         for i, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
             kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            Params1 = row['PARAM 1']
-            Params2 = row['PARAM 2']
+            params1 = row['PARAM 1']
+            params2 = row['PARAM 2']
 
-            param1_list = self.remove_type_none_from_list(list(self.scif[Params1].unique()))
-            param2_list = self.remove_type_none_from_list(list(self.scif[Params2].unique()))
+            param1_list = self.remove_type_none_from_list(list(self.scif[params1].unique()))
+            param2_list = self.remove_type_none_from_list(list(self.scif[params2].unique()))
             for value1 in param1_list:
-                filtered_scif_df = self.scif[self.scif[Params1] == value1]
+                filtered_scif_df = self.scif[self.scif[params1] == value1]
                 for value2 in param2_list:
-                    reduce_scif_df = filtered_scif_df[filtered_scif_df[Params2] == value2]
+                    reduce_scif_df = filtered_scif_df[filtered_scif_df[params2] == value2]
                     if not reduce_scif_df.empty:
                         product_fk = reduce_scif_df['product_fk'].iloc[0]
                         result = reduce_scif_df['facings_ign_stack'].sum()

@@ -446,6 +446,15 @@ class MARSRU_PRODKPIFetcher:
         assortments = pd.read_sql_query(query, self.rds_conn.db)
         return assortments['product_fk'].tolist()
 
+    def get_osa_assortment_fks(self, kpi_name):
+        query = """
+                SELECT a.pk FROM pservice.assortment a
+                JOIN static.kpi_level_2 k ON k.pk=a.kpi_fk
+                WHERE k.type='{}';
+                """.format(kpi_name)
+        assortment_fks = pd.read_sql_query(query, self.rds_conn.db)['pk'].unique().tolist()
+        return assortment_fks
+
     def get_relevant_assortment_group(self, assortment_groups):
         assortment_groups = tuple(assortment_groups)
         self.check_connection(self.rds_conn)

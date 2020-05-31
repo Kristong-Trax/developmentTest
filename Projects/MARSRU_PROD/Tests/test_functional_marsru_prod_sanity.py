@@ -32,14 +32,14 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         sessions = {'fffe707c-55f6-4f57-b8d1-67c76638f654': [],
                     'ffcd785d-c621-4f15-b202-581b8f73c13f': []}
         kpi_results = MARSRU_PRODKpiResults().get_kpi_results()
-        # for session in sessions.keys():
-        #     data_provider.load_session_data(str(session))
-        #     output = Output()
-        #     MARSRU_PRODCalculations(data_provider, output).run_project_calculations()
-        #     # for scene in sessions[session]:
-        #     # data_provider.load_scene_data(str(session), scene_id=scene)
-        #     # SceneCalculations(data_provider).calculate_kpis()
-        # self._assert_test_results_matches_reality(kpi_results)
-        # # self._assert_old_tables_kpi_results_filled()
-        # # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
-        # # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
+        for session in sessions.keys():
+            data_provider.load_session_data(str(session))
+            output = Output()
+            MARSRU_PRODCalculations(data_provider, output).run_project_calculations()
+            # for scene in sessions[session]:
+            # data_provider.load_scene_data(str(session), scene_id=scene)
+            # SceneCalculations(data_provider).calculate_kpis()
+        self._assert_test_results_matches_reality(kpi_results)
+        # self._assert_old_tables_kpi_results_filled()
+        # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
+        # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)
