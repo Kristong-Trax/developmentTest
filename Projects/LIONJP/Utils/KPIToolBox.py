@@ -11,7 +11,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from Projects.LIONJP.Data.Consts import Consts
 
-is_debug = False
+is_debug = True
 __author__ = 'satya'
 
 
@@ -185,7 +185,7 @@ class LIONJPToolBox:
 
         # include_others
         if not pd.isnull(adj_config['include_other_ean_codes']):
-            include_others = tuple([other.strip() for other in adj_config['include_other_ean_codes'].split(",")])
+            include_others = tuple(["{}".format(other.strip()) for other in adj_config['include_other_ean_codes'].split(",")])
             if len(include_others) != 0:
                 product_fks = self.get_product_fks(include_others)
                 extra.extend(product_fks)
@@ -307,7 +307,9 @@ class LIONJPToolBox:
     def calculate_adjacency_per_scene(self, kpi_name):
         allowed_entities = ["product", "brand", "category", "sub_category"]
         kpi_config = self.kpi_template[self.kpi_template["kpi_name"] == kpi_name].copy()
-        kpi_config['visit_date'] = pd.Timestamp(self.visit_date)
+        kpi_config['visit_date'] = pd.to_datetime(self.visit_date)
+        kpi_config['start_date'] = pd.to_datetime(kpi_config['start_date'])
+        kpi_config['end_date'] = pd.to_datetime(kpi_config['end_date'])
         kpi_config = kpi_config[kpi_config['visit_date'].between(kpi_config['start_date'],
                                                                  kpi_config['end_date'],
                                                                  inclusive=True)]
@@ -366,8 +368,9 @@ class LIONJPToolBox:
         product_pks = []
         query = """
             SELECT pk FROM static_new.product
-            WHERE ean_code in '{}'
+            WHERE ean_code in {}
             """.format(ean_codes)
+        query = query.replace(",)", ")")
         data = pd.read_sql_query(query, self.rds_conn.db)
         if data.empty:
             return product_pks
