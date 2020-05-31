@@ -1,7 +1,7 @@
 
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Projects.BATRU.Tests.Data.data_test_batru_sanity import ProjectsSanityData
+from Projects.BATRU.Tests.Data.test_data_batru_sanity import ProjectsSanityData
 from Projects.BATRU.Calculations import BATRUCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.BATRU.Tests.Data.kpi_results import BATRUKpiResults
@@ -29,7 +29,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'AF410EF7-90D8-431A-AF12-60DE6ED7438B': []}
+        sessions = {'AF410EF7-90D8-431A-AF12-60DE6ED7438B': []}
         kpi_results = BATRUKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))

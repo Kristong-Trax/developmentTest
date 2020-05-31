@@ -4,13 +4,13 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Utils.Conf.Configuration import Config
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
-from Projects.DIAGEOIE_SAND.KPIGenerator import DIAGEOIESandGenerator
+from Projects.DIAGEOIE_SAND.KPIGenerator import DiageoIESandGenerator
 
 
-class DIAGEOIECalculations(BaseCalculationsScript):
+class DIAGEOIESandCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        DIAGEOIESandGenerator(self.data_provider, self.output).main_function()
+        DiageoIESandGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
@@ -22,4 +22,4 @@ class DIAGEOIECalculations(BaseCalculationsScript):
 #     session = 'FFE7A5DA-FDD4-489E-83BC-377F1AE9BCE1'
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     DIAGEOIECalculations(data_provider, output).run_project_calculations()
+#     DIAGEOIESandCalculations(data_provider, output).run_project_calculations()

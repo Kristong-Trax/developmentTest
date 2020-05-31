@@ -1,19 +1,19 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.JNJANZ_SAND.Utils.KPIToolBox import JNJANZToolBox, log_runtime
+from Projects.JNJANZ_SAND.Utils.KPIToolBox import JNJANZ_SANDToolBox, log_runtime
 
 __author__ = 'ilays'
 
 
-class JNJANZGenerator:
+class JNJANZ_SANDGenerator:
 
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        self.tool_box = JNJANZToolBox(self.data_provider, self.output)
+        self.tool_box = JNJANZ_SANDToolBox(self.data_provider, self.output)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):

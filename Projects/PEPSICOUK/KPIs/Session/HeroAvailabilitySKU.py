@@ -20,7 +20,7 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
                                     denominator_id=self.util.store_id, denominator_result=1, score=score)
             self.util.add_kpi_result_to_kpi_results_df(
                 [result['kpi_fk_lvl3'], result['product_fk'], self.util.store_id, custom_res,
-                 score])
+                 score, None])
 
     def kpi_type(self):
         pass

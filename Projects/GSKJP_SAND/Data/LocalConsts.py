@@ -26,3 +26,8 @@ class Consts(object):
                 "GSK_PLN_POSITION_SCORE": "GSK_PLN_POSITION_SCORE", "GSK_PLN_LSOS_SCORE": "GSK_PLN_LSOS_SCORE"}
     SHELVES = 'shelves'
     POSITION_TARGET = 'position_target'
+
+    # external targets keys
+    KEY_FIELDS = ['brand_fk', 'store_number', 'store_name', 'address_city', 'additional_attribute_1',
+                  'additional_attribute_2', 'region_fk']
+    DATA_FIELDS = ['brand_target', 'position_target', 'shelves', 'block_target']

@@ -1,10 +1,11 @@
-
+from unittest import skip
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.DIAGEOIT.Tests.Data.data_test_diageoit_sanity import ProjectsSanityData
 from Projects.DIAGEOIT.Calculations import DIAGEOITCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.DIAGEOIT.Tests.Data.kpi_results import DIAGEOITKpiResults
+
 # import os
 # import json
 
@@ -24,6 +25,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         #     relative_position_template
         return
 
+    @skip('')
     @PsSanityTestsFuncs.seeder.seed(["diageoit_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_diageoit_sanity(self):
         self.add_mocks()

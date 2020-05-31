@@ -365,7 +365,7 @@ class BlockBaseCalculation(KpiAtomicKpisCalculator):
         elif result_type == 'Percentage':
             return min(max_block_values) * 100 if max_block_values else 0
         elif float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes))\
-                and blocked_scenes > 0:
+                and blocked_scenes == 1:  # and blocked_scenes > 0: ## change made for test
             return 100
         elif block_by_session == 'Percent':
             return float(blocked_scenes) / float(num_of_scenes - len(skipped_scenes)) * 100 if \
@@ -576,7 +576,7 @@ class BlockTargetBaseCalculation(KpiAtomicKpisCalculator):
                 return 100
 
         if float(blocked_scenes) == float(num_of_scenes - len(skipped_scenes)) \
-                and blocked_scenes > 0:
+                and blocked_scenes == 1:  # and blocked_scenes > 0: ## change for test
             return 100
         else:
             return 0

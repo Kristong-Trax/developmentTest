@@ -138,7 +138,7 @@ class CCRUProjectCalculations:
                 mr_targets.update({params[SET]: params[MR_TARGET]})
         self.tool_box.mr_targets = mr_targets
 
-        kpi_sets_types_to_calculate = [POS, SPIRITS]
+        kpi_sets_types_to_calculate = [POS]  # SPIRITS are excluded
         for kpi_set_type in kpi_sets_types_to_calculate:
             if kpi_source[kpi_set_type][SET]:
                 Log.debug('KPI calculation stage: {}'.format(kpi_source[kpi_set_type][SET]))
@@ -230,6 +230,8 @@ class CCRUProjectCalculations:
         score += self.tool_box.check_weighted_average(kpi_data)
         score += self.tool_box.check_kpi_scores(kpi_data)
 
+        score = round(float(score), 3)
+
         self.tool_box.create_kpi_groups(kpi_data.values()[0])
 
         self.tool_box.write_to_kpi_results_old(
@@ -237,7 +239,7 @@ class CCRUProjectCalculations:
                            self.session_uid,
                            self.store_id,
                            self.visit_date.isoformat(),
-                           format(score, '.2f'), None)],
+                           format(score, '.3f'), None)],
                          columns=['kps_name',
                                   'session_uid',
                                   'store_fk',

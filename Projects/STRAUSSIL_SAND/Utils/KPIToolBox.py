@@ -18,8 +18,8 @@ class ToolBox(GlobalSessionToolBox):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.assortment = Assortment(self.data_provider, self.output)
         self.ps_data = PsDataProvider(self.data_provider, self.output)
-        self.kpi_external_targets = self.ps_data.get_kpi_external_targets()
-
+        self.kpi_external_targets = self.ps_data.get_kpi_external_targets(key_fields=Consts.KEY_FIELDS,
+                                                                          data_fields=Consts.DATA_FIELDS)
     def main_calculation(self):
         self.calculate_score_sos()
         self.calculate_oos_and_distribution(assortment_type="Core")

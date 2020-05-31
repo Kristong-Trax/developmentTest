@@ -18,7 +18,8 @@ class ToolBox(GlobalSessionToolBox):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.assortment = Assortment(self.data_provider, self.output)
         self.ps_data = PsDataProvider(self.data_provider, self.output)
-        self.kpi_external_targets = self.ps_data.get_kpi_external_targets()
+        self.kpi_external_targets = self.ps_data.get_kpi_external_targets(key_fields=Consts.KEY_FIELDS,
+                                                                          data_fields=Consts.DATA_FIELDS)
 
     def main_calculation(self):
         self.calculate_score_sos()
@@ -80,7 +81,10 @@ class ToolBox(GlobalSessionToolBox):
         # store level oos and distribution
         denominator = len(product_fks)
         dis_result = self.get_result(dis_numerator, denominator)
-        oos_result = 1 - dis_result
+        if denominator == 0:
+            oos_result = dis_result = None
+        else:
+            oos_result = 1 - dis_result
         oos_numerator = denominator - dis_numerator
         self.common.write_to_db_result(fk=oos_store_kpi_fk, numerator_id=self.own_manufacturer_fk,
                                        denominator_id=self.store_id, result=oos_result, numerator_result=oos_numerator,
@@ -150,7 +154,7 @@ class ToolBox(GlobalSessionToolBox):
         if denominator == 0:
             return 0
         else:
-            return round(numerator / float(denominator), 4)
+            return round(numerator / float(denominator), 2)
 
     def calculate_hierarchy_sos(self, calculation_type):
         brand_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_BRAND))

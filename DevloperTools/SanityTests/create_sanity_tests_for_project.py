@@ -431,7 +431,8 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'batru': {'AF410EF7-90D8-431A-AF12-60DE6ED7438B': []}
+        'ccru':  {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [],
+                  '3b8a8039-2c79-436d-b42f-c72f4ce3b183': []}
                 }
     for project in projects:
         try:
@@ -439,18 +440,18 @@ if __name__ == '__main__':
             kpi_results = pd.DataFrame()
             sessions = projects[project]
             # In case you don't need to generate a new seed, just comment out the below row
-            sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
+            # sessions, kpi_results = create_seed(project=project, sessions_from_user=sessions)
             if kpi_results is None:
                 sys.exit(1)
             sessions = get_sessions_in_correct_format(sessions)
 
             # # Create both the script and kpi test results
-            create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
-                               create_test_script=False, create_test_results=True)
-
-            # Create kpi test results only
             # create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
             #                    create_test_script=True, create_test_results=True)
+
+            # # Create kpi test results only
+            create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
+                               create_test_script=False, create_test_results=True)
 
         except Exception as e:
             Log.error("Project {} failed to create sanity test with error {}".format(project, e))

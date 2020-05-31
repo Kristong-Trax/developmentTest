@@ -20,7 +20,9 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     sessions = {
-                'd16a0359-4d0f-4fed-bfe4-0afecca6843e': ['14431239']
+                '6F10B004-9D85-4767-8B1F-9BCDC2EC32DB': [
+                    '30063433'
+                ]
                 # 'd16a0359-4d0f-4fed-bfe4-0afecca6843e': ['14431283', '14431246', '14431264'],
                 # 'c3b7fd33-8ff5-40fb-bf9a-5e7b58193dd0': ['14433134'],
                 # '077c0582-76d8-4f96-861a-6c2b52787900': ['14436056'],
@@ -50,6 +52,6 @@ if __name__ == '__main__':
             SceneVanillaCalculations(data_provider, output).run_project_calculations()
             save_scene_item_facts_to_data_provider(data_provider, output)
             SceneCalculations(data_provider).calculate_kpis()
-        data_provider.load_session_data(session)
-        output = Output()
-        PngCNEmptyCalculations(data_provider, output).run_project_calculations()
+        # data_provider.load_session_data(session)
+        # output = Output()
+        # PngCNEmptyCalculations(data_provider, output).run_project_calculations()

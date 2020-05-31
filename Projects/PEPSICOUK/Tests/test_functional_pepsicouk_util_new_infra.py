@@ -4,14 +4,14 @@ from Trax.Data.Testing.SeedNew import Seeder
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from mock import MagicMock
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
-from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk import DataTestUnitPEPSICOUK, DataScores
+from Projects.PEPSICOUK.Tests.data_test_unit_pepsicouk_rollout import DataTestUnitPEPSICOUK, DataScores
 from Trax.Algo.Calculations.Core.DataProvider import Output
 from mock import patch
 import os
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
-from Projects.PEPSICOUK.KPIs.Session.HeroAvailabilitySKU import HeroAvailabilitySkuKpi
-from Projects.PEPSICOUK.KPIs.Session.HeroAvailability import HeroAvailabilityKpi
+from Projects.PEPSICOUK.KPIs.Session.Primary_Location.HeroAvailabilitySKU import HeroAvailabilitySkuKpi
+from Projects.PEPSICOUK.KPIs.Session.Primary_Location.HeroAvailability import HeroAvailabilityKpi
 
 __author__ = 'natalya'
 
@@ -36,6 +36,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_db_users()
         self.mock_various_project_connectors()
         self.project_connector_mock = self.mock_project_connector()
+        self.mock_scene_store_area()
 
         self.ps_dataprovider_project_connector_mock = self.mock_ps_data_provider_project_connector()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
@@ -61,7 +62,8 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_position_graph()
 
     def mock_store_data(self):
-        store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id')
+        store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id',
+                                      path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
         store_data.return_value = DataTestUnitPEPSICOUK.store_data
         return store_data.return_value
 
@@ -92,6 +94,11 @@ class Test_PEPSICOUK(TestFunctionalCase):
     def mock_scene_item_facts(self, data):
         self.data_provider_data_mock['scene_item_facts'] = data.where(data.notnull(), None)
 
+    def mock_scene_store_area(self):
+        sa = self.mock_object('PEPSICOUKCommonToolBox.get_scene_to_store_area_map',
+                                      path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        sa.return_value = pd.DataFrame(columns={'scene_fk', 'store_area', 'store_area_fk'})
+
     def mock_match_product_in_scene(self, data):
         self.data_provider_data_mock['matches'] = data.where(data.notnull(), None)
 
@@ -112,7 +119,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
 
     def mock_on_display_products(self):
         on_display_products = self.mock_object('PEPSICOUKCommonToolBox.get_on_display_products',
-                                               path='Projects.PEPSICOUK.Utils.CommonToolBox')
+                                               path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
         on_display_products.return_value = DataTestUnitPEPSICOUK.on_display_products
         return on_display_products.return_value
 
@@ -122,7 +129,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
     def mock_kpi_external_targets_data(self):
         external_targets_df = pd.read_excel(DataTestUnitPEPSICOUK.external_targets)
         external_targets = self.mock_object('PEPSICOUKCommonToolBox.get_all_kpi_external_targets',
-                                            path='Projects.PEPSICOUK.Utils.CommonToolBox')
+                                            path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
         external_targets.return_value = external_targets_df
         return external_targets.return_value
 
@@ -139,7 +146,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
 
     def mock_custom_entity_data(self):
         custom_entities = self.mock_object('PEPSICOUKCommonToolBox.get_custom_entity_data',
-                                           path='Projects.PEPSICOUK.Utils.CommonToolBox')
+                                           path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
         custom_entities.return_value = DataTestUnitPEPSICOUK.custom_entity
         return custom_entities.return_value
 
@@ -186,7 +193,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path, sheet_name='store_policy')
         template_df = template_df.fillna('ALL')
         template_data_mock = self.mock_object('PEPSICOUKCommonToolBox.get_store_policy_data_for_exclusion_template',
-                                              path='Projects.PEPSICOUK.Utils.CommonToolBox')
+                                              path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
         template_data_mock.return_value = template_df
         return template_data_mock.return_value
 
@@ -195,19 +202,19 @@ class Test_PEPSICOUK(TestFunctionalCase):
         template_df = template_df.fillna('')
         # template_df = Test_PEPSICOUK.template_df_mock
         template_data_mock = self.mock_object('PEPSICOUKCommonToolBox.get_exclusion_template_data',
-                                              path='Projects.PEPSICOUK.Utils.CommonToolBox')
+                                              path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
         template_data_mock.return_value = template_df
         return template_data_mock.return_value
 
     def mock_kpi_result_value_table(self):
         kpi_result_value = self.mock_object('PEPSICOUKCommonToolBox.get_kpi_result_values_df',
-                                            path='Projects.PEPSICOUK.Utils.CommonToolBox')
+                                            path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
         kpi_result_value.return_value = DataTestUnitPEPSICOUK.kpi_results_values_table
         return kpi_result_value.return_value
 
     def mock_kpi_score_value_table(self):
         kpi_score_value = self.mock_object('PEPSICOUKCommonToolBox.get_kpi_result_values_df',
-                                           path='Projects.PEPSICOUK.Utils.CommonToolBox',)
+                                           path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout',)
         kpi_score_value.return_value = DataTestUnitPEPSICOUK.kpi_scores_values_table
         return kpi_score_value.return_value
 
