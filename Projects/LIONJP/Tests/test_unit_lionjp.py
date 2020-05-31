@@ -6,7 +6,7 @@ import pandas as pd
 from Projects.LIONJP.Utils.KPIToolBox import LIONJPToolBox
 
 
-__author__ = 'nidhin'
+__author__ = 'satya'
 
 
 class TestLIONJP(TestCase):
