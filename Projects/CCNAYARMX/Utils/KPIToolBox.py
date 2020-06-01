@@ -212,7 +212,7 @@ class ToolBox(GlobalSessionToolBox):
             lambda row: row['result'] if pd.notna(row['identifier_parent']) else np.nan, axis=1)
         # get rid of 'not applicable' results
         self.results_df.dropna(subset=['result'], inplace=True)
-        self.results_df.fillna(0)
+        self.results_df.fillna(0, inplace=True)
         results = self.results_df.to_dict('records')
         for result in results:
             self.write_to_db(**result)
@@ -240,7 +240,7 @@ class ToolBox(GlobalSessionToolBox):
                         result_data['identifier_parent'] = parent_kpi_name
                     if 'identifier_result' not in result_data.keys():
                         result_data['identifier_result'] = result_data['kpi_name']
-                    if result_data['result'] <= 1:
+                    if result_data['result'] <= 1 and result_data['result'] > 0:
                         result_data['result'] = result_data['result'] * 100
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
                 else:  # must be a list
@@ -256,7 +256,7 @@ class ToolBox(GlobalSessionToolBox):
                             result['identifier_parent'] = parent_kpi_name
                         if 'identifier_result' not in result.keys():
                             result['identifier_result'] = result['kpi_name']
-                        if result['result'] <= 1:
+                        if result['result'] <= 1 and result['result'] > 0:
                             result['result'] = result['result'] * 100
                         self.results_df.loc[len(self.results_df), result.keys()] = result
 
@@ -375,7 +375,7 @@ class ToolBox(GlobalSessionToolBox):
         relevant_platformas = plataformas[(plataformas['Platform Name'] == kpi_name) & (plataformas.consumed == 'no')]
         for i, child_row in plat_template[plat_template[PARENT_KPI] == kpi_name].iterrows():
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
-            if not relevant_platformas.empty:
+            if not relevant_platformas.empty and not df.empty:
                 child_result = relevant_platformas[child_row['Data_Column']].iloc[0]
                 child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0]
                 scene_id = relevant_platformas['scene_id'].iloc[0]
@@ -470,7 +470,12 @@ class ToolBox(GlobalSessionToolBox):
             if len(relevant_results) > 0:
                 result_dict['score'] = relevant_results['score'].sum()
                 if 'result' not in result_dict.keys():
-                    result_dict['result'] = result_dict['score']
+                    if row['score_based_result'] == 'y':
+                        result_dict['result'] = 0 if result_dict['score'] == 0 else result_dict['score'] / row['Score']
+                    elif row['composition_based_result'] == 'y':
+                        result_dict['result'] = 0 if passing_results.empty else float(len(passing_results))/ len(relevant_results)
+                    else:
+                        result_dict['result'] = result_dict['score']
             else:
                 result_dict['score'] = 0
                 if 'result' not in result_dict.keys():
@@ -841,6 +846,8 @@ class ToolBox(GlobalSessionToolBox):
         '''
 
         kpi_name = row[KPI_NAME]
+        if kpi_name == 'SOCI':
+            a = 1
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
@@ -1335,8 +1342,6 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_availability(self, row):
         relevant_scif = self._filter_scif(row, self.scif)
-        if row[KPI_NAME] == 'Materiales Fijos':
-            a = '1'
         result = 0 if relevant_scif.empty else 1
         if pd.notna(row[RELEVANT_QUESTION_FK]):
             relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
@@ -1605,10 +1610,12 @@ class ToolBox(GlobalSessionToolBox):
 
     @staticmethod
     def calculate_assortment_passsed_no_constraints(final_assortment, scif):
+        sample_list = []
         assortment_passed = 0
         for assortment in final_assortment:
             check_assortment_in_df = np.in1d(scif.product_short_name, assortment).sum()
             if check_assortment_in_df:
+                sample_list.append(assortment)
                 assortment_passed = assortment_passed + 1
         result = float(assortment_passed) / len(final_assortment)
         return result
