@@ -136,7 +136,7 @@ class ALTRIAUSToolBox:
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Fixture Width')
 
         width = node_data['calculated_width_ft'].value
-        # width = round(width)
+        width = round(width)
         fixture_number = node_data['fixture_number'].value
         block_number = node_data['block_number'].value
         category_fk = self.get_category_fk_by_name(node_data['category'].value)
@@ -175,7 +175,7 @@ class ALTRIAUSToolBox:
             product_fk = pair[1]['product_fk'].value
             width = pair[1]['calculated_width_ft'].value
             implied_facings = pair[1]['width_of_signage_in_facings'].value
-            # width = round(width)
+            width = self.round_threshold(width)
 
             self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=position_fk,
                                               numerator_result=block_number, denominator_result=fixture_number,
@@ -217,6 +217,7 @@ class ALTRIAUSToolBox:
                     product_fk = neighbor_data['product_fk'].value
                     position_fk = self.get_custom_entity_pk(position)
                     flip_sign_width = neighbor_data['calculated_width_ft'].value
+                    flip_sign_width = self.round_threshold(flip_sign_width)
                     implied_facings = neighbor_data['width_of_signage_in_facings'].value
                     self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=position_fk,
                                                       numerator_result=block_number, denominator_result=fixture_number,
@@ -232,7 +233,7 @@ class ALTRIAUSToolBox:
         block_number = node_data['block_number'].value
 
         fixture_width = node_data['calculated_width_ft'].value
-        # fixture_width = round(fixture_width)
+        fixture_width = self.round_threshold(fixture_width)
 
         flip_sign_widths = []
 
@@ -247,6 +248,7 @@ class ALTRIAUSToolBox:
                 continue
 
             neighbor_width = neighbor_data['calculated_width_ft'].value
+            neighbor_width = self.round_threshold(neighbor_width)
             flip_sign_widths.append(neighbor_width)
 
         empty_space = abs(fixture_width - sum(flip_sign_widths))
@@ -377,7 +379,7 @@ class ALTRIAUSToolBox:
             position_fk = self.get_custom_entity_pk(positions[i])
             product_fk = pair[1]['product_fk'].value
             width = pair[1]['calculated_width_ft'].value
-            # width = round(width)
+            width = self.round_threshold(width)
 
             self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=position_fk,
                                               numerator_result=block_number, denominator_result=fixture_number,
@@ -388,7 +390,7 @@ class ALTRIAUSToolBox:
                 position_fk = self.get_custom_entity_pk(positions[-1])
                 product_fk = pair[1]['product_fk'].value
                 width = pair[1]['calculated_width_ft'].value
-                # width = round(width)
+                width = self.round_threshold(width)
                 # width = 1  # this is because there is no real masking for menu board items
 
                 self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=position_fk,
@@ -522,6 +524,10 @@ class ALTRIAUSToolBox:
                                                                         match_product_in_probe_state_values_new])
 
         return
+
+    @staticmethod
+    def round_threshold(value, threshold=0.2):
+        return round(value - threshold + 0.5)
 
     def _get_survey_dot_com_collected_value(self):
         try:

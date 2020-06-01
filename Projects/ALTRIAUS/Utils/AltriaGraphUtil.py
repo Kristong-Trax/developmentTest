@@ -1,17 +1,7 @@
 import pandas as pd
-from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
-from plotly.subplots import make_subplots
-import Trax.Algo.Calculations.Core.AdjacencyGraph.Builders
-import Trax.Algo.Calculations.Core.AdjacencyGraph.GraphDiffs
-import Trax.Algo.Calculations.Core.AdjacencyGraph.Plots.MaskingPlot
-import Trax.Algo.Calculations.Core.AdjacencyGraph.Plots.GraphPlot
+from plotly.offline import iplot
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder, NodeAttribute
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Plots import GraphPlot, MaskingPlot
-import Trax.Algo.Geometry.Masking.MaskingResultsIO
-import Trax.Algo.Geometry.Masking.Utils
-from Trax.Utils.Conf.Configuration import Config
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from Trax.Utils.Conventions.Log import Severities
 from Projects.ALTRIAUS.Utils.AltriaDataProvider import AltriaDataProvider
 from Trax.Utils.Logging.Logger import Log
 
@@ -19,7 +9,7 @@ from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings_flat
 from Trax.Algo.Geometry.Masking.Utils import transform_maskings_flat
 
 import numpy as np
-from shapely.geometry import MultiPolygon, box, Point
+from shapely.geometry import MultiPolygon, box
 from shapely import affinity
 import networkx as nx
 
@@ -110,7 +100,7 @@ class AltriaGraphBuilder(object):
         self._assign_no_header_attribute()
         self._assign_product_above_header_attribute()
 
-        self.create_graph_image()
+        # self.create_graph_image()
 
         return
 
