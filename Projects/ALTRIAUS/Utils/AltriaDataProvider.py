@@ -14,22 +14,43 @@ BOTTOM_RIGHT_CORNER = 'Bottom Right Corner'
 
 class AltriaDataProvider:
 
-    def __init__(self, data_provider):
+    def __init__(self, data_provider=None, mpis=None, project_name=None):
         self.data_provider = data_provider
-        self.project_name = data_provider.project_name
-        self.session_uid = self.data_provider.session_uid
-        self.session_fk = self.data_provider.session_id
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.scene_fks = self.scif['scene_fk'].unique().tolist()
+        if project_name:
+            self.project_name = project_name
+        else:
+            self.project_name = data_provider.project_name
+        if self.data_provider:
+            self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+            self.scene_fks = self.scif['scene_fk'].unique().tolist()
+            self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        else:
+            self.match_product_in_scene = mpis
+            self.scene_fks = mpis['scene_fk'].unique().tolist()
+
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.Simon)
         self._mdis = pd.DataFrame()
-        self.match_product_in_scene = self.data_provider[Data.MATCHES]
 
     @property
     def mdis(self):
         if self._mdis.empty:
             self._mdis = self.get_match_display_in_scene()
         return self._mdis
+
+    def get_probe_groups(self):
+        query = """
+                    SELECT distinct sub_group_id probe_group_id, mpip.pk probe_match_fk
+                    FROM probedata.stitching_probe_info as spi
+                    INNER JOIN probedata.stitching_scene_info ssi on
+                    ssi.pk = spi.stitching_scene_info_fk
+                    INNER JOIN probedata.match_product_in_probe mpip on
+                    mpip.probe_fk = spi.probe_fk
+                    INNER JOIN probedata.scene as sc on
+                    sc.pk = ssi.scene_fk
+                    WHERE ssi.delete_time is null
+                    AND sc.session_uid = '{}';
+                """.format(self.data_provider.session_uid)
+        return pd.read_sql_query(query, self.rds_conn.db)
 
     def get_match_product_in_probe_state_values(self, probe_match_fks):
         query = """select mpipsv.match_product_in_probe_fk as 'probe_match_fk', 
@@ -117,6 +138,45 @@ class AltriaDataProvider:
 
         return match_product_in_scene_df
 
+    def get_masking_data(self, match_product_in_scene_df, y_axis_threshold=40, x_axis_threshold=75, dropna=True):
+            # build a dataframe with all polygon masks that match the display names provided
+        polygon_mask_df = self.generate_polygon_masks(TOP_LEFT_CORNER, BOTTOM_RIGHT_CORNER,
+                                                      y_axis_threshold, x_axis_threshold)
+
+        # add the columns from the polygon dataframe to MPIS
+        match_product_in_scene_df = \
+            match_product_in_scene_df.reindex(
+                columns=match_product_in_scene_df.columns.tolist() + polygon_mask_df.columns.tolist())
+
+        # this isn't very efficient, but it conditionally merges rows from the polygon dataframe
+        # to any applicable products/POS items that are inside the polygon
+        for item in match_product_in_scene_df.itertuples():
+            relevant_polygon_mask_df = polygon_mask_df[(polygon_mask_df['left_bound'] < item.rect_x) &
+                                                       (polygon_mask_df['right_bound'] > item.rect_x) &
+                                                       (polygon_mask_df['top_bound'] < item.rect_y) &
+                                                       (polygon_mask_df['bottom_bound'] > item.rect_y) &
+                                                       (polygon_mask_df['scene_fk'] == item.scene_fk)]
+            # if the dataframe is empty, there wasn't a match
+            if not relevant_polygon_mask_df.empty:
+                match_product_in_scene_df.loc[item.Index, polygon_mask_df.columns.tolist()] = \
+                    relevant_polygon_mask_df.iloc[0]
+
+        if dropna:
+            # get rid of any results that didn't fall into a polygon
+            match_product_in_scene_df.dropna(subset=polygon_mask_df.columns.tolist(), inplace=True)
+
+        match_product_in_scene_df.rename(columns={'left_bound': 'x_top',
+                                                  'right_bound': 'x_right',
+                                                  'top_bound': 'y_top',
+                                                  'bottom_bound': 'y_right'}, inplace=True)
+
+        match_product_in_scene_df = \
+            match_product_in_scene_df[['probe_match_fk', 'x_top', 'y_top', 'x_right', 'y_right']]
+
+        match_product_in_scene_df = match_product_in_scene_df.apply(pd.to_numeric)
+
+        return match_product_in_scene_df
+
     def generate_polygon_masks(self, top_left_display_name=TOP_LEFT_CORNER,
                                bottom_right_display_name=BOTTOM_RIGHT_CORNER, y_axis_threshold=None,
                                x_axis_threshold=None):
@@ -161,7 +221,15 @@ class AltriaDataProvider:
         # since the x and y axes aren't normalized to scale, we need a threshold to prevent incorrect pairs
         y_min = top_left_points['y'].min()
         y_max = bottom_right_points['y'].max()
-        y_range = (y_max - y_min) * y_axis_threshold / 100
+
+        lowest_top_left = top_left_points['y'].max()
+        highest_bottom_right = bottom_right_points['y'].min()
+
+        # this is needed to deal with cases where there are no flip signs
+        if lowest_top_left < highest_bottom_right:
+            y_range = 9999
+        else:
+            y_range = (y_max - y_min) * y_axis_threshold / 100
 
         x_min = top_left_points['x'].min()
         x_max = bottom_right_points['x'].max()
@@ -174,15 +242,15 @@ class AltriaDataProvider:
             if anchor_points.equals(top_left_points):
                 other_point_domain = opposite_points[(opposite_points['x'] > anchor_point.x) &
                                                      (opposite_points['y'] > anchor_point.y) &
-                                                     (opposite_points['y'] < anchor_point.y + y_range) &
-                                                     (opposite_points['x'] < anchor_point.x + x_range)]
+                                                     (opposite_points['y'] <= anchor_point.y + y_range) &
+                                                     (opposite_points['x'] <= anchor_point.x + x_range)]
             # ... or if the anchor points are the bottom right, we only care about points that are higher
             # and further to the left than the anchor point
             elif anchor_points.equals(bottom_right_points):
                 other_point_domain = opposite_points[(opposite_points['x'] < anchor_point.x) &
                                                      (opposite_points['y'] < anchor_point.y) &
-                                                     (opposite_points['y'] > anchor_point.y - y_range) &
-                                                     (opposite_points['x'] > anchor_point.x - x_range)]
+                                                     (opposite_points['y'] >= anchor_point.y - y_range) &
+                                                     (opposite_points['x'] >= anchor_point.x - x_range)]
 
             if other_point_domain.empty:
                 # this shouldn't happen in a perfect world

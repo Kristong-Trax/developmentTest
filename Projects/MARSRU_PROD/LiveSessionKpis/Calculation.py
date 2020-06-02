@@ -15,6 +15,9 @@ class CalculateKpi(LiveSessionBaseClass):
     SKU_LEVEL = 3
     GROUPS_LEVEL = 2
 
+    OOS_INCORRECT_TAG = 'OOS-Inorrect Tag'
+    OOS_REASONS_TO_EXCLUDE = [OOS_INCORRECT_TAG]
+
     def __init__(self, data_provider, output):
         LiveSessionBaseClass.__init__(self, data_provider, output)
         self._data_provider = data_provider
@@ -178,11 +181,27 @@ class CalculateKpi(LiveSessionBaseClass):
            all products which excluded from oos will be removed from oos list  and will be added to distribution
           :param lvl3_res : assortment results in sku level
         """
-        excluded_from_oos = self.common.get_oos_exclude_values()
+        excluded_from_oos = self.get_oos_exclude_values(self.OOS_REASONS_TO_EXCLUDE)
         if excluded_from_oos.empty:
             return
         products_excluded = excluded_from_oos.product_fk.unique()
         lvl3_res.loc[((lvl3_res['in_store'] == 0) & (lvl3_res['product_fk'].isin(products_excluded))), 'in_store'] = 1
+
+    def get_oos_exclude_values(self, oos_message_types):
+        """
+        gets the oos_exclude table from DB
+        :return: DF
+        """
+        query = \
+            """
+            SELECT oe.*, om.message as oos_message, mt.description as oos_message_type
+            FROM probedata.oos_exclude oe
+            JOIN static.oos_message om ON om.pk=oe.oos_message_fk
+            JOIN static.oos_message_type mt ON mt.pk=om.type 
+            WHERE session_uid = '{}' AND mt.description IN ('{}');
+            """.format(self.common.session_uid, "', '".join(oos_message_types))
+        oos_products = pd.read_sql_query(query, self.common.rds_conn.db)
+        return oos_products
 
     def filter_df_by_col(self, df, level):
         """
