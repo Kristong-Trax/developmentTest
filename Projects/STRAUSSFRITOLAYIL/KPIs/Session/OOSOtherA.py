@@ -10,7 +10,7 @@ class OOSNpaKpi(UnifiedCalculationsScript):
         self.utils = StraussfritolayilUtil(None, data_provider)
 
     def calculate(self):
-        kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.OOS_NPA_KPI)
+        kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.OOS_OTHER_A_KPI)
         sku_results = self.dependencies_data
         assortment_fks = set(sku_results['denominator_id'])
         for assortment_fk in assortment_fks:

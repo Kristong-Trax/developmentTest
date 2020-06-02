@@ -11,6 +11,8 @@ class Consts(object):
     OOS_MUST_HAVE_SKU_KPI = 'OOS Must Have - SKU'
     OOS_NPA_KPI = 'OOS NPA'
     OOS_NPA_SKU_KPI = 'OOS NPA - SKU'
+    OOS_OTHER_A_KPI = 'OOS Other A'
+    OOS_OTHER_A_SKU_KPI = 'OOS Other A - SKU'
     NUMBER_OF_FACINGS_MUST_HAVE_KPI = 'Number of Facings_Must Have Assortment'
     SKU_FACINGS_KPI = 'SKU Facings'
     SKU_LINEAR_KPI = 'SKU Linear'
