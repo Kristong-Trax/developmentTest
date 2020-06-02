@@ -7,7 +7,6 @@ from Trax.Algo.Calculations.Core.GraphicalModel.AdjacencyGraphs import Adjacency
 # from Trax.Utils.Logging.Logger import Log
 import pandas as pd
 from collections import defaultdict
-import os
 
 from KPIUtils_v2.DB.CommonV2 import Common
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -91,7 +90,8 @@ class SceneGPUSToolBox:
                                         for item in items], []))
                 adjacent_items = edge_matches - items
                 adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
-                adj_mpis['num_fk'] = self.gp_brands[brand]
+                adj_mpis['num_brand_fk'] = self.gp_brands[brand]
+                adj_mpis['num_category_fk'] = self.get_brand_category(brand)
                 data[brand][edge_dir] = adj_mpis
         return data
 
@@ -104,25 +104,40 @@ class SceneGPUSToolBox:
                     real_edge = Const.ALLOWED_EDGES - {edge_dir}
                     adj_mpis['kpi'] = '{} {} {}'.format(real_edge.pop().capitalize(), base_level.capitalize(),
                                                         base_kpi_name)
-                    self.adj_mpis_to_result(adj_mpis, edge_dir, 'kpi', 'num_fk', '{}_fk'.format(level),
+                    self.adj_mpis_to_result(adj_mpis, edge_dir, 'kpi', 'num_{}_fk'.format(level), '{}_fk'.format(level),
                                             self_id=Const.HIERARCHY[level]['ident'],
-                                            parent=Const.HIERARCHY[level]['parent'])
+                                            parent=Const.HIERARCHY[level]['parent'],
+                                            level=level)
 
-    def adj_mpis_to_result(self, df, dir, kpi_col, num_id_col, den_id_col, self_id=None, parent=None):
+    def adj_mpis_to_result(self, df, dir, kpi_col, num_id_col, den_id_col, self_id=None, parent=None, level=None):
         for i, row in df.iterrows():
             res_ident = '{}_{}'.format(dir, row[self_id]) if self_id else None
             res_parent = '{}_{}'.format(dir, row[parent]) if parent else None
             dupe_tuple = (row[kpi_col], row[num_id_col], row[den_id_col], res_ident, res_parent)
             if dupe_tuple not in self.dedupe:
                 self.dedupe.add(dupe_tuple)
-                kpi_res = {'kpi_name': row[kpi_col],
-                           'numerator_id': row[num_id_col],
-                           'denominator_id': row[den_id_col],
-                           'score': 1,
-                           'result': 1,
-                           'ident_result': res_ident,
-                           'ident_parent': res_parent}
-                self.kpi_results.append(kpi_res)
+
+                if level == 'brand':
+                    for category in self.get_brand_categories(row[num_id_col]):
+                        kpi_res = {'kpi_name': row[kpi_col],
+                                   'numerator_id': row[num_id_col],
+                                   'denominator_id': row[den_id_col],
+                                   'score': 1,
+                                   'result': 1,
+                                   'context_id': category,
+                                   'ident_result': res_ident,
+                                   'ident_parent': res_parent}
+                        self.kpi_results.append(kpi_res)
+                elif level == 'category':
+                    kpi_res = {'kpi_name': row[kpi_col],
+                               'numerator_id': row[num_id_col],
+                               'denominator_id': row[den_id_col],
+                               'score': 1,
+                               'result': 1,
+                               'context_id': row['num_brand_fk'],
+                               'ident_result': res_ident,
+                               'ident_parent': res_parent}
+                    self.kpi_results.append(kpi_res)
 
     def prune_edges(self, g, allowed_edges, keep_or_cut=Const.KEEP):
         for node in g.nodes():
@@ -165,6 +180,24 @@ class SceneGPUSToolBox:
         name = '' if name.empty else name.loc[0, 'manufacturer_name']
         return {name: self.manufacturer_fk}
 
+    def get_brand_category(self, brand):
+        column = None
+        if isinstance(brand, int):
+            column = 'brand_fk'
+        else:
+            column = 'brand_name'
+
+        return self.products[self.products[column] == brand]['category_fk'].iloc[0]
+
+    def get_brand_categories(self, brand):
+        column = None
+        if isinstance(brand, int):
+            column = 'brand_fk'
+        else:
+            column = 'brand_name'
+
+        return self.products[self.products[column] == brand]['category_fk'].unique()
+
     def make_mpis(self):
         mpis = self.match_product_in_scene.merge(self.products, on='product_fk', suffixes=['', '_p']) \
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
@@ -174,20 +207,17 @@ class SceneGPUSToolBox:
 
     def write_to_db(self, kpi_name=None, score=0, result=None, target=None, numerator_result=None,
                     denominator_result=None,
-                    numerator_id=999, denominator_id=999, ident_result=None, ident_parent=None, kpi_fk=None):
+                    numerator_id=999, denominator_id=999, ident_result=None,
+                    context_id=None, ident_parent=None, kpi_fk=None):
         """
         writes result in the DB
         :param kpi_name: str
         :param score: float
-        :param display_text: str
         :param result: str
-        :param threshold: int
         """
         if not kpi_fk:
             kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         self.common.write_to_db_result(fk=kpi_fk, score=score, result=result, should_enter=True, target=target,
                                        numerator_result=numerator_result, denominator_result=denominator_result,
-                                       numerator_id=numerator_id, denominator_id=denominator_id,
+                                       numerator_id=numerator_id, denominator_id=denominator_id, context_id=context_id,
                                        identifier_result=ident_result, identifier_parent=ident_parent, by_scene=True)
-
-
