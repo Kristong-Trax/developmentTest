@@ -12,6 +12,8 @@ class OOSOtherAKpi(UnifiedCalculationsScript):
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.OOS_OTHER_A_KPI)
         sku_results = self.dependencies_data
+        if sku_results.empty:
+            return
         assortment_fks = set(sku_results['denominator_id'])
         for assortment_fk in assortment_fks:
             assortment_df = sku_results[sku_results['denominator_id'] == assortment_fk]

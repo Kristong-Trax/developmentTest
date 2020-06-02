@@ -16,14 +16,16 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
         # todo: implement target
         # target = self.utils.kpi_external_targets['taregt']
         target = 30
-        categories = set(self.utils.scif['category_fk'])
+        categories = set(self.utils.match_product_in_scene_wo_hangers['category_fk'])
         category_fks = set(template_category_fks) - categories
-        own_manufacturer_scif = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
+        own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['stacking_layer'] == 1]
         for category_fk in categories:
-            own_skus_category_df = own_manufacturer_scif[own_manufacturer_scif['category_fk'] == category_fk]
-            store_category_df = self.utils.scif[self.utils.scif['category_fk'] == category_fk]
-            own_category_linear_length = own_skus_category_df['gross_len_ign_stack'].sum()
-            store_category_linear_length = store_category_df['gross_len_ign_stack'].sum()
+            own_skus_category_df = own_manufacturer_matches[own_manufacturer_matches['category_fk'] == category_fk]
+            store_category_df = self.utils.match_product_in_scene_wo_hangers[
+                self.utils.match_product_in_scene_wo_hangers['category_fk'] == category_fk]
+            own_category_linear_length = own_skus_category_df['width_mm_advance'].sum()
+            store_category_linear_length = store_category_df['width_mm_advance'].sum()
             sos_result = self.utils.calculate_sos_result(own_category_linear_length, store_category_linear_length)
             kpi_score = 1 if (target <= sos_result) else 0
             self.write_to_db_result(fk=kpi_fk, numerator_id=category_fk, denominator_id=self.utils.own_manuf_fk,

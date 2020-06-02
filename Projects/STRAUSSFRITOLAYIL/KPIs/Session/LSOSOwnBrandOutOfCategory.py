@@ -17,17 +17,18 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
         target_range = 5
         # todo: implement category extraction
         category_fks = [1, 2]
-        own_manufacturer_scif = self.utils.scif[self.utils.scif['manufacturer_fk'] == self.utils.own_manuf_fk]
-        own_manufacturer_scif = own_manufacturer_scif[own_manufacturer_scif['category_fk'].isin(category_fks)]
-        categories = set(own_manufacturer_scif['category_fk'])
+        own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['stacking_layer'] == 1]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category_fk'].isin(category_fks)]
+        categories = set(own_manufacturer_matches['category_fk'])
         for category_fk in categories:
-            category_df = own_manufacturer_scif[own_manufacturer_scif['category_fk'] == category_fk]
-            category_linear_length = category_df['gross_len_ign_stack'].sum()
+            category_df = own_manufacturer_matches[own_manufacturer_matches['category_fk'] == category_fk]
+            category_linear_length = category_df['width_mm_advance'].sum()
             # strauss are looking at sub_brand as brand in this KPI
             sub_brands = set(category_df['sub_brand_fk'])
             for sub_brand_fk in sub_brands:
                 sub_brand_df = category_df[category_df['sub_brand_fk'] == sub_brand_fk]
-                sub_brand_linear_length = sub_brand_df['gross_len_ign_stack'].sum()
+                sub_brand_linear_length = sub_brand_df['width_mm_advance'].sum()
                 sos_result = self.utils.calculate_sos_result(sub_brand_linear_length, category_linear_length)
                 kpi_score = 1 if ((target - target_range) <= sos_result <= (target + target_range)) else 0
                 self.write_to_db_result(fk=kpi_fk, numerator_id=sub_brand_fk, denominator_id=category_fk,

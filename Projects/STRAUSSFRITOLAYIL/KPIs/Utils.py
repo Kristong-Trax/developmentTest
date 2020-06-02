@@ -19,16 +19,17 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.common = Common(self.data_provider)
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
-        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.add_sub_brand_to_scif()
         self.match_probe_in_scene = self.ps_data.get_product_special_attribute_data(self.session_uid)
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.match_product_in_scene = self.match_product_in_scene.merge(self.products[[
-            'product_fk', 'product_ean_code']], on="product_fk")[['product_fk', 'product_ean_code']]
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.scif[Consts.RELEVENT_FIELDS],
+                                                                        on=["scene_fk", "product_fk"], how="left")
+        self.filter_scif_and_mpis_to_contain_only_primary_shelf()
         self.match_product_in_scene_wo_hangers = self.exclude_special_attribute_products(df=self.match_product_in_scene)
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        # self.filter_scif_and_mpis_to_contain_only_primary_shelf()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
@@ -38,10 +39,11 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.toolbox = GENERALToolBox(self.data_provider)
         self.kpi_external_targets = self.ps_data.get_kpi_external_targets(key_fields=Consts.KEY_FIELDS,
                                                                           data_fields=Consts.DATA_FIELDS)
-        self.add_sub_brand_to_scif()
         self.assortment = Assortment(self.data_provider, self.output)
         self.lvl3_assortment = self.set_updated_assortment()
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+        self.own_manufacturer_matches_wo_hangers = self.match_product_in_scene_wo_hangers[
+            self.match_product_in_scene_wo_hangers['manufacturer_fk'] == self.own_manuf_fk]
 
     def set_updated_assortment(self):
         assortment_result = self.assortment.get_lvl3_relevant_ass()
@@ -108,9 +110,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
                         assortment_result.loc[i, 'in_store_wo_hangers'] = 1
 
     def filter_scif_and_mpis_to_contain_only_primary_shelf(self):
-        location_df = self.scif[['scene_fk', 'location_type']].drop_duplicates()
         self.scif = self.scif[self.scif.location_type == Consts.PRIMARY_SHELF]
-        self.match_product_in_scene = self.match_product_in_scene.merge(location_df, on="scene_fk", how="left")
         self.match_product_in_scene = self.match_product_in_scene[self.match_product_in_scene.location_type ==
                                                                   Consts.PRIMARY_SHELF]
 

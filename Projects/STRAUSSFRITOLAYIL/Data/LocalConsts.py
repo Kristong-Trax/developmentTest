@@ -21,6 +21,8 @@ class Consts(object):
     PRIMARY_SHELF = 'Primary Shelf'
     REPLACMENT_EAN_CODES = "Replacement Ean Codes"
     ADDITIONAL_DISPLAY = 'additional display'
+    RELEVENT_FIELDS = ['scene_fk', 'product_fk', 'product_ean_code', 'template_name', 'product_type', 'manufacturer_fk',
+                       'category_fk', 'sub_brand', 'sub_brand_fk', 'location_type']
 
     # external targets keys
     KEY_FIELDS = ['Store Type', 'region', 'category', 'brand', 'EAN Code']

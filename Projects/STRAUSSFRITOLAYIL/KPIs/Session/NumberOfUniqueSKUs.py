@@ -18,7 +18,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         category_fks = [1, 2]
 
         sku_results = self.dependencies_data
-        df = self.utils.match_product_in_scene.copy()
+        df = self.utils.match_product_in_scene_wo_hangers.copy()
         df['facings'] = 1
         store_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
             ['bay_number', 'shelf_number', 'facings']]

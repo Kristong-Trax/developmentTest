@@ -11,14 +11,16 @@ class SKUFacingsKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.SKU_FACINGS_KPI)
-        custom_scif = self.utils.scif.copy()
-        custom_scif = custom_scif[~custom_scif['product_type'].isin(['Irrelevant'])]
-        custom_scif = custom_scif[['product_fk', 'manufacturer_fk', 'facings_ign_stack']]
-        combined_scenes_scif = custom_scif.groupby(['product_fk', 'manufacturer_fk']).sum().reset_index()
-        for i, sku_row in combined_scenes_scif.iterrows():
+        custom_matches = self.utils.match_product_in_scene_wo_hangers.copy()
+        custom_matches = custom_matches[custom_matches['stacking_layer'] == 1]
+        custom_matches['facings'] = 1
+        custom_matches = custom_matches[~custom_matches['product_type'].isin(['Irrelevant'])]
+        custom_matches = custom_matches[['product_fk', 'manufacturer_fk', 'facings']]
+        combined_scenes_matches = custom_matches.groupby(['product_fk', 'manufacturer_fk']).sum().reset_index()
+        for i, sku_row in combined_scenes_matches.iterrows():
             product_fk = sku_row['product_fk']
-            result = sku_row['facings_ign_stack']
             manufacturer_fk = sku_row['manufacturer_fk']
+            result = sku_row['facings']
             self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result,
                                     denominator_id=manufacturer_fk, score=result)
 
