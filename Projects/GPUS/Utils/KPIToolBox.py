@@ -41,7 +41,7 @@ class GPUSToolBox:
         self.gp_manufacturer = self.get_gp_manufacturer()
         self.gp_categories = self.get_gp_categories()
         self.gp_brands = self.get_gp_brands()
-        self.all_man = self.scif[['manufacturer_name', 'manufacturer_fk']].set_index('manufacturer_name')\
+        self.all_man = self.scif[['manufacturer_name', 'manufacturer_fk']].set_index('manufacturer_name') \
                                                                           ['manufacturer_fk'].to_dict()
         self.all_brands = self.scif[['brand_name', 'brand_fk']].set_index('brand_name')['brand_fk'].to_dict()
         self.man_fk_filter = {'manufacturer_name': list(self.gp_manufacturer.keys())}
