@@ -15,7 +15,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_SKUS_KPI)
         template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
                                                    Consts.NUMBER_OF_UNQIUE_SKUS_KPI]
-        number_of_fields = template[['Field', 'Target']]
+        fields_df = template[['Field', 'Target']]
         if template.empty:
             categories = ['Core Salty']
         else:
@@ -39,7 +39,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
 
         # Adding 0.001 to prevent 0 sadot case
         sadot = math.ceil((numerator + 0.001) / 5.0)
-        relevant_field = number_of_fields[number_of_fields['Field'] == sadot]
+        relevant_field = fields_df[fields_df['Field'] == sadot]
         if not relevant_field.empty:
             target = relevant_field['Target']
         else:
