@@ -119,7 +119,7 @@ ASSORTMENT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file_
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                           'CCNayar_Portafolios_y_Precios.xlsx')
 GENERAL_ASSORTMENTS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                        'CCNayar_Assortment_Templates_V1.xlsx')
+                                        'CCNayar_Assortment_Templates_V2.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -373,7 +373,8 @@ class ToolBox(GlobalSessionToolBox):
 
         plat_template = self.templates[PLATFORMAS]
         plataformas = self.platformas_data
-        relevant_platformas = plataformas[(plataformas['Platform Name'] == kpi_name) & (plataformas.consumed == 'no')]
+        relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values)) & (plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
+        child_score = 1
         for i, child_row in plat_template[plat_template[PARENT_KPI] == kpi_name].iterrows():
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if df.empty:
@@ -382,7 +383,7 @@ class ToolBox(GlobalSessionToolBox):
                 child_score = np.nan
             elif not relevant_platformas.empty:
                 child_result = relevant_platformas[child_row['Data_Column']].iloc[0]
-                child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0]
+                child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0] if not (child_row['dependency_on_scoring'] == 'y' and child_score == 0) else 0
                 scene_id = relevant_platformas['scene_id'].iloc[0]
                 self.platformas_data.loc[relevant_platformas.index.values[0], 'consumed'] = 'yes'
             else:
@@ -450,8 +451,6 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_scoring(self, row):
         kpi_name = row[KPI_NAME]
-        if kpi_name == 'ICE':
-            a = 1
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         numerator_id = self.own_manuf_fk
         denominator_id = self.store_id
@@ -782,7 +781,6 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_assortment(self, row):
         return_holder = self._get_kpi_name_and_fk(row)
         kpi_name = return_holder[0]
-
         external_sheet_name = self.sanitize_values(row[EXTERNAL_SHEET_NAMES])
         relevant_scif = self._filter_scif(row, self.scif)
 
@@ -854,8 +852,6 @@ class ToolBox(GlobalSessionToolBox):
         '''
 
         kpi_name = row[KPI_NAME]
-        if kpi_name == 'SOCI':
-            a = 1
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
         template_name = self.sanitize_values(row[TEMPLATE_NAME])
@@ -1590,7 +1586,7 @@ class ToolBox(GlobalSessionToolBox):
         assortmemt_df = self.templates[assortment_sheet_name]
         assortmemt_df = assortmemt_df[assortmemt_df[KPI_NAME].isin([kpi_name])]
         if filter_att2:
-            assortment_df = assortmemt_df[assortmemt_df.additional_attribute_2.isin([self.att2])]
+            assortmemt_df = assortmemt_df[assortmemt_df.additional_attribute_2.str.contains(self.att2)]
         final_assortment = np.array(self._get_groups(assortmemt_df.iloc[0], 'assortment'))
         return final_assortment
 
@@ -1620,12 +1616,10 @@ class ToolBox(GlobalSessionToolBox):
 
     @staticmethod
     def calculate_assortment_passsed_no_constraints(final_assortment, scif):
-        sample_list = []
         assortment_passed = 0
         for assortment in final_assortment:
             check_assortment_in_df = np.in1d(scif.product_short_name, assortment).sum()
             if check_assortment_in_df:
-                sample_list.append(assortment)
                 assortment_passed = assortment_passed + 1
         result = float(assortment_passed) / len(final_assortment)
         return result
@@ -1709,11 +1703,16 @@ class ToolBox(GlobalSessionToolBox):
             relevant_preplat = pre_req_platformas[pre_req_platformas['Platform'].str.contains(row['Platform Name'])]
             relevant_preplat = relevant_preplat[relevant_preplat.template_name == relevant_template_name]
 
-            result = (row['POS option present'] * .25) + (
-                    row['Minimum facings met'] * .5 / 3 + row['Mandatory SKUs found'] * .5 / 3 + row[
-                'Survey Question'] * .5 / 3) + (row['Coke purity'] * .25)
+            clump_plat = (row['Minimum facings met'] * .5 / 3 + row['Mandatory SKUs found'] * .5 / 3 + row[
+                'Survey Question'] * .5 / 3) if not 0 in [row['Minimum facings met'], row['Mandatory SKUs found'], row[
+                 'Survey Question']] else 0
+
+            result = (row['POS option present'] * .25) + clump_plat + (row['Coke purity'] * .25)
+
             relevant_preplat['actual_score'] = relevant_preplat['Score'] * result
             relevant_preplat['result'] = result
             relevant_preplat['scene_id'] = row.scene_id
+            relevant_preplat['Platform'] = row['Platform Name']
             final_df = final_df.append(relevant_preplat)
         return final_df
+

@@ -40,19 +40,23 @@ class Generator:
         if tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         else:
-            especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
-            especializado_tool_box.main_calculation()
+            # especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
+            # especializado_tool_box.main_calculation()
+            #
+            # fondas_tool_box = FONDASToolBox(self.data_provider, self.output,common)
+            # fondas_tool_box.main_calculation()
 
-            fondas_tool_box = FONDASToolBox(self.data_provider, self.output,common)
-            fondas_tool_box.main_calculation()
+            # nayar_tool_box = NationalToolBox(self.data_provider, self.output, common)
+            # nayar_tool_box.main_calculation()
+            # nayar_tool_box.commit_results()
 
             tool_box = ToolBox(self.data_provider, self.output, common)
             tool_box.main_calculation()
-            # tool_box.commit_results()
+            tool_box.commit_results()
 
-            nayar_tool_box = NationalToolBox(self.data_provider, self.output, common)
-            nayar_tool_box.main_calculation()
-            nayar_tool_box.commit_results()
+            # nayar_tool_box = NationalToolBox(self.data_provider, self.output, common)
+            # nayar_tool_box.main_calculation()
+            # nayar_tool_box.commit_results()
 
     # @log_runtime('Original Nayar Calculations')
     # def caculate_original_nayar(self):
