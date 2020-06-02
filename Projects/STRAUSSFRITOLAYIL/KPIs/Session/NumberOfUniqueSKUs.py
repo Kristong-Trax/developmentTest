@@ -12,7 +12,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_SKUS_KPI)
-
+        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['operation_type'] == Consts.AVA_KPIS]
         number_of_fields = {1: 10, 2: 20, 3: 30}
         # todo: implement category extraction
         category_fks = [1, 2]

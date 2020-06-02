@@ -11,6 +11,7 @@ class NumberOfUniqueSKUsSKUKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_SKUS_KPI)
+        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['operation_type'] == Consts.AVA_KPIS]
         # todo: implement category extraction
         category_fks = [1, 2]
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()

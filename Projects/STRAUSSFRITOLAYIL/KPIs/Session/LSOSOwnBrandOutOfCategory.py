@@ -11,6 +11,7 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.LSOS_OWN_BRAND_OUT_OF_CATEGORY_KPI)
+        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['operation_type'] == Consts.SOS_KPIS]
         # todo: implement target
         # target = self.utils.kpi_external_targets['taregt']
         target = 30

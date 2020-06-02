@@ -27,3 +27,7 @@ class Consts(object):
     # external targets keys
     KEY_FIELDS = ['Store Type', 'region', 'category', 'brand', 'EAN Code']
     DATA_FIELDS = ['Field', 'Target']
+
+    # external targets operation type
+    SOS_KPIS = 'SOS_KPIs'
+    AVA_KPIS = 'AVAILABILITY_KPIs'
