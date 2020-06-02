@@ -14,8 +14,6 @@ if __name__ == '__main__':
                        'session_uid': session_uid, 'session_id': session_id, 'scene_ids': [], 'scene_uids': [],
                        'number_of_scenes': 4, 'attributes': {'ApproximateReceiveCount': 1}, 'wave_type': 'primary',
                        'wave_uid': ''}
-
-
     kenigineUnified = KEngineUnifiedHandler()
-    kenigineUnified._validate_message(message_session)
+    # kenigineUnified._validate_message(message_session)
     kenigineUnified._process_message(message_session, None, MagicMock(), None)

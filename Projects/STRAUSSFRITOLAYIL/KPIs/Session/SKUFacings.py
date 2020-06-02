@@ -14,7 +14,7 @@ class SKUFacingsKpi(UnifiedCalculationsScript):
         custom_scif = self.utils.scif.copy()
         custom_scif = custom_scif[~custom_scif['product_type'].isin(['Irrelevant'])]
         custom_scif = custom_scif[['product_fk', 'manufacturer_fk', 'facings_ign_stack']]
-        combined_scenes_scif = custom_scif.groupby(['product_fk', 'manufacturer_fk']).sum()
+        combined_scenes_scif = custom_scif.groupby(['product_fk', 'manufacturer_fk']).sum().reset_index()
         for i, sku_row in combined_scenes_scif.iterrows():
             product_fk = sku_row['product_fk']
             result = sku_row['facings_ign_stack']

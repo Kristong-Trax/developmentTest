@@ -40,7 +40,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def set_updated_assortment(self):
-        assortment_result = self.assortment.get_lvl3_relevant_ass()
+        assortment_result = self.assortment.calculate_lvl3_assortment()
         replacement_eans_df = pd.DataFrame([json_normalize(json.loads(js)).values[0] for js
                                             in assortment_result['additional_attributes']])
         replacement_eans_df.columns = [Consts.REPLACMENT_EAN_CODES]
@@ -49,22 +49,22 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         replacement_eans_df = replacement_eans_df[Consts.REPLACMENT_EAN_CODES].apply(lambda row: [x.strip() for x in
                                                                                                   row] if row else None)
         assortment_result = assortment_result.join(replacement_eans_df)
-        products_in_session = self.scif.loc[self.scif['facings'] > 0]['product_fk'].values
-        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
+        assortment_result['facings_all_products'] = assortment_result['facings'].copy()
         self.handle_replacment_products_row(assortment_result)
         return assortment_result
 
     def handle_replacment_products_row(self, assortment_result):
-        missing_products_df = assortment_result[(assortment_result['in_store'] == 0) &
-                                                (~assortment_result[Consts.REPLACMENT_EAN_CODES].isnull())]
-        for i, row in missing_products_df.iterrows():
+        additional_products_df = assortment_result[~assortment_result[Consts.REPLACMENT_EAN_CODES].isnull()]
+        for i, row in additional_products_df.iterrows():
             replacement_products = row[Consts.REPLACMENT_EAN_CODES]
-            for sku in replacement_products:
-                if sku in self.scif['product_ean_code'].values:
-                    product_fk = self.scif[self.scif['product_ean_code'] == sku]['product_fk']
-                    assortment_result.loc[i, 'product_fk'] = product_fk.values[0]
-                    assortment_result.loc[i, 'in_store'] = 1
-                    break
+            facings_all_skus = self.scif[self.scif['product_ean_code'].isin(replacement_products)]['facings'].sum()
+            assortment_result.loc[i, 'facings_all_products'] = facings_all_skus + row['facings']
+            if row['in_store'] != 1:
+                for sku in replacement_products:
+                    if sku in self.scif['product_ean_code'].values:
+                        product_fk = self.scif[self.scif['product_ean_code'] == sku]['product_fk']
+                        assortment_result.loc[i, 'product_fk'] = product_fk.values[0]
+                        assortment_result.loc[i, 'in_store'] = 1
 
     def filter_scif_and_mpis_to_contain_only_primary_shelf(self):
         location_df = self.scif[['scene_fk', 'location_type']].drop_duplicates()
