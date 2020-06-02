@@ -21,7 +21,12 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.ps_data = PsDataProvider(self.data_provider, self.output)
+        self.match_probe_in_scene = self.ps_data.get_product_special_attribute_data(self.session_uid)
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
+        self.match_product_in_scene = self.match_product_in_scene.merge(self.products[[
+            'product_fk', 'product_ean_code']], on="product_fk")[['product_fk', 'product_ean_code']]
+        self.match_product_in_scene_wo_hangers = self.exclude_special_attribute_products(df=self.match_product_in_scene)
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         # self.filter_scif_and_mpis_to_contain_only_primary_shelf()
         self.visit_date = self.data_provider[Data.VISIT_DATE]
@@ -31,7 +36,6 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
             else self.session_info['store_fk'].values[0]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.toolbox = GENERALToolBox(self.data_provider)
-        self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.kpi_external_targets = self.ps_data.get_kpi_external_targets(key_fields=Consts.KEY_FIELDS,
                                                                           data_fields=Consts.DATA_FIELDS)
         self.add_sub_brand_to_scif()
@@ -40,7 +44,8 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def set_updated_assortment(self):
-        assortment_result = self.assortment.calculate_lvl3_assortment()
+        assortment_result = self.assortment.get_lvl3_relevant_ass()
+        assortment_result = self.calculate_lvl3_assortment(assortment_result)
         replacement_eans_df = pd.DataFrame([json_normalize(json.loads(js)).values[0] for js
                                             in assortment_result['additional_attributes']])
         replacement_eans_df.columns = [Consts.REPLACMENT_EAN_CODES]
@@ -50,21 +55,57 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
                                                                                                   row] if row else None)
         assortment_result = assortment_result.join(replacement_eans_df)
         assortment_result['facings_all_products'] = assortment_result['facings'].copy()
+        assortment_result['facings_all_products_wo_hangers'] = assortment_result['facings_wo_hangers'].copy()
         self.handle_replacment_products_row(assortment_result)
+        return assortment_result
+
+    def calculate_lvl3_assortment(self, assortment_result):
+        """
+        :return: data frame on the sku level with the following fields:
+        ['assortment_group_fk', 'assortment_fk', 'target', 'product_fk', 'in_store', 'kpi_fk_lvl1',
+        'kpi_fk_lvl2', 'kpi_fk_lvl3', 'group_target_date', 'assortment_super_group_fk',
+         'super_group_target', 'additional_attributes']. Indicates whether the product was in the store (1) or not (0).
+        """
+        if assortment_result.empty:
+            return assortment_result
+        assortment_result['in_store_wo_hangers'] = assortment_result['in_store'].copy()
+        products_in_session = self.match_product_in_scene['product_fk'].values
+        products_in_session_wo_hangers = self.match_product_in_scene_wo_hangers['product_fk'].values
+        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
+        assortment_result.loc[assortment_result['product_fk'].isin(products_in_session_wo_hangers),
+                              'in_store_wo_hangers'] = 1
+        assortment_result['facings'] = 0
+        assortment_result['facings_wo_hangers'] = 0
+        product_assort = assortment_result['product_fk'].unique()
+        for sku in product_assort:
+            assortment_result.loc[assortment_result['product_fk'] == sku, 'facings'] = \
+                len(self.match_product_in_scene[self.match_product_in_scene['product_fk'] == sku])
+            assortment_result.loc[assortment_result['product_fk'] == sku, 'facings_wo_hangers'] = \
+                len(self.match_product_in_scene_wo_hangers[self.match_product_in_scene_wo_hangers['product_fk'] == sku])
         return assortment_result
 
     def handle_replacment_products_row(self, assortment_result):
         additional_products_df = assortment_result[~assortment_result[Consts.REPLACMENT_EAN_CODES].isnull()]
         for i, row in additional_products_df.iterrows():
             replacement_products = row[Consts.REPLACMENT_EAN_CODES]
-            facings_all_skus = self.scif[self.scif['product_ean_code'].isin(replacement_products)]['facings'].sum()
-            assortment_result.loc[i, 'facings_all_products'] = facings_all_skus + row['facings']
+            facings = len(self.match_product_in_scene[self.match_product_in_scene[
+                'product_ean_code'].isin(replacement_products)])
+            facings_wo_hangers = len(self.match_product_in_scene_wo_hangers[self.match_product_in_scene_wo_hangers[
+                'product_ean_code'].isin(replacement_products)])
+            assortment_result.loc[i, 'facings_all_products'] = facings + row['facings']
+            assortment_result.loc[i, 'facings_all_products_wo_hangers'] = facings_wo_hangers + row['facings_wo_hangers']
             if row['in_store'] != 1:
                 for sku in replacement_products:
-                    if sku in self.scif['product_ean_code'].values:
-                        product_fk = self.scif[self.scif['product_ean_code'] == sku]['product_fk']
+                    if sku in self.match_product_in_scene['product_ean_code'].values:
+                        product_fk = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk']
                         assortment_result.loc[i, 'product_fk'] = product_fk.values[0]
                         assortment_result.loc[i, 'in_store'] = 1
+            if row['in_store_wo_hangers'] != 1:
+                for sku in replacement_products:
+                    if sku in self.match_product_in_scene_wo_hangers['product_ean_code'].values:
+                        product_fk = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk']
+                        assortment_result.loc[i, 'product_fk'] = product_fk.values[0]
+                        assortment_result.loc[i, 'in_store_wo_hangers'] = 1
 
     def filter_scif_and_mpis_to_contain_only_primary_shelf(self):
         location_df = self.scif[['scene_fk', 'location_type']].drop_duplicates()
@@ -90,90 +131,16 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         result = round((numerator / float(denominator)), 3)
         return result
 
-    # def calculate_sos(self, sos_filters, **general_filters):
-    #     numerator_linear = self.calculate_share_space(**dict(sos_filters, **general_filters))
-    #     denominator_linear = self.calculate_share_space(**general_filters)
-    #     return float(numerator_linear), float(denominator_linear)
-    #
-    # def calculate_share_space(self, **filters):
-    #     filtered_scif = self.filtered_scif[self.toolbox.get_filter_condition(self.filtered_scif, **filters)]
-    #     space_length = filtered_scif['updated_gross_length'].sum()
-    #     return space_length
-    #
-    # def add_kpi_result_to_kpi_results_df(self, result_list):
-    #     self.kpi_results_check.loc[len(self.kpi_results_check)] = result_list
-    #
-    # def get_results_of_scene_level_kpis(self):
-    #     scene_kpi_results = pd.DataFrame()
-    #     if not self.scene_info.empty:
-    #         scene_kpi_results = self.ps_data.get_scene_results(self.scene_info['scene_fk'].drop_duplicates().values)
-    #     return scene_kpi_results
-    #
-    # def get_store_data_by_store_id(self):
-    #     store_id = self.store_id if self.store_id else self.session_info['store_fk'].values[0]
-    #     query = PEPSICOUK_Queries.get_store_data_by_store_id(store_id)
-    #     query_result = pd.read_sql_query(query, self.rds_conn.db)
-    #     return query_result
-    #
-    # def get_facings_scene_bay_shelf_product(self):
-    #     self.filtered_matches['count'] = 1
-    #     aggregate_df = self.filtered_matches.groupby(['scene_fk', 'bay_number', 'shelf_number', 'product_fk'],
-    #                                                  as_index=False).agg({'count': np.sum})
-    #     return aggregate_df
-    #
-    # def get_lvl3_relevant_assortment_result(self):
-    #     assortment_result = self.assortment.get_lvl3_relevant_ass()
-    #     # if assortment_result.empty:
-    #     #     return assortment_result
-    #     # products_in_session = self.filtered_scif.loc[self.filtered_scif['facings'] > 0]['product_fk'].values
-    #     # assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
-    #     return assortment_result
-    #
-    # @staticmethod
-    # def get_block_and_adjacency_filters(target_series):
-    #     filters = {target_series['Parameter 1']: target_series['Value 1']}
-    #     if target_series['Parameter 2']:
-    #        filters.update({target_series['Parameter 2']: target_series['Value 2']})
-    #
-    #     if target_series['Parameter 3']:
-    #         filters.update({target_series['Parameter 3']: target_series['Value 3']})
-    #     return filters
-    #
-    # @staticmethod
-    # def get_block_filters(target_series):
-    #     if isinstance(target_series['Value 1'], list):
-    #         filters = {target_series['Parameter 1']: target_series['Value 1']}
-    #     else:
-    #         filters = {target_series['Parameter 1']: [target_series['Value 1']]}
-    #
-    #     if target_series['Parameter 2']:
-    #         if isinstance(target_series['Value 2'], list):
-    #             filters.update({target_series['Parameter 2']: target_series['Value 2']})
-    #         else:
-    #             filters.update({target_series['Parameter 2']: [target_series['Value 2']]})
-    #
-    #     if target_series['Parameter 3']:
-    #         if isinstance(target_series['Value 2'], list):
-    #             filters.update({target_series['Parameter 3']: target_series['Value 3']})
-    #         else:
-    #             filters.update({target_series['Parameter 3']: [target_series['Value 3']]})
-    #     return filters
-    #
-    # def reset_filtered_scif_and_matches_to_exclusion_all_state(self):
-    #     self.filtered_scif = self.commontools.filtered_scif.copy()
-    #     self.filtered_matches = self.commontools.filtered_matches.copy()
-    #
-    # def get_available_hero_sku_list(self, dependencies_df):
-    #     hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
-    #                                 (dependencies_df['numerator_result'] == 1)]['numerator_id'].unique().tolist()
-    #     return hero_list
-    #
-    # def get_unavailable_hero_sku_list(self, dependencies_df):
-    #     hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &
-    #                                 (dependencies_df['numerator_result'] == 0)]['numerator_id'].unique().tolist()
-    #     return hero_list
-    #
-    # def get_hero_type_custom_entity_df(self):
-    #     hero_type_df = self.custom_entities[self.custom_entities['entity_type'] == self.HERO_TYPE]
-    #     hero_type_df.rename(columns={'pk': 'entity_fk'}, inplace=True)
-    #     return hero_type_df
+    def exclude_special_attribute_products(self, df):
+        """
+        Helper to exclude smart_attribute products
+        :return: filtered df without smart_attribute products
+        """
+        if self.match_probe_in_scene.empty:
+            return df
+        smart_attribute_df = self.match_probe_in_scene[self.match_probe_in_scene['name'] == Consts.ADDITIONAL_DISPLAY]
+        if smart_attribute_df.empty:
+            return df
+        match_product_in_probe_fks = smart_attribute_df['match_product_in_probe_fk'].tolist()
+        df = df[~df['probe_match_fk'].isin(match_product_in_probe_fks)]
+        return df

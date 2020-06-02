@@ -3,10 +3,10 @@ from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalcula
 from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
 
 
-class OOSNpaKpi(UnifiedCalculationsScript):
+class OOSOtherAKpi(UnifiedCalculationsScript):
 
     def __init__(self, data_provider, config_params=None, **kwargs):
-        super(OOSNpaKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
+        super(OOSOtherAKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.utils = StraussfritolayilUtil(None, data_provider)
 
     def calculate(self):

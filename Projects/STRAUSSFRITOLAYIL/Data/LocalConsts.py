@@ -13,13 +13,14 @@ class Consts(object):
     OOS_NPA_SKU_KPI = 'OOS NPA - SKU'
     OOS_OTHER_A_KPI = 'OOS Other A'
     OOS_OTHER_A_SKU_KPI = 'OOS Other A - SKU'
-    NUMBER_OF_FACINGS_MUST_HAVE_KPI = 'Number of Facings_Must Have Assortment'
+    NUMBER_OF_FACINGS_MUST_HAVE_KPI = 'Number of Facings Must Have Assortment'
     SKU_FACINGS_KPI = 'SKU Facings'
     SKU_LINEAR_KPI = 'SKU Linear'
 
     # Consts
     PRIMARY_SHELF = 'Primary Shelf'
     REPLACMENT_EAN_CODES = "Replacement Ean Codes"
+    ADDITIONAL_DISPLAY = 'additional display'
 
     # external targets keys
     KEY_FIELDS = ['Store Type', 'region', 'category', 'brand', 'EAN Code']
