@@ -1,6 +1,7 @@
 from Projects.STRAUSSFRITOLAYIL.KPIs.Utils import StraussfritolayilUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
+from Trax.Utils.Logging.Logger import Log
 
 
 class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
@@ -11,13 +12,19 @@ class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_BRANDS_BRAND_KPI)
-        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['operation_type'] == Consts.AVA_KPIS]
-        # todo: implement category extraction
-        category_fks = [1, 2]
+        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
+                                                   Consts.NUMBER_OF_UNQIUE_BRANDS_KPI]
+        if template.empty:
+            categories = ['Crackers']
+        elif len(template) != 1:
+            Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
+            categories = ['Crackers']
+        else:
+            categories = template['category'][0].split(",")
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
         own_manufacturer_matches = own_manufacturer_matches[~own_manufacturer_matches['product_type'].isin(
             ['Other', 'Empty'])]
-        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category_fk'].isin(category_fks)]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category'].isin(categories)]
         own_manufacturer_matches['facings'] = 1
         # strauss are looking at sub_brand as brand in this KPI
         sub_brands = set(own_manufacturer_matches['sub_brand_fk'])

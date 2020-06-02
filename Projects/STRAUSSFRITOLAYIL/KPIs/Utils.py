@@ -33,12 +33,15 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.store_id = self.data_provider[Data.STORE_FK] if self.data_provider[Data.STORE_FK] is not None \
-            else self.session_info['store_fk'].values[0]
+        self.store_info = self.data_provider[Data.STORE_INFO]
+        self.store_type = self.store_info['store_type'].values[0]
+        self.region = self.store_info['region_name'].values[0]
+        self.store_id = self.store_info['store_fk'].values[0] if self.store_info['store_fk'] is not None else 0
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.toolbox = GENERALToolBox(self.data_provider)
         self.kpi_external_targets = self.ps_data.get_kpi_external_targets(key_fields=Consts.KEY_FIELDS,
                                                                           data_fields=Consts.DATA_FIELDS)
+        self.filter_external_targets()
         self.assortment = Assortment(self.data_provider, self.output)
         self.lvl3_assortment = self.set_updated_assortment()
         self.own_manuf_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
@@ -60,6 +63,11 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         assortment_result['facings_all_products_wo_hangers'] = assortment_result['facings_wo_hangers'].copy()
         self.handle_replacment_products_row(assortment_result)
         return assortment_result
+
+    def filter_external_targets(self):
+        self.kpi_external_targets = self.kpi_external_targets[
+            (self.kpi_external_targets['Store Type'].str.encode("utf8") == self.store_type.encode("utf8")) &
+            (self.kpi_external_targets['region'].str.encode("utf8") == self.region.encode("utf8"))]
 
     def calculate_lvl3_assortment(self, assortment_result):
         """

@@ -1,6 +1,7 @@
 from Projects.STRAUSSFRITOLAYIL.KPIs.Utils import StraussfritolayilUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
+from Trax.Utils.Logging.Logger import Log
 
 
 class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
@@ -11,13 +12,21 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.LSOS_OWN_BRAND_OUT_OF_CATEGORY_KPI)
-        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['operation_type'] == Consts.SOS_KPIS]
-        # todo: implement target
-        # target = self.utils.kpi_external_targets['taregt']
-        target = 30
+        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
+                                                   Consts.LSOS_MANUFACTURER_OUT_OF_CATEGORY_KPI]
+        if template.empty:
+            categories = ['Crackers', 'Core Salty']
+            target = -1
+        elif len(template) != 1:
+            Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
+            categories = ['Crackers', 'Core Salty']
+            target = -1
+        else:
+            categories = template['category'][0].split(",")
+            target = template['Target'][0]
+        category_fks = set(self.utils.all_products[self.utils.all_products['category'].isin(
+            categories)]['category_fk'])
         target_range = 5
-        # todo: implement category extraction
-        category_fks = [1, 2]
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['stacking_layer'] == 1]
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category_fk'].isin(category_fks)]
