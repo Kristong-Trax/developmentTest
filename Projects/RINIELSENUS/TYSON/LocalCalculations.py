@@ -12,7 +12,7 @@ from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.RINIELSENUS.TYSON.KPIGenerator import TysonGenerator
 
 PROJECT_PATH = os.path.dirname(__file__)
-RETEST_SESSIONS = 10
+RETEST_SESSIONS = 20
 NEW_SESSIONS = 5
 
 
@@ -84,6 +84,8 @@ if __name__ == '__main__':
 
     # run specific sessions
     sessions = [
+        # '38ddd902-c08f-4c26-b566-4514ed7f0a65',
+        # '16da5899-cb0f-4128-8274-f05f572ce946',
         # '1ca636d3-15e3-4c86-961c-d83b077d9b57',
         # '5c0e8581-ee8a-436b-907e-be4d4537cbf8',
         # '70fcb7e9-72bd-4799-afea-4d018e142c5b',

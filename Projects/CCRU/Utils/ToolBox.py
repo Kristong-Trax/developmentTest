@@ -487,6 +487,7 @@ class CCRUKPIToolBox:
                 continue
             is_atomic = False
             kpi_total_res = 0
+            score = 0
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
             if p.get('Children') is not None:
@@ -539,7 +540,7 @@ class CCRUKPIToolBox:
                     else:
                         score = 0
                 elif p.get('Logical Operator') == 'SUM':
-                    score = round(kpi_total_res) / 100.0
+                    score = round(kpi_total_res, 3) / 100.0
                     if score < p.get('score_min', 0):
                         score = 0
                     elif score > p.get('score_max', 1):
@@ -556,6 +557,8 @@ class CCRUKPIToolBox:
                 kpi_total_res = self.calculate_availability(p)
                 score = self.calculate_score(kpi_total_res, p)
 
+            score = round(float(score), 3)
+
             if not cooler_dict:
                 if not is_atomic:  # saving also to level3 in case this KPI has only one level
                     attributes_for_table3 = self.create_attributes_for_level3_df(
@@ -569,7 +572,7 @@ class CCRUKPIToolBox:
                 if p.get("KPI ID") in params.values()[2]["SESSION LEVEL"]:
                     self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result_total, score)
 
-            set_total_res += round(score) * p.get('KPI Weight')
+            set_total_res += round(score * p.get('KPI Weight'), 3)
 
             if cooler_dict is not None:
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRUConsts.COOLER_SCORE_LVL_2)
@@ -675,7 +678,7 @@ class CCRUKPIToolBox:
         if params.get('Formula').strip() == 'each SKU hits facings target':
             if params.get('Target'):
                 number_of_fails = sum([x < int(params.get('Target')) for x in result])
-                result = 100 - round(number_of_fails / float(len(result)) * 100, 2) if len(result) else 0
+                result = 100 - round(number_of_fails / float(len(result)) * 100, 3) if len(result) else 0
             else:
                 result = 0
 
@@ -818,10 +821,13 @@ class CCRUKPIToolBox:
                     kpi_total_res += res
 
             score = self.calculate_score(kpi_total_res, p)
+
+            score = round(float(score), 3)
+
             if p.get('KPI Weight') is None:
-                set_total_res += round(score)
+                set_total_res += score
             else:
-                set_total_res += round(score) * p.get('KPI Weight')
+                set_total_res += round(score * p.get('KPI Weight'), 3)
             if not cooler_dict:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
@@ -859,7 +865,11 @@ class CCRUKPIToolBox:
                 continue
             kpi_total_res = self.calculate_number_of_doors(p)
             score = self.calculate_score(kpi_total_res, p)
-            set_total_res += round(score) * p.get('KPI Weight')
+
+            score = round(float(score), 3)
+
+            set_total_res += round(score * p.get('KPI Weight'), 3)
+
             # saving to DB
             if not cooler_dict:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
@@ -966,7 +976,8 @@ class CCRUKPIToolBox:
                     score = 0
             else:
                 Log.warning('No survey data for this session')
-            set_total_res += round(score) * p.get('KPI Weight')
+            score = round(score, 3)
+            set_total_res += round(score * p.get('KPI Weight'), 3)
             if p.get('level') == 3:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
                 attributes_for_level3 = self.create_attributes_for_level3_df(p, score, kpi_fk)
@@ -1010,6 +1021,9 @@ class CCRUKPIToolBox:
             # saving to DB
             if np.isnan(score):
                 score = 0
+
+            score = round(float(score), 3)
+
             if not cooler_dict:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
                 if p.get('level') == 2:
@@ -1027,7 +1041,7 @@ class CCRUKPIToolBox:
                     self.write_to_kpi_facts_hidden(p.get("KPI ID"), None, atomic_result, score)
                 self.write_to_db_category_kpis_for_mr(p, result=ratio*100, score=ratio*100)
 
-            set_total_res += round(score) * p.get('KPI Weight')
+            set_total_res += round(score * p.get('KPI Weight'), 3)
 
             if cooler_dict is not None:
                 kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRUConsts.COOLER_SCORE_LVL_2)
@@ -1129,7 +1143,7 @@ class CCRUKPIToolBox:
             ratio = 0
         if ratio is None:
             ratio = 0
-        return round(ratio, 4)
+        return round(ratio, 5)
 
     def calculate_score(self, kpi_total_res, params):
         """
@@ -1236,13 +1250,16 @@ class CCRUKPIToolBox:
                 result = self.calculate_share_of_cch(p, scenes, no_fc_packs=True)
             else:
                 result = self.calculate_share_of_cch(p, scenes)
-            score = self.calculate_score(result, p)
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
+            score = self.calculate_score(result, p)
+
+            score = round(float(score), 3)
+
             if p.get('KPI Weight') is None:
-                set_total_res += round(score)
+                set_total_res += score
             else:
-                set_total_res += round(score) * p.get('KPI Weight')
+                set_total_res += round(score * p.get('KPI Weight'), 3)
             # saving to DB
             if not cooler_dict:
                 if level == 2:
@@ -1292,10 +1309,11 @@ class CCRUKPIToolBox:
             score = self.calculate_number_of_scenes_given_facings(p, scenes)
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             atomic_kpi_fk = self.kpi_fetcher.get_atomic_kpi_fk(p.get('KPI name Eng'), kpi_fk)
+            score = round(score, 3)
             if p.get('KPI Weight') is None:
                 set_total_res += round(score)
             else:
-                set_total_res += round(score) * p.get('KPI Weight')
+                set_total_res += round(score * p.get('KPI Weight'), 3)
             # saving to DB
             if p.get('level') == 2:
                 attributes_for_level3 = self.create_attributes_for_level3_df(
@@ -1427,15 +1445,20 @@ class CCRUKPIToolBox:
                 score = self.calculate_number_of_skus_per_door_range(p, scenes)
             elif p.get('Formula').strip() == 'number of SKU per Door RANGE TOTAL':
                 score = self.calculate_number_of_skus_per_door_range_total(p, scenes)
+            else:
+                score = 0
+
+            score = round(float(score), 3)
 
             if p.get('level') == 3:
                 return score
 
             if p.get('level') == 2:
                 if p.get('KPI Weight') is None:
-                    set_total_res += round(score)
+                    set_total_res += score
                 else:
-                    set_total_res += round(score) * p.get('KPI Weight')
+                    set_total_res += round(score * p.get('KPI Weight'), 3)
+
             # saving to DB
             if not cooler_dict:
                 if p.get('level') == 2:
@@ -1502,7 +1525,7 @@ class CCRUKPIToolBox:
             else:
                 doors_count += 1
         if doors_count:
-            result = round(eans_count / float(doors_count), 2)
+            result = round(eans_count / float(doors_count), 3)
         else:
             result = 0
         if p.get('target_min') <= result <= p.get('target_max'):
@@ -1524,7 +1547,8 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != 'number of SKUs in one scene type' or p.get('level') == 3:
                 continue
             score = self.calculate_number_of_skus_in_single_scene_type(params, p)
-            set_total_res += round(score) * p.get('KPI Weight')
+            score = round(score, 3)
+            set_total_res += round(score * p.get('KPI Weight'), 3)
 
         return set_total_res
 
@@ -1809,7 +1833,10 @@ class CCRUKPIToolBox:
                 continue
             kpi_total_res = self.calculate_tccc_denominated(p, d)
             score = self.calculate_score(kpi_total_res, p)
-            set_total_res += round(score) * p.get('KPI Weight')
+
+            score = round(float(score), 3)
+
+            set_total_res += round(score * p.get('KPI Weight'), 3)
             # writing to DB
             if not cooler_dict:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
@@ -1842,7 +1869,7 @@ class CCRUKPIToolBox:
             if p.get('Formula').strip() != 'DUMMY':
                 continue
             score = 0
-            total_score += round(score) * p.get('KPI Weight')
+            total_score += round(score * p.get('KPI Weight'), 3)
             # writing to DB
             if not cooler_dict:
                 kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
@@ -1925,15 +1952,18 @@ class CCRUKPIToolBox:
                         score = 0
             elif self.attr15:
                 # if kpi_total >= self.attr15:
-                score = (kpi_total/self.attr15) * 100
+                score = (float(kpi_total)/self.attr15) * 100
                 if score > 100:
                     score = 100
             else:
                 score = 0
+
+            score = round(float(score), 3)
+
             if p.get('KPI Weight') is None:
-                set_total_res += round(score)
+                set_total_res += score
             else:
-                set_total_res += round(score) * p.get('KPI Weight')
+                set_total_res += round(score * p.get('KPI Weight'), 3)
             # saving to DB
             if not cooler_dict:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
@@ -2026,11 +2056,15 @@ class CCRUKPIToolBox:
                     self.write_to_kpi_results_old(attributes_for_level3, 'level3')
                     if atomic_score > 0:
                         kpi_total += 1
+
             score = self.calculate_score(kpi_total, p)
+
+            score = round(float(score), 3)
+
             if p.get('KPI Weight') is None:
-                set_total_res += round(score)
+                set_total_res += score
             else:
-                set_total_res += round(score) * p.get('KPI Weight')
+                set_total_res += round(score * p.get('KPI Weight'), 3)
 
             # saving to DB
             if not cooler_dict:
@@ -2108,7 +2142,11 @@ class CCRUKPIToolBox:
                     if atomic_score:
                         scenes_kpi_info[scene]['num_passed_kpi'] += 1
                         scenes_kpi_info[scene]['total_row_no_passed'] += 1
+
                 score = self.calculate_score(kpi_total, p)
+
+                score = round(float(score), 3)
+
                 if score:
                     if p.get('KPI name Eng') in self.passed_scenes_per_kpi:
                         self.passed_scenes_per_kpi[p.get('KPI name Eng')].append(scene)
@@ -2175,11 +2213,15 @@ class CCRUKPIToolBox:
                 attributes_for_level3 = self.create_attributes_for_level3_df(
                     c, atomic_score, kpi_fk, atomic_kpi_fk)
                 self.write_to_kpi_results_old(attributes_for_level3, 'level3')
+
             score = self.calculate_score(kpi_total, p)
+
+            score = round(float(score), 3)
+
             if p.get('KPI Weight') is None:
-                set_total_res += round(score)
+                set_total_res += score
             else:
-                set_total_res += round(score) * p.get('KPI Weight')
+                set_total_res += round(score * p.get('KPI Weight'), 3)
             # saving to DB
             if not cooler_dict:
                 attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
@@ -2355,12 +2397,16 @@ class CCRUKPIToolBox:
                     kpi_total /= kpi_total_weight
             else:
                 kpi_total = 0
+
             kpi_score = self.calculate_score(kpi_total, p)
+
+            kpi_score = round(float(kpi_score), 3)
+
             if p.get('KPI Weight') is None:
-                set_total_res += round(kpi_score) * kpi_total_weight
+                set_total_res += round(kpi_score * kpi_total_weight, 3)
                 p['KPI Weight'] = kpi_total_weight
             else:
-                set_total_res += round(kpi_score) * p.get('KPI Weight')
+                set_total_res += kpi_score * p.get('KPI Weight')
             # saving to DB
             if not cooler_dict:
                 if kpi_fk:
@@ -2385,11 +2431,11 @@ class CCRUKPIToolBox:
             if kpi_type is not None:
                 cat_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
                 category_fk_array = self.products[self.products['category'] ==
-                                                    params.get(CAT_KPI_VALUE)]['category_fk'].values
+                                                  params.get(CAT_KPI_VALUE)]['category_fk'].values
                 if len(category_fk_array) > 0:
                     category_fk = category_fk_array[0]
                     self.common.write_to_db_result(cat_kpi_fk, numerator_id=self.own_manufacturer_id,
-                                                   denominator_id=category_fk, result=round(result, 0), score=score)
+                                                   denominator_id=category_fk, result=round(result), score=score)
                 if len(category_fk_array) == 0:
                     Log.warning('Category {} does not exist in the DB. '
                                 'Check kpi template'.format(params.get(CAT_KPI_VALUE)))
@@ -2452,10 +2498,13 @@ class CCRUKPIToolBox:
                             values_list).sum()
 
                 score = self.calculate_score(number_relevant_scenes, p)
+
+                score = round(float(score), 3)
+
                 if p.get('KPI Weight') is None:
-                    set_total_res += round(score)
+                    set_total_res += score
                 else:
-                    set_total_res += round(score) * p.get('KPI Weight')
+                    set_total_res += round(score * p.get('KPI Weight'), 3)
 
                 if not cooler_dict:
                     kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
@@ -2851,13 +2900,15 @@ class CCRUKPIToolBox:
                                                self.visit_date.isoformat(),
                                                kpi_fk,
                                                param.get('KPI name Eng').replace("'", "\\'"),
-                                               round(score))],
+                                               round(score),
+                                               score)],
                                              columns=['session_uid',
                                                       'store_fk',
                                                       'visit_date',
                                                       'kpi_fk',
                                                       'kpk_name',
-                                                      'score'])
+                                                      'score',
+                                                      'score_2'])
 
         target = 100 * (param.get('KPI Weight') if param.get('KPI Weight') is not None else 1)
         if self.kpi_scores_and_results[self.kpi_set_type].get(str(param.get('KPI ID'))):
@@ -2869,11 +2920,11 @@ class CCRUKPIToolBox:
                                                    'target': target,
                                                    'weight': param.get('KPI Weight'),
                                                    # 'result': round(score),
-                                                   'score': round(score),
+                                                   'score': score,
                                                    'weighted_score':
-                                                       round(score) * (param.get('KPI Weight')
-                                                                       if param.get('KPI Weight') is not None
-                                                                       else 1)})
+                                                       round(score * (param.get('KPI Weight')
+                                                                      if param.get('KPI Weight') is not None
+                                                                      else 1), 3)})
 
         return attributes_for_table2
 
@@ -2911,10 +2962,11 @@ class CCRUKPIToolBox:
                                                    self.visit_date.isoformat(),
                                                    dt.datetime.utcnow().isoformat(),
                                                    round(score),
+                                                   score,
                                                    kpi_fk,
                                                    atomic_kpi_fk,
                                                    threshold,
-                                                   result,
+                                                   round(result, 5) if type(result) is float else result,
                                                    param.get('KPI name Eng').replace("'", "\\'"))],
                                                  columns=['display_text',
                                                           'session_uid',
@@ -2923,6 +2975,7 @@ class CCRUKPIToolBox:
                                                           'visit_date',
                                                           'calculation_time',
                                                           'score',
+                                                          'score_2',
                                                           'kpi_fk',
                                                           'atomic_kpi_fk',
                                                           'threshold',
@@ -2936,10 +2989,11 @@ class CCRUKPIToolBox:
                                                    self.visit_date.isoformat(),
                                                    dt.datetime.utcnow().isoformat(),
                                                    round(score),
+                                                   score,
                                                    kpi_fk,
                                                    atomic_kpi_fk,
                                                    threshold,
-                                                   result,
+                                                   round(result, 5) if type(result) is float else result,
                                                    param.get('KPI name Eng').replace("'", "\\'"))],
                                                  columns=['display_text',
                                                           'session_uid',
@@ -2948,6 +3002,7 @@ class CCRUKPIToolBox:
                                                           'visit_date',
                                                           'calculation_time',
                                                           'score',
+                                                          'score_2',
                                                           'kpi_fk',
                                                           'atomic_kpi_fk',
                                                           'threshold',
@@ -2958,11 +3013,11 @@ class CCRUKPIToolBox:
                                                    'target': threshold,
                                                    'weight': param.get('KPI Weight'),
                                                    'result': result,
-                                                   'score': round(score),
+                                                   'score': score,
                                                    'weighted_score':
-                                                       round(round(score) * (param.get('KPI Weight')
-                                                                             if param.get('KPI Weight') is not None
-                                                                             else 1), 2),
+                                                       round(score * (param.get('KPI Weight')
+                                                                      if param.get('KPI Weight') is not None
+                                                                      else 1), 3),
                                                    'additional_level': additional_level})
 
         return attributes_for_table3
@@ -3000,7 +3055,9 @@ class CCRUKPIToolBox:
             else:
                 kpi_total_res = 0
             score = self.calculate_score(kpi_total_res, p)
-            set_total_res += round(score) * p.get('KPI Weight')
+            score = round(score, 3)
+
+            set_total_res += round(score * p.get('KPI Weight'), 3)
             # saving to DB
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -3040,7 +3097,8 @@ class CCRUKPIToolBox:
             else:
                 kpi_total_res = 0
             score = self.calculate_score(kpi_total_res, p)
-            set_total_res += round(score) * p.get('KPI Weight')
+            score = round(score, 3)
+            set_total_res += round(score * p.get('KPI Weight'), 3)
             # saving to DB
             attributes_for_level2 = self.create_attributes_for_level2_df(p, score, kpi_fk)
             self.write_to_kpi_results_old(attributes_for_level2, 'level2')
@@ -3338,7 +3396,7 @@ class CCRUKPIToolBox:
                     score += self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') \
                         if self.kpi_scores_and_results[POS][pos_kpi_id].get('weighted_score') else 0
 
-            score = round(score*param.get('K'), 2)
+            score = round(score*param.get('K'), 3)
             total_score += score
 
             # if not atomic_kpi_fk and self.kpi_set_type not in SKIP_OLD_KPIS_FROM_WRITING:
@@ -3469,19 +3527,20 @@ class CCRUKPIToolBox:
                                 if (type(target) is str or type(target) is unicode) and '%' in target:
                                     target = target.replace('%', '')
                                     target = float(target) / 100
-                                target = round(float(target), 2)
+                                target = round(float(target), 3)
                                 if int(target) == target:
                                     target = int(target)
                                 try:
                                     result = round(float(self.kpi_scores_and_results[TARGET][self.kpi_name_to_id[TARGET]
-                                                         .get(atomic_kpi_name)].get('result')), 2)
+                                                         .get(atomic_kpi_name)].get('result')), 3)
                                     result = int(result) if result == int(result) else result
                                 except:
                                     result = 0
                                 score_func = param_child.get('score_func')
                                 if score_func == PROPORTIONAL:
-                                    score = int(round(result / float(target) * 100)
-                                                ) if target else 100
+                                    score = round(result / float(target) * 100, 3) \
+                                        if target \
+                                        else 100
                                     score = 100 if score > 100 else score
                                 else:
                                     score = 100 if result >= target else 0
@@ -3506,7 +3565,7 @@ class CCRUKPIToolBox:
 
             if count_of_kpis:
                 total_weight = total_weight if total_weight > 0 else 1
-                score = round(total_score / float(total_weight), 2)
+                score = round(total_score / float(total_weight), 3)
                 attributes_for_table1 = pd.DataFrame([(kpi_set_name,
                                                        self.session_uid,
                                                        self.store_id,
@@ -3537,10 +3596,11 @@ class CCRUKPIToolBox:
                     if self.kpi_scores_and_results[EQUIPMENT][kpi_id]['level'] == 2:
                         self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] /= float(
                             total_weight)
-                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['target'] = self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] * 100
+                        self.kpi_scores_and_results[EQUIPMENT][kpi_id]['target'] = \
+                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'] * 100
                         self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weighted_score'] = \
-                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['score'] * \
-                            self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight']
+                            round(self.kpi_scores_and_results[EQUIPMENT][kpi_id]['score'] *
+                                  self.kpi_scores_and_results[EQUIPMENT][kpi_id]['weight'], 3)
 
                 self.equipment_execution_score = score
 
@@ -3581,10 +3641,10 @@ class CCRUKPIToolBox:
                         score = self.top_sku_score
 
                         if score is not None:
-                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['weight'] = param.get(
-                                'KPI Weight') * 100
-                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['result'] = round(
-                                score * param.get('KPI Weight'), 2)
+                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['weight'] = \
+                                param.get('KPI Weight') * 100
+                            self.kpi_scores_and_results[TOPSKU][TOPSKU]['result'] = \
+                                round(score * param.get('KPI Weight'), 3)
 
                     elif param.get('Formula').strip() == 'Equipment Execution score':
                         # kpi_id = 'EQUIPMENT'
@@ -3592,10 +3652,10 @@ class CCRUKPIToolBox:
                         score = self.equipment_execution_score
 
                         if score is not None:
-                            self.kpi_scores_and_results[EQUIPMENT]['0']['weight'] = param.get(
-                                'KPI Weight') * 100
-                            self.kpi_scores_and_results[EQUIPMENT]['0']['result'] = round(
-                                score * param.get('KPI Weight'), 2)
+                            self.kpi_scores_and_results[EQUIPMENT]['0']['weight'] = \
+                                param.get('KPI Weight') * 100
+                            self.kpi_scores_and_results[EQUIPMENT]['0']['result'] = \
+                                round(score * param.get('KPI Weight'), 3)
 
                     else:
                         # kpi_id = None
@@ -3605,7 +3665,7 @@ class CCRUKPIToolBox:
                     if score is not None:
                         target = 100
                         result = score
-                        score_to_db = round(score)
+                        score_to_db = round(score, 3)
 
                         kpi_name_channel = param.get('Channel') + '@' + param.get('KPI name Eng')
                         kpi_fk = self.kpi_fetcher.kpi_static_data[
@@ -3646,7 +3706,7 @@ class CCRUKPIToolBox:
 
             if count_of_kpis:
 
-                score = round(total_score / float(total_weight), 2)
+                score = round(total_score / float(total_weight), 3)
                 attributes_for_table1 = pd.DataFrame([(kpi_set_name,
                                                        self.session_uid,
                                                        self.store_id,
@@ -3935,8 +3995,9 @@ class CCRUKPIToolBox:
                 numerator_result = row['distributed']
                 denominator_result = row['in_assortment']
 
-                result = round(numerator_result / float(denominator_result)
-                               * 100, 2) if denominator_result else 0
+                result = round(numerator_result / float(denominator_result) * 100, 3) \
+                    if denominator_result \
+                    else 0
                 score = result
                 weight = sort_order
                 target = 100 if denominator_result else 0
@@ -3985,8 +4046,9 @@ class CCRUKPIToolBox:
         denominator_id = self.store_id
         context_id = None
 
-        result = round(numerator_result / float(denominator_result)
-                       * 100, 2) if denominator_result else 0
+        result = round(numerator_result / float(denominator_result) * 100, 3) \
+            if denominator_result \
+            else 0
         score = result
         weight = 1
         target = 100 if denominator_result else 0
@@ -4049,6 +4111,10 @@ class CCRUKPIToolBox:
                             kpi_result += 1
 
                 kpi_score = self.calculate_score(kpi_result, p)
+
+                kpi_score = round(float(kpi_score), 3)
+                weighted_kpi_score = round(kpi_score * p.get('KPI Weight'), 3)
+
                 if not cooler_dict:
                     kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
 
@@ -4065,7 +4131,7 @@ class CCRUKPIToolBox:
                             p, kpi_score, kpi_fk)
                         self.write_to_kpi_results_old(attributes_for_level3, 'level3')
 
-                set_total_res += round(kpi_score) * p.get('KPI Weight')
+                set_total_res += weighted_kpi_score
 
                 if cooler_dict is not None:
                     kpi_fk = self.common.get_kpi_fk_by_kpi_type(CCRUConsts.COOLER_SCORE_LVL_2)
@@ -4073,7 +4139,7 @@ class CCRUKPIToolBox:
                     self.common.write_to_db_result(fk=kpi_fk, numerator_id=cooler_dict[CCRUConsts.COOLER_FK],
                                                    denominator_id=kpi_ref_fk,
                                                    context_id=cooler_dict[ScifConsts.SCENE_FK],
-                                                   result=kpi_score, score=kpi_score * p.get('KPI Weight'),
+                                                   result=kpi_score, score=weighted_kpi_score,
                                                    weight=p.get("KPI Weight"), identifier_parent=cooler_dict,
                                                    should_enter=True)
 
@@ -4153,7 +4219,7 @@ class CCRUKPIToolBox:
                                                                                     top_idenfifier_parent)
             visit_cooler_score = self.calculate_cooler_score(kpi_data, group_model_map, cooler_ass_store,
                                                              top_idenfifier_parent)
-            audit_score = (visit_presence_score + visit_cooler_score) / 2
+            audit_score = round((visit_presence_score + visit_cooler_score) / 2.0, 3)
             self.common.write_to_db_result(fk=cooler_audit_kpi_fk, numerator_id=self.own_manufacturer_id,
                                            denominator_id=self.store_id, score=audit_score, result=audit_score,
                                            identifier_result=top_idenfifier_parent, should_enter=True)
@@ -4263,6 +4329,8 @@ class CCRUKPIToolBox:
 
         self.write_extra_coolers_results(extra_coolers_df, top_identif_parent)
 
+        visit_total_res = round(visit_total_res, 3)
+
         self.common.write_to_db_result(fk=visit_kpi_fk, numerator_id=self.own_manufacturer_id,
                                        denominator_id=self.store_id, score=visit_total_res,
                                        result=visit_total_res, identifier_parent=top_identif_parent,
@@ -4272,9 +4340,9 @@ class CCRUKPIToolBox:
                                                         == CCRUConsts.VISIT_COOLER_AVAILABILITY]['kpi_fk'].values[0]
         attributes_for_table2 = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                                visit_fk_old, CCRUConsts.VISIT_COOLER_AVAILABILITY,
-                                               visit_total_res)],
+                                               round(visit_total_res), visit_total_res)],
                                              columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name',
-                                                      'score'])
+                                                      'score', 'score_2'])
         self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
         return cooler_ass_store, visit_total_res
@@ -4321,6 +4389,8 @@ class CCRUKPIToolBox:
                     score += self.calculate_availability_coolers(kpi_group_data, cooler_dict)
                     score += self.check_number_of_doors_of_filled_coolers_cooler_audit(kpi_group_data, cooler_dict)
 
+                    score = round(score, 3)
+
                     cooler_scores.update({cooler_fk: score})
                     self.common.write_to_db_result(fk=cooler_score_fk, numerator_id=cooler_fk,
                                                    denominator_id=cooler_model_fk, identifier_result=cooler_dict,
@@ -4330,8 +4400,12 @@ class CCRUKPIToolBox:
                     Log.warning('No Kpi Group is assigned for cooler model '
                                 '{}. Please add it to template'.format(cooler_row[CCRUConsts.COOLER_MODEL_NAME]))
 
-            cooler_visit_result = sum(cooler_scores.values()) / float(len(cooler_ass_df)) if not cooler_ass_df.empty \
-                                                                                                            else 0
+            cooler_visit_result = sum(cooler_scores.values()) / float(len(cooler_ass_df)) \
+                if not cooler_ass_df.empty \
+                else 0
+
+            cooler_visit_result = round(cooler_visit_result, 3)
+
         self.common.write_to_db_result(fk=visit_kpi_fk, numerator_id=self.own_manufacturer_id,
                                        denominator_id=self.store_id, result=cooler_visit_result,
                                        score=cooler_visit_result, identifier_result=visit_identifier_parent,
@@ -4341,9 +4415,9 @@ class CCRUKPIToolBox:
                                                         == CCRUConsts.VISIT_COOLER_SCORE]['kpi_fk'].values[0]
         attributes_for_table2 = pd.DataFrame([(self.session_uid, self.store_id, self.visit_date.isoformat(),
                                                visit_fk_old, CCRUConsts.VISIT_COOLER_SCORE,
-                                               cooler_visit_result)],
+                                               round(cooler_visit_result), cooler_visit_result)],
                                              columns=['session_uid', 'store_fk', 'visit_date', 'kpi_fk', 'kpk_name',
-                                                      'score'])
+                                                      'score', 'score_2'])
         self.write_to_kpi_results_old(attributes_for_table2, 'level2')
 
         self.reset_scif_and_matches_to_initial_values()
@@ -4492,7 +4566,7 @@ class CCRUKPIToolBox:
                         'result_value_fk'].values[0]
             else:
                 if kpi_set_type in [POS, EQUIPMENT, SPIRITS] and kpi['level'] == 1:
-                    result = round(score/weight) if score and weight \
+                    result = round(score/weight, 3) if score and weight \
                         else score
                 else:
                     result = kpi['result'] if kpi['result'] is not None \
@@ -4849,6 +4923,8 @@ class CCRUKPIToolBox:
             score += self.check_promo_compliance_price_target(
                 location, scif_loc, kpis, kpi_target, kpi_identifier_result)
 
+            score = round(score, 3)
+
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=self.own_manufacturer_id,
                                            numerator_result=None,
@@ -4892,8 +4968,8 @@ class CCRUKPIToolBox:
 
         weight = kpis[(kpis['Location'] == location) &
                       (kpis['KPI'] == PROMO_COMPLIANCE_DISPLAY_PRESENCE)]['Weight'].values[0]/100.0
-        score = round(score * float(weight), 2)
-        target = round(float(weight) * 100, 2)
+        score = round(score * float(weight), 3)
+        target = round(float(weight) * 100, 3)
 
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=self.own_manufacturer_id,
@@ -4998,11 +5074,11 @@ class CCRUKPIToolBox:
                                                identifier_parent=kpi_identifier_result_prod,
                                                should_enter=True)
 
-        result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
+        result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 3)
         weight = kpis[(kpis['Location'] == location) &
                       (kpis['KPI'] == PROMO_COMPLIANCE_DISTRIBUTION_TARGET)]['Weight'].values[0]/100.0
-        score = round(result * float(weight), 2)
-        target = round(float(weight) * 100, 2)
+        score = round(result * float(weight), 3)
+        target = round(float(weight) * 100, 3)
 
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=self.own_manufacturer_id,
@@ -5103,11 +5179,11 @@ class CCRUKPIToolBox:
                                                should_enter=True)
 
         # Upper level KPI
-        result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
+        result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 3)
         weight = kpis[(kpis['Location'] == location) &
                       (kpis['KPI'] == PROMO_COMPLIANCE_FACINGS_TARGET)]['Weight'].values[0]/100.0
-        score = round(result * float(weight), 2)
-        target = round(float(weight) * 100, 2)
+        score = round(result * float(weight), 3)
+        target = round(float(weight) * 100, 3)
 
         self.common.write_to_db_result(fk=kpi_fk,
                                        numerator_id=self.own_manufacturer_id,
@@ -5220,11 +5296,11 @@ class CCRUKPIToolBox:
         if not product_groups_target:
             score = 0
         else:
-            result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 2)
+            result = round(len(product_groups_fact) / float(len(product_groups_target)) * 100, 3)
             weight = kpis[(kpis['Location'] == location) &
                           (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY)]['Weight'].values[0]/100.0
-            score = round(result * float(weight), 2)
-            target = round(float(weight) * 100, 2)
+            score = round(result * float(weight), 3)
+            target = round(float(weight) * 100, 3)
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=self.own_manufacturer_id,
@@ -5279,8 +5355,8 @@ class CCRUKPIToolBox:
 
             weight = kpis[(kpis['Location'] == location) &
                           (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_AVAILABILITY_TOTAL)]['Weight'].values[0]/100.0
-            score = round(score * float(weight), 2)
-            target = round(float(weight) * 100, 2)
+            score = round(score * float(weight), 3)
+            target = round(float(weight) * 100, 3)
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=self.own_manufacturer_id,
@@ -5334,7 +5410,7 @@ class CCRUKPIToolBox:
                 product_group_price_facings_fact = product_group_scif.agg({'price_facings': 'sum'})[0]
                 product_group_facings_fact = product_group_scif.agg({'facings': 'sum'})[0]
                 product_group_price_fact = \
-                    round(product_group_price_facings_fact / float(product_group_facings_fact), 2)
+                    round(product_group_price_facings_fact / float(product_group_facings_fact), 3)
             else:
                 product_group_price_facings_fact = 0
                 product_group_facings_fact = 0
@@ -5347,7 +5423,7 @@ class CCRUKPIToolBox:
                 if product_group_price_target > 0:
                     total_price_facings_target += product_group_price_target * product_group_facings_fact
                     result_prod = \
-                        round(abs((1 - product_group_price_fact / float(product_group_price_target)) * 100), 2)
+                        round(abs((1 - product_group_price_fact / float(product_group_price_target)) * 100), 3)
                 else:
                     total_price_facings_target += product_group_price_facings_fact
                     result_prod = 0
@@ -5406,13 +5482,13 @@ class CCRUKPIToolBox:
         else:
             # Deviation
             deviation = \
-                round(abs(1 - total_price_facings_fact / float(total_price_facings_target)) * 100, 2) \
+                round(abs(1 - total_price_facings_fact / float(total_price_facings_target)) * 100, 3) \
                 if total_price_facings_target else 100.0
             weight = kpis[(kpis['Location'] == location) &
                           (kpis['KPI'] == PROMO_COMPLIANCE_PRICE_TARGET)]['Weight'].values[0]/100.0
-            result = round((100 - deviation), 2)
-            score = round(result * float(weight), 2)
-            target = round(float(weight) * 100, 2)
+            result = round((100 - deviation), 3)
+            score = round(result * float(weight), 3)
+            target = round(float(weight) * 100, 3)
 
             self.common.write_to_db_result(fk=kpi_fk,
                                            numerator_id=self.own_manufacturer_id,

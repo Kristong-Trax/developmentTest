@@ -105,12 +105,14 @@ class PEPSICOUK_Queries(object):
     @staticmethod
     def get_match_display(session_uid):
         return """
-            select sdb.name, m.scene_fk, d.display_name, d.pk as display_fk, m.bay_number, m.rect_x, m.rect_y
+            select sdb.name, m.scene_fk, d.display_name, d.pk as display_fk, m.bay_number, m.rect_x, m.rect_y,
+            m.match_display_in_scene_info_fk, i.delete_time
             from probedata.match_display_in_scene m
             join probedata.scene s on s.pk = m.scene_fk
             join static.display d on d.pk = m.display_fk
+            left join probedata.match_display_in_scene_info i on m.match_display_in_scene_info_fk = i.pk
             join static.display_brand sdb on sdb.pk=d.display_brand_fk
-            where s.session_uid = '{}'
+            where i.delete_time is null and s.session_uid = '{}'
         """.format(session_uid)
 
     @staticmethod

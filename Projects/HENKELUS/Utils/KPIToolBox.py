@@ -65,24 +65,24 @@ class ToolBox(GlobalSessionToolBox):
         self.block_parent_results = {}
 
     def main_calculation(self):
-        # self.calculate_adjacency_within_bay()
-        # self.calculate_max_block_directional()
-        # self.calculate_sku_count()
-        # self.calculate_facing_count()
-        # self.calculate_smart_tags()
-        # self.calculate_base_measurement()
-        # self.calculate_liner_measure()
-        # self.calculate_horizontal_shelf_position()
-        # self.calculate_vertical_shelf_position()
+        self.calculate_adjacency_within_bay()
+        self.calculate_max_block_directional()
+        self.calculate_sku_count()
+        self.calculate_facing_count()
+        self.calculate_smart_tags()
+        self.calculate_base_measurement()
+        self.calculate_liner_measure()
+        self.calculate_horizontal_shelf_position()
+        self.calculate_vertical_shelf_position()
         self.calculate_blocking_comp()
-        #
+
         self.calculate_blocking()
         self.calculate_blocking_orientation()
-        # self.calculate_blocking_sequence()
-        #
+        self.calculate_blocking_sequence()
+
         self.calculate_max_blocking_adj()
         self.calculate_negative_max_blocking_adj()
-        #
+
         score = 0
         return score
 
@@ -350,7 +350,7 @@ class ToolBox(GlobalSessionToolBox):
                         custom_text = 'Horizontal'
 
                 custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
-                numerator_id_value = self.scif['product_fk'][self.scif[param_data_type] == item].iloc[0]
+                numerator_id_value = self.all_products['product_fk'][self.all_products[param_data_type] == item].iloc[0]
                 param_dict.pop(param_data_type)
 
                 self.block_parent_results[kpi_fk] = result
@@ -552,9 +552,10 @@ class ToolBox(GlobalSessionToolBox):
                         passed_block_cluster = [max_block.cluster]
                         adj_mpis = self.generate_adjacent_matches(passed_block_cluster)
                         block_adj_mpis[letter] = adj_mpis.scene_match_fk.tolist()
+                    else:
+                        block_adj_mpis[letter] = []
                 else:
                     block_adj_mpis[letter] = []
-
 
             target_adj_mpis = block_adj_mpis[sequence_letters[0]]
             b_side_adj_mpis = block_adj_mpis[sequence_letters[1]]
@@ -562,7 +563,6 @@ class ToolBox(GlobalSessionToolBox):
 
             b_side_adj = len(set(target_adj_mpis).intersection(b_side_adj_mpis))
             c_side_adj = len(set(target_adj_mpis).intersection(c_side_adj_mpis))
-
 
             if b_side_adj > 0 or c_side_adj > 0:
                 custom_text = 'No'
@@ -615,7 +615,9 @@ class ToolBox(GlobalSessionToolBox):
                     filtered_matches = self.matches[self.matches['product_fk'].isin(product_fks)]
                     adj_mpis = filtered_matches['scene_match_fk']
                     if not adj_mpis.empty:
-                        block_adj_mpis[letter] = adj_mpis
+                        block_adj_mpis[letter] = adj_mpis.tolist()
+                    else:
+                        block_adj_mpis[letter] = []
                     continue
                 block_sequence_filter_dict[letter] = param_dict
 
@@ -625,12 +627,15 @@ class ToolBox(GlobalSessionToolBox):
                 if not passed_blocks.empty:
                     passed_blocks = passed_blocks.cluster.tolist()
                     adj_mpis = self.generate_adjacent_matches(passed_blocks)
-                    block_adj_mpis[letter] = adj_mpis
-            #block of block code
+                    if not adj_mpis.empty:
+                        block_adj_mpis[letter] = adj_mpis.scene_match_fk.tolist()
+                    else:
+                        block_adj_mpis[letter] = []
+            # block of block code
             if len(block_adj_mpis) == len(sequence_letters):
 
-                target_adj_mpis = block_adj_mpis[sequence_letters[0]].scene_match_fk.tolist()
-                side_adj_mpis = block_adj_mpis[sequence_letters[1]].scene_match_fk.tolist()
+                target_adj_mpis = block_adj_mpis[sequence_letters[0]]
+                side_adj_mpis = block_adj_mpis[sequence_letters[1]]
 
                 side_adj = len(set(target_adj_mpis).intersection(side_adj_mpis))
 
@@ -638,8 +643,7 @@ class ToolBox(GlobalSessionToolBox):
                     custom_text = 'Yes'
                     result = 1
 
-
-            #if any facing code
+            # if any facing code
 
             custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
 
@@ -665,6 +669,7 @@ class ToolBox(GlobalSessionToolBox):
         block_result = self.block.network_x_block_together(
             population=filter_dict,
             additional={
+                'minimum_facing_for_block': 1,
                 'allowed_edge_type': ['connected'],
                 'allowed_products_filters': allowed_connected_dict,
                 'include_stacking': True})
@@ -1123,4 +1128,3 @@ class ToolBox(GlobalSessionToolBox):
         adjacent_matches = edge_matches - match_fk_list
         adj_mpis = self.matches[(self.matches['scene_match_fk'].isin(adjacent_matches))]
         return adj_mpis
-
