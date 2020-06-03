@@ -15,12 +15,12 @@ class CCZACalculations(BaseCalculationsScript):
         CCZAGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
-#
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('ccza-sand calculations')
 #     Config.init()
-#     project_name = 'ccza-sand'
-#     sessions = ['1da43cbc-cdf2-4dd0-bbc9-121784e8a579']
+#     project_name = 'ccza'
+#     sessions = ['dd0bf1d0-c9d8-4cf4-ae47-3048e38778e1']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)
 #         print session
