@@ -41,6 +41,7 @@ def log_runtime(description, log_start=False):
 
     return decorator
 
+
 REQUIRED_FLIP_SIGN_FSLOT_OVERLAP_RATIO = 0.3
 
 
@@ -172,6 +173,8 @@ class ALTRIAUSToolBox:
 
         for i, pair in enumerate(sorted(flip_signs_by_x_coord.items())):
             position_fk = self.get_custom_entity_pk(str(i+1))
+            if position_fk == 0 or position_fk > 8:
+                Log.warning('More than 8 flip-sign positions found for a block')
             product_fk = pair[1]['product_fk'].value
             width = pair[1]['calculated_width_ft'].value
             implied_facings = pair[1]['width_of_signage_in_facings'].value
@@ -216,6 +219,8 @@ class ALTRIAUSToolBox:
                 if overlap_ratio >= REQUIRED_FLIP_SIGN_FSLOT_OVERLAP_RATIO:
                     product_fk = neighbor_data['product_fk'].value
                     position_fk = self.get_custom_entity_pk(position)
+                    if position_fk == 0 or position_fk > 8:
+                        Log.warning('More than 8 flip-sign positions found for a block')
                     flip_sign_width = neighbor_data['calculated_width_ft'].value
                     flip_sign_width = self.round_threshold(flip_sign_width)
                     implied_facings = neighbor_data['width_of_signage_in_facings'].value
@@ -541,7 +546,11 @@ class ALTRIAUSToolBox:
         return self.all_products[self.all_products['category'] == category_name]['category_fk'].iloc[0]
 
     def get_custom_entity_pk(self, name):
-        return self.custom_entity_data[self.custom_entity_data['name'] == name]['pk'].iloc[0]
+        try:
+            return self.custom_entity_data[self.custom_entity_data['name'] == name]['pk'].iloc[0]
+        except IndexError:
+            Log.error('No custom entity found for {}'.format(name))
+            return 0
 
     def get_external_target_data_by_kpi_fk(self, kpi_fk):
         return self.external_targets[self.external_targets['kpi_fk'] == kpi_fk].iloc[0]
