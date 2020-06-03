@@ -36,6 +36,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_db_users()
         self.mock_various_project_connectors()
         self.project_connector_mock = self.mock_project_connector()
+        self.mock_scene_store_area()
 
         self.ps_dataprovider_project_connector_mock = self.mock_ps_data_provider_project_connector()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
@@ -92,6 +93,11 @@ class Test_PEPSICOUK(TestFunctionalCase):
 
     def mock_scene_item_facts(self, data):
         self.data_provider_data_mock['scene_item_facts'] = data.where(data.notnull(), None)
+
+    def mock_scene_store_area(self):
+        sa = self.mock_object('PEPSICOUKCommonToolBox.get_scene_to_store_area_map',
+                                      path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        sa.return_value = pd.DataFrame(columns={'scene_fk', 'store_area', 'store_area_fk'})
 
     def mock_match_product_in_scene(self, data):
         self.data_provider_data_mock['matches'] = data.where(data.notnull(), None)
