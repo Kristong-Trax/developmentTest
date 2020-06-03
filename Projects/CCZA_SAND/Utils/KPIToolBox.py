@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from Trax.Algo.Calculations.Core.Utils import ToolBox
+# from Trax.Algo.Calculations.Core.Utils import ToolBox
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
@@ -18,6 +18,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
+from Projects.CCZA_SAND.Utils.FlowToolBox import FlowTools as ToolBox
 
 __author__ = 'Elyashiv'
 
