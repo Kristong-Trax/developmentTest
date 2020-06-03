@@ -251,6 +251,22 @@ class CaseCountCalculator(GlobalSessionToolBox):
         valid_edges = [(u, v) for u, v, c in adj_g.edges.data('degree') if int(c) in relevant_range]
         return valid_edges
 
+    def _filter_redundant_in_edges(self, adj_g):
+        edges_to_remove = []
+        for node_fk, node_data in adj_g.nodes(data=True):
+            in_edges = list(adj_g.in_edges(node_fk))
+            out_edges = list(adj_g.out_edges(node_fk))
+            if len(out_edges) != 0:
+                continue
+            if len(in_edges) <= 1:
+                continue
+            else:
+                shortest_in_edge = self._get_shortest_path(adj_g, in_edges)
+                edges_to_remove.extend([edge for edge in in_edges if edge != shortest_in_edge])
+
+        edges_filter = [edge for edge in list(adj_g.edges()) if edge not in edges_to_remove]
+        return edges_filter
+
     def _filter_redundant_edges(self, adj_g):
         """Since the edges determines by the masking only, there's a chance that there will be two edges
         that come out from a single node. This method filters the redundant ones (the ones who skip the
@@ -298,7 +314,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
                                                                       maskings, add_node_attr, use_masking_only=True)
             adj_g = AdjacencyGraphBuilder.condense_graph_by_level(Consts.DISPLAY_IN_SCENE_FK, adj_g)
             filtered_adj_g = adj_g.edge_subgraph(self._filter_edges_by_degree(adj_g, requested_direction='UP'))
-            filtered_adj_g = adj_g.edge_subgraph(self._filter_redundant_edges(filtered_adj_g))
+            filtered_adj_g = filtered_adj_g.edge_subgraph(self._filter_redundant_edges(filtered_adj_g))
+            filtered_adj_g = filtered_adj_g.edge_subgraph(self._filter_redundant_in_edges(filtered_adj_g))
             return filtered_adj_g
 
     def _prepare_matches_for_graph_creation(self, scene_fk):
@@ -382,13 +399,11 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method returns only scene with "Open" or "Close" display tags"""
         return self.filtered_mdis.scene_fk.unique().tolist()
 
-    def create_graph_image(self, scene_id, graph=None):
-        if not graph:
-            return
-
+    @staticmethod
+    def create_graph_image(scene_id, graph):
         filtered_figure = GraphPlot.plot_networkx_graph(graph, overlay_image=True,
                                                         scene_id=scene_id, project_name='diageous-sand2')
-        filtered_figure.update_layout(autosize=False, width=1000, height=800)
+        filtered_figure.update_layout(autosize=False, width=1000, height=800, title=str(scene_id))
         iplot(filtered_figure)
 
 
