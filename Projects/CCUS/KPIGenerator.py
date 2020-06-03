@@ -1,5 +1,3 @@
-
-
 from Projects.CCUS.MONSTER.Utils.KPIToolBox import MONSTERToolBox
 from Projects.CCUS.FSOP.Utils.KPIToolBox import FSOPToolBox
 from Projects.CCUS.Utils.CCUSToolBox import log_runtime
@@ -10,6 +8,7 @@ from Projects.CCUS.SpecialPrograms.Utils.KPIToolBox import SpecialProgramsToolBo
 from Projects.CCUS.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
 from Projects.CCUS.Validation.Utils.KPIToolBox import VALIDATIONToolBox
 from Projects.CCUS.JEFF_DEMO.Utils.KPIToolBox import JEFFToolBox
+from Projects.CCUS.MILITARY.Utils.KPIToolBox import MilitaryToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
 
@@ -42,6 +41,7 @@ class CCUSGenerator:
         # self.calculate_validation()
         self.calculate_pillars_programs()
         # self.calculate_jeff()
+        self.calculate_military()
 
         self.common.commit_results_data()
 
@@ -133,6 +133,13 @@ class CCUSGenerator:
     @log_runtime('Special Programs Calculations')
     def calculate_validation(self):
         tool_box = VALIDATIONToolBox(self.data_provider, self.output, kpi_set_fk=34)
+        tool_box.main_calculation()
+        tool_box.commit_results_data()
+        del tool_box
+
+    @log_runtime('Military Calculations')
+    def calculate_military(self):
+        tool_box = MilitaryToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
         tool_box.commit_results_data()
         del tool_box
