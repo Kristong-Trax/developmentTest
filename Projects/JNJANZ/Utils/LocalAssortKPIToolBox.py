@@ -71,6 +71,7 @@ class JNJToolBox:
     OOS_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT = 'OOS_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT'
     MSL_BY_LOCAL_ASSORT = 'MSL_BY_LOCAL_ASSORT'
     MSL_BY_LOCAL_ASSORT_PRODUCT = 'MSL_BY_LOCAL_ASSORT_PRODUCT'
+    MSL_BY_LOCAL_ASSORT_PRODUCT_TD = 'MSL_BY_LOCAL_ASSORT_PRODUCT_TD'
     MSL_BY_LOCAL_ASSORT_CATEGORY = 'MSL_BY_LOCAL_ASSORT_CATEGORY'
     MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY = 'MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY'
     MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT = 'MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT'
@@ -280,6 +281,8 @@ class JNJToolBox:
                                                           self.OOS_BY_LOCAL_ASSORT_PRODUCT]['pk'].values[0]
         msl_per_product_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name'] ==
                                                           self.MSL_BY_LOCAL_ASSORT_PRODUCT]['pk'].values[0]
+        msl_per_product_td_kpi_fk = self.New_kpi_static_data[self.New_kpi_static_data['client_name'] ==
+                                                             self.MSL_BY_LOCAL_ASSORT_PRODUCT_TD]['pk'].values[0]
         products_in_session = self.scif['item_id'].drop_duplicates().values
 
         for sku in self.products_in_ass:
@@ -298,6 +301,10 @@ class JNJToolBox:
 
             # Saving MSL
             self.common.write_to_db_result(fk=msl_per_product_kpi_fk, numerator_id=sku, numerator_result=result_num,
+                                           result=result, denominator_id=self.own_manuf_fk, denominator_result=1,
+                                           score=result, identifier_parent="MSL_Local_store", should_enter=True)
+            # Saving MSL for TD
+            self.common.write_to_db_result(fk=msl_per_product_td_kpi_fk, numerator_id=sku, numerator_result=result_num,
                                            result=result, denominator_id=self.own_manuf_fk, denominator_result=1,
                                            score=result, identifier_parent="MSL_Local_store", should_enter=True)
 
@@ -472,13 +479,14 @@ class JNJToolBox:
             self.OOS_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT,
             self.MSL_BY_LOCAL_ASSORT,
             self.MSL_BY_LOCAL_ASSORT_PRODUCT,
+            self.MSL_BY_LOCAL_ASSORT_PRODUCT_TD,
             self.MSL_BY_LOCAL_ASSORT_CATEGORY,
             self.MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY,
             self.MSL_BY_LOCAL_ASSORT_CATEGORY_SUB_CATEGORY_PRODUCT,
         ]
         kpis_not_found = []
         for kpi_name in local_msl_kpis:
-            res_df = self.New_kpi_static_data[ self.New_kpi_static_data['client_name'] == kpi_name ]
+            res_df = self.New_kpi_static_data[self.New_kpi_static_data['client_name'] == kpi_name]
             if res_df.empty:
                 kpis_not_found.append(kpi_name)
                 Log.warning("Error: KPI {} not found in static.kpi_level_2 table.".format(kpi_name))
