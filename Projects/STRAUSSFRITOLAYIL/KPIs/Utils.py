@@ -54,14 +54,14 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         replacement_eans_df = pd.DataFrame([json_normalize(json.loads(js)).values[0] for js
                                             in assortment_result['additional_attributes']])
         replacement_eans_df.columns = [Consts.REPLACMENT_EAN_CODES]
-        replacement_eans_df = pd.DataFrame(replacement_eans_df[Consts.REPLACMENT_EAN_CODES].str.split(',').tolist(),
+        replacement_eans_df = pd.DataFrame(replacement_eans_df[Consts.REPLACMENT_EAN_CODES].str.split(','),
                                            columns=[Consts.REPLACMENT_EAN_CODES])
         replacement_eans_df = replacement_eans_df[Consts.REPLACMENT_EAN_CODES].apply(lambda row: [x.strip() for x in
                                                                                                   row] if row else None)
         assortment_result = assortment_result.join(replacement_eans_df)
         assortment_result['facings_all_products'] = assortment_result['facings'].copy()
         assortment_result['facings_all_products_wo_hangers'] = assortment_result['facings_wo_hangers'].copy()
-        self.handle_replacment_products_row(assortment_result)
+        assortment_result = self.handle_replacment_products_row(assortment_result)
         return assortment_result
 
     def filter_external_targets(self):
@@ -108,14 +108,16 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
                 for sku in replacement_products:
                     if sku in self.match_product_in_scene['product_ean_code'].values:
                         product_fk = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk']
-                        assortment_result.loc[i, 'product_fk'] = product_fk.values[0]
+
                         assortment_result.loc[i, 'in_store'] = 1
             if row['in_store_wo_hangers'] != 1:
                 for sku in replacement_products:
                     if sku in self.match_product_in_scene_wo_hangers['product_ean_code'].values:
-                        product_fk = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk']
-                        assortment_result.loc[i, 'product_fk'] = product_fk.values[0]
+                        product_df = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk']
+                        product_fk = int(product_df.values[0]) if product_df.values[0] else -1
+                        assortment_result.loc[i, 'product_fk'] = product_fk
                         assortment_result.loc[i, 'in_store_wo_hangers'] = 1
+        return assortment_result
 
     def filter_scif_and_mpis_to_contain_only_primary_shelf(self):
         self.scif = self.scif[self.scif.location_type == Consts.PRIMARY_SHELF]
