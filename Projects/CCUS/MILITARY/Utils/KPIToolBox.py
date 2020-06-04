@@ -47,21 +47,18 @@ class MilitaryToolBox:
         
         if filtered_df.empty:
             return
-        
-        filtered_df['count'] = 1
-        filtered_df = filtered_df.groupby(['scene_fk', 'bay_number']).count().reset_index()
 
-        def judge_compliance(row):
-            target_count = len(self.filter_df(self.mpis,
-                                              filters={
-                                                  'scene_fk': row['scene_fk'],
-                                                  'bay_number': row['bay_number'],
-                                                  'manufacturer_fk': manufacturer_ids
-                                              }))
-            return 1 if target_count / row['count'] >= 0.501 else 0
+        num_df = self.filter_df(filtered_df, {'manufacturer_fk': manufacturer_ids})
+        num_df = num_df.groupby(by=['scene_fk', 'bay_number'], as_index=False).count()
+        num_df.rename(columns={'scene_match_fk': 'count'}, inplace=True)
 
-        compliant_bays = filtered_df.apply(judge_compliance, axis=1)
-        result = sum(compliant_bays)
+        den_df = filtered_df.groupby(['scene_fk', 'bay_number'], as_index=False).count()
+        den_df.rename(columns={'scene_match_fk': 'count'}, inplace=True)
+
+        result_df = num_df.merge(den_df, how='left', on=['scene_fk', 'bay_number'])
+        result_df['sos'] = num_df['count'] / den_df['count']
+        result_df['result'] = result_df.apply(lambda row: 1 if row['sos'] >= sos_threshold else 0, axis=1)
+        result = sum(result_df['result'])
 
         self.common.write_to_db_result(
             fk=kpi_id,
