@@ -119,7 +119,7 @@ ASSORTMENT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file_
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                           'CCNayar_Portafolios_y_Precios.xlsx')
 GENERAL_ASSORTMENTS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                        'CCNayar_Assortment_Templates_V2.xlsx')
+                                        'CCNayar_Assortment_Templates_V3.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -316,7 +316,8 @@ class ToolBox(GlobalSessionToolBox):
             sum_of_bays = self.find_the_total_number_of_bays_in_relevant_scene(self.scif, self.match_product_in_scene)
             minimum_num_of_bays_required = row['Doors Target']
             if sum_of_bays >= minimum_num_of_bays_required:
-                all_product_df = self.all_products[['product_name', 'product_fk', 'RETORNABILIDAD']]
+                all_product_df = self.all_products[['product_name', 'product_fk', 'product_type','RETORNABILIDAD']]
+                all_product_df = all_product_df[all_product_df.product_type != 'Empty']
                 transform_retornabilidad = np.where(all_product_df.RETORNABILIDAD == 'Y', 1, 0)
                 all_product_df['RETORNABILIDAD'] = transform_retornabilidad
                 merged_mpis_all_prod = self.match_product_in_scene.merge(all_product_df, how='inner', on='product_fk')
@@ -451,7 +452,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_scoring(self, row):
         kpi_name = row[KPI_NAME]
-        if kpi_name == 'Bonificaciones':
+        if kpi_name == 'Enfriador':
             a = 1
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         numerator_id = self.own_manuf_fk
