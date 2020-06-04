@@ -76,6 +76,7 @@ class AltriaGraphBuilder(object):
                                                                       ['category', 'in_menu_board_area',
                                                                        'probe_group_id'], use_masking_only=True,
                                                                                 minimal_overlap_ratio=0.4)
+        self.base_adj_graph = self.remove_edges_between_probe_groups(self.base_adj_graph)
         self.base_adj_graph = self.remove_pos_to_pos_edges(self.base_adj_graph)
         self.conversion_data = self.calculate_width_conversion()
 
@@ -144,6 +145,16 @@ class AltriaGraphBuilder(object):
         edges_to_remove = []
         for node1, node2 in adj_graph.edges():
             if adj_graph.nodes[node1]['category'].value == 'POS' and adj_graph.nodes[node2]['category'].value == 'POS':
+                edges_to_remove.append((node1, node2))
+        for node_pair in edges_to_remove:
+            adj_graph.remove_edge(node_pair[0], node_pair[1])
+        return adj_graph
+
+    @staticmethod
+    def remove_edges_between_probe_groups(adj_graph):
+        edges_to_remove = []
+        for node1, node2 in adj_graph.edges():
+            if adj_graph.nodes[node1]['probe_group_id'].value != adj_graph.nodes[node2]['probe_group_id'].value:
                 edges_to_remove.append((node1, node2))
         for node_pair in edges_to_remove:
             adj_graph.remove_edge(node_pair[0], node_pair[1])
@@ -333,7 +344,7 @@ class AltriaGraphBuilder(object):
 
     @staticmethod
     def polygon_inside_other_polygon(child_polygon, potential_parent_polygon):
-        required_overlap = 0.80
+        required_overlap = 0.92
         bounds = potential_parent_polygon.bounds
         parent_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
 
