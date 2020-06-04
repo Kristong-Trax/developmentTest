@@ -346,10 +346,11 @@ class ToolBox(GlobalSessionToolBox):
                 if not block_result.empty:
                     result = 1
                     orientation_list = block_result[block_result['is_block'] == True].orientation.tolist()
-                    if 'VERTICAL' in orientation_list:
-                        custom_text = 'Vertical'
-                    else:
-                        custom_text = 'Horizontal'
+                    if len(orientation_list) > 0:
+                        if 'VERTICAL' in orientation_list:
+                            custom_text = 'Vertical'
+                        else:
+                            custom_text = 'Horizontal'
 
                 custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
                 numerator_id_value = self.all_products['product_fk'][self.all_products[param_data_type] == item].iloc[0]
@@ -396,11 +397,11 @@ class ToolBox(GlobalSessionToolBox):
                 block_result_df = self.calculate_block_for_sequence(relevant_dict, allow_smart_tags)
                 passed_blocks = block_result_df[block_result_df['is_block'] == True]
                 if not passed_blocks.empty:
-                    blocks = passed_blocks.sort_values(by='facing_percentage', ascending=False)
+                    blocks = passed_blocks.sort_values(by=['block_facings', 'facing_percentage'], ascending=False)
                     max_block = blocks.iloc[0]
                     passed_block_cluster = max_block.cluster
                     cluster_node_list = list(passed_block_cluster.node)
-                    cluster_node= passed_block_cluster.node[cluster_node_list[0]]
+                    cluster_node = passed_block_cluster.node[cluster_node_list[0]]
                     node_centroid = cluster_node['polygon'].centroid
                     x_coord = node_centroid.coords[0][0]
                     block_location[letter] = x_coord
@@ -414,8 +415,8 @@ class ToolBox(GlobalSessionToolBox):
                     is_between = True
 
             if is_between:
-                    custom_text = 'Yes'
-                    result = 1
+                custom_text = 'Yes'
+                result = 1
             custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
 
             self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
@@ -435,7 +436,6 @@ class ToolBox(GlobalSessionToolBox):
                                                                 'product_fk': product_fks}}
 
         block_result = self.block.network_x_block_together(relevant_dict, additional=additional_block_params)
-
 
         return block_result
 
@@ -542,7 +542,7 @@ class ToolBox(GlobalSessionToolBox):
                 if not block_result.empty:
                     blocks = block_result[block_result['is_block'] == True]
                     if not blocks.empty:
-                        blocks = blocks.sort_values(by='facing_percentage', ascending=False)
+                        blocks = blocks.sort_values(by=['block_facings', 'facing_percentage'], ascending=False)
                         max_block = blocks.iloc[0]
                         passed_block_cluster = max_block.cluster
                         block_scenes[letter] = max_block.scene_fk
@@ -561,21 +561,32 @@ class ToolBox(GlobalSessionToolBox):
                 pre_result_list = []
                 adj_graph = self.block.adj_graphs_by_scene
 
-                anchor_block = block_adj_mpis['A']
+                anchor_cluster = block_adj_mpis['A']
                 anchor_scene = block_scenes['A']
+
+                anchor_nodes = anchor_cluster.nodes[list(anchor_cluster.nodes())[0]]
+                anchor_block = anchor_nodes['scene_match_fk']
 
                 letters = block_adj_mpis.keys()
                 letters.remove('A')
                 for letter in letters:
                     edge_result = 0
-                    if anchor_scene == block_scenes[letter]:
-                        possible_adjacencies = itertools.product(anchor_block.nodes, block_adj_mpis[letter].nodes)
 
-                        directed_edges = [list(val.edges) for key, val in adj_graph.items() if str(anchor_scene) in key][0]
-                        complimentary_edges = [edge[::-1] for edge in directed_edges if edge[::-1] not in directed_edges]
+                    target_cluster = block_adj_mpis[letter]
+                    target_scene = block_scenes[letter]
+
+                    target_nodes = target_cluster.nodes[list(target_cluster.nodes())[0]]
+                    target_block = target_nodes['scene_match_fk']
+
+                    if anchor_scene == target_scene:
+                        possible_adjacencies = itertools.product(anchor_block, target_block)
+
+                        directed_edges = \
+                            [list(val.edges) for key, val in adj_graph.items() if str(anchor_scene) in key][0]
+                        complimentary_edges = [edge[::-1] for edge in directed_edges if
+                                               edge[::-1] not in directed_edges]
                         all_edges = directed_edges + complimentary_edges
                         edge_result = int(any(True for edge in possible_adjacencies if edge in all_edges))
-
 
                     pre_result_list.append(edge_result)
 
@@ -587,8 +598,6 @@ class ToolBox(GlobalSessionToolBox):
             self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, denominator_id=self.store_id,
                              numerator_result=result,
                              denominator_result=1, result=custom_result_fk, score=0)
-
-
 
     def calculate_max_blocking_adj(self):
         template = self.kpi_template[Consts.MAX_BLOCK_ADJ_SHEET]
@@ -645,7 +654,7 @@ class ToolBox(GlobalSessionToolBox):
                 passed_blocks = block_result[block_result['is_block'] == True]
 
                 if not passed_blocks.empty:
-                    blocks = passed_blocks.sort_values(by='facing_percentage', ascending=False)
+                    blocks = passed_blocks.sort_values(by=['block_facings', 'facing_percentage'], ascending=False)
                     max_block = blocks.iloc[0]
                     passed_block_cluster = max_block.cluster
                     block_scenes[letter] = max_block.scene_fk
@@ -656,8 +665,11 @@ class ToolBox(GlobalSessionToolBox):
                 pre_result_list = []
                 adj_graph = self.block.adj_graphs_by_scene
 
-                anchor_block = block_adj_mpis['A']
+                anchor_cluster = block_adj_mpis['A']
                 anchor_scene = block_scenes['A']
+
+                anchor_nodes = anchor_cluster.nodes[list(anchor_cluster.nodes())[0]]
+                anchor_block = anchor_nodes['scene_match_fk']
 
                 letters = block_adj_mpis.keys()
                 letters.remove('A')
@@ -666,29 +678,39 @@ class ToolBox(GlobalSessionToolBox):
 
                     if block_scenes[letter] == None:
                         scene_match_list_potentials = block_adj_mpis[letter].tolist()
+                        # node_matches = anchor_block.nodes[list(anchor_block.nodes())[0]]
+                        # node_match_list = node_matches['scene_match_fk']
+                        possible_adjacencies = itertools.product(anchor_block, scene_match_list_potentials)
+
+                        #
                         directed_edges = \
-                        [list(val.edges) for key, val in adj_graph.items() if str(anchor_scene) in key][0]
+                            [list(val.edges) for key, val in adj_graph.items() if str(anchor_scene) in key][0]
                         complimentary_edges = [edge[::-1] for edge in directed_edges if
                                                edge[::-1] not in directed_edges]
                         all_edges = directed_edges + complimentary_edges
-                        edge_result = int(any(True for edge in scene_match_list_potentials if edge in all_edges))
+                        edge_result = int(any(True for edge in possible_adjacencies if edge in all_edges))
 
 
                     elif anchor_scene == block_scenes[letter]:
-                        possible_adjacencies = itertools.product(anchor_block.nodes, block_adj_mpis[letter].nodes)
+                        target_cluster = block_adj_mpis[letter]
 
-                        directed_edges = [list(val.edges) for key, val in adj_graph.items() if str(anchor_scene) in key][0]
-                        complimentary_edges = [edge[::-1] for edge in directed_edges if edge[::-1] not in directed_edges]
+                        target_nodes = target_cluster.nodes[list(target_cluster.nodes())[0]]
+                        target_block = target_nodes['scene_match_fk']
+
+                        possible_adjacencies = itertools.product(anchor_block, target_block)
+
+                        directed_edges = \
+                            [list(val.edges) for key, val in adj_graph.items() if str(anchor_scene) in key][0]
+                        complimentary_edges = [edge[::-1] for edge in directed_edges if
+                                               edge[::-1] not in directed_edges]
                         all_edges = directed_edges + complimentary_edges
                         edge_result = int(any(True for edge in possible_adjacencies if edge in all_edges))
-
 
                     pre_result_list.append(edge_result)
 
             if 1 in pre_result_list:
                 custom_text = 'Yes'
                 result = 1
-
 
             custom_result_fk = Consts.CUSTOM_RESULTS[custom_text]
 
