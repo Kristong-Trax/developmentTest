@@ -172,7 +172,7 @@ class SceneLayoutComplianceCalc(object):
                         ))
                     stacking_include = bool(int(each_target.stacking_include))
                     # able to pass sub cat and super brand[?] // or get the prods and pass
-                    block_filters = {'sub_category_fk': [sub_category_pk],
+                    block_filters = {'sub_category_fk': [float(sub_category_pk)],
                                      'Super Brand': [super_brand_custom_entity.name.iloc[0]]
                                      }
                     location_filters = {'scene_fk': [self.current_scene_fk]}

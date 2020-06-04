@@ -84,13 +84,19 @@ class GSKAUSceneToolBox:
                                  'Brand_Position',
                                  'Brand_Sequence',
                                  'Super_Brand_Block',
-                                 'Super_Brand_SOS'],
+                                 'Super_Brand_SOS'
+                                 'Secondary_Display'  # For DISPLAY_KPI
+                                 ],
             key_fields=["template_fks", "super_brand_pk", "store_banner_pk", "sub_category_fk",
-                        "brand_pk", "sequence_brand_pks"],
+                        "brand_pk", "sequence_brand_pks",
+                        "region_fk", "display_pk", "template_fk"  # For DISPLAY_KPI
+                        ],
             data_fields=["stacking_include", "block_threshold_perc",
                          "threshold",
                          "1_5_shelf", "6_7_shelf", "8_9_shelf", "10_12_shelf", "target_perc", "above_12_shelf",
-                         "condition"]
+                         "condition",
+                         "mandatory_eans"  # For DISPLAY_KPI
+                         ]
         )
         return targets
 
