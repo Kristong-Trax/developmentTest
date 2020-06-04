@@ -100,6 +100,9 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method prepares the data for the case count calculation. Connection between the display
         data and the tagging data."""
         closest_tag_to_display_df = self._calculate_closest_product_to_display()
+        # we need to limit each display to only being associated with up to 4 tags
+        closest_tag_to_display_df.sort_values(by=['display_in_scene_fk', 'minimum_distance'], inplace=True)
+        closest_tag_to_display_df = closest_tag_to_display_df.groupby('display_in_scene_fk').head(4)
         self._add_displays_the_closet_product_fk(closest_tag_to_display_df)
         self._add_matches_display_data(closest_tag_to_display_df)
 
@@ -151,7 +154,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
             adj_g = self._create_adjacency_graph_per_scene(scene_fk)
             paths = self._get_relevant_path_for_calculation(adj_g)
             total_score_per_sku += self._calculate_case_count(adj_g, paths)
-            # self.create_graph_image(scene_fk, adj_g)
+            self.create_graph_image(scene_fk, adj_g)
         for product_fk in self.target.keys():
             result = total_score_per_sku.get(product_fk, 0)
             # convert results ending in .99 to .00 - this unpleasant situation is caused by using float arithmetic
@@ -238,7 +241,32 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """ This method filters and merges Match Product In Scene and Match Display In Scene DataFrames"""
         scenes_with_display = self._get_scenes_with_relevant_displays()
         filtered_matches = self.data_provider.matches.loc[self.data_provider.matches.scene_fk.isin(scenes_with_display)]
+        filtered_matches = self._add_smart_attributes_to_matches(filtered_matches)
         return filtered_matches
+
+    def _add_smart_attributes_to_matches(self, matches):
+        smart_attribute_df = self.get_match_product_in_probe_state_values(matches.probe_match_fk.tolist())
+        matches = pd.merge(matches, smart_attribute_df, on='probe_match_fk', how='left')
+        matches['match_product_in_probe_state_fk'].fillna(0, inplace=True)
+        return matches
+
+    def get_match_product_in_probe_state_values(self, probe_match_fks):
+        query = """select mpipsv.match_product_in_probe_fk as 'probe_match_fk', 
+                    mpips.name as 'match_product_in_probe_state_value',
+                    mpips.pk as 'match_product_in_probe_state_fk'
+                    from probedata.match_product_in_probe_state_value mpipsv
+                    left join static.match_product_in_probe_state mpips 
+                    on mpipsv.match_product_in_probe_state_fk = mpips.pk
+                    where mpipsv.match_product_in_probe_fk in ({});""".format(
+            ','.join([str(x) for x in probe_match_fks]))
+
+        cur = self.ps_data_provider.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()
+        df = pd.DataFrame(list(res), columns=['probe_match_fk', 'match_product_in_probe_state_value',
+                                              'match_product_in_probe_state_fk'])
+        df.drop_duplicates(subset=['probe_match_fk'], keep='first', inplace=True)
+        return df
 
     @staticmethod
     def _filter_edges_by_degree(adj_g, requested_direction):
@@ -325,6 +353,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         scene_matches = scene_matches.loc[scene_matches.stacking_layer > 0]  # For the Graph Creation
         scene_matches.drop('pk', axis=1, inplace=True)
         scene_matches.rename({'scene_match_fk': 'pk'}, axis=1, inplace=True)
+        scene_matches = scene_matches.loc[scene_matches.display_name.notna()]  # get rid of orphaned tags
         return scene_matches
 
     @staticmethod
