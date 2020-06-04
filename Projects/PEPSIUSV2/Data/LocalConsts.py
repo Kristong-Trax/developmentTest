@@ -1,6 +1,6 @@
-from Trax.Tools.ProfessionalServices.PsConsts.DataProvider import ScifConsts as Sc
-from Trax.Tools.ProfessionalServices.PsConsts.DB import SessionResultsConsts as Src
-from Trax.Tools.ProfessionalServices.PsConsts.PS import AssortmentGroupConsts as Agc
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts as Sc
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts as Src
+from Trax.Data.ProfessionalServices.PsConsts.PS import AssortmentGroupConsts as Agc
 
 
 class Consts(object):

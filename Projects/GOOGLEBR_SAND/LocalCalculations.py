@@ -23,12 +23,18 @@ if __name__ == '__main__':
     LoggerInitializer.init('googlebr-sand calculations')
     Config.init()
     project_name = 'googlebr-sand'
-    sessions = ['FFC36D27-7923-4C15-A6BE-44C9BC4A5319', 'FF1B0385-395B-4C62-9955-BF4ACC6983AD']
-    for session in sessions:
-        data_provider = KEngineDataProvider(project_name)
-        data_provider.load_session_data(session)
-        scif = data_provider['scene_item_facts']
-        scenes = scif['scene_id'].unique().tolist()
+    sessions = [('2b0dd747-01db-4997-bee0-37a829eb3688', [222929, 222912, 222931, 222941]),
+                ('574cec0f-7536-4aca-9613-fc31d1ae59b4', [223006, 223013]),
+                ('60e63e0d-6f77-4261-8232-e7e0d2f8e067', [223075, 223044]),
+                ('bb72269a-39fa-48cd-84b0-4b034d204891', [223026, 223028]),
+                ('bf90b409-aea0-485a-b5a2-fb8b91df2d64', [222910, 222918]),
+                ('c401bf62-e37e-4b89-ab32-d982c7641ed1', [223065, 223077]),
+                ('daefa2fd-e553-4b65-95be-52d6a8d5d5a0', [222997, 223004])]
+    for session, scenes in sessions:
+        # data_provider = KEngineDataProvider(project_name)
+        # data_provider.load_session_data(session)
+        # scif = data_provider['scene_item_facts']
+        # scenes = scif['scene_id'].unique().tolist()
 
         # scenes = [392]
 
