@@ -45,7 +45,7 @@ class SceneLayoutComplianceCalc(object):
         ]
         kpis_not_found = []
         for kpi_name in layout_compliance_kpis:
-            res_df = self.kpi_static_data[ self.kpi_static_data[KPI_TYPE_COL] == kpi_name ]
+            res_df = self.kpi_static_data[self.kpi_static_data[KPI_TYPE_COL] == kpi_name]
             if res_df.empty:
                 kpis_not_found.append(kpi_name)
                 Log.warning("Error: KPI {} not found in static.kpi_level_2 table.".format(kpi_name))
@@ -97,11 +97,30 @@ class SceneLayoutComplianceCalc(object):
             (self.kpi_static_data[KPI_TYPE_COL] == GSK_LAYOUT_COMPLIANCE_BLOCK)
             & (self.kpi_static_data['delete_time'].isnull())]
 
-        self.calculate_gsk_layout_compliance_brand_fsos(kpi_details=gsk_layout_compliance_brand_fsos)
-        self.calculate_gsk_layout_compliance_block(kpi_details=gsk_layout_compliance_block)
-        self.calculate_gsk_layout_compliance_sequence(kpi_details=gsk_layout_compliance_sequence)
-        self.calculate_gsk_layout_compliance_super_brand_fsos(kpi_details=gsk_layout_compliance_sbrand_fsos)
-        self.calculate_gsk_layout_compliance_position(kpi_details=gsk_layout_compliance_position)
+        try:
+            self.calculate_gsk_layout_compliance_brand_fsos(kpi_details=gsk_layout_compliance_brand_fsos)
+        except Exception as e:
+            Log.error("Error : {}".format(e))
+
+        try:
+            self.calculate_gsk_layout_compliance_block(kpi_details=gsk_layout_compliance_block)
+        except Exception as e:
+            Log.error("Error : {}".format(e))
+
+        try:
+            self.calculate_gsk_layout_compliance_sequence(kpi_details=gsk_layout_compliance_sequence)
+        except Exception as e:
+            Log.error("Error : {}".format(e))
+
+        try:
+            self.calculate_gsk_layout_compliance_super_brand_fsos(kpi_details=gsk_layout_compliance_sbrand_fsos)
+        except Exception as e:
+            Log.error("Error : {}".format(e))
+
+        try:
+            self.calculate_gsk_layout_compliance_position(kpi_details=gsk_layout_compliance_position)
+        except Exception as e:
+            Log.error("Error : {}".format(e))
 
     def calculate_gsk_layout_compliance_block(self, kpi_details):
         Log.info("Calculating {kpi} for session: {sess} and scene: {scene}".format(
@@ -153,7 +172,7 @@ class SceneLayoutComplianceCalc(object):
                         ))
                     stacking_include = bool(int(each_target.stacking_include))
                     # able to pass sub cat and super brand[?] // or get the prods and pass
-                    block_filters = {'sub_category_fk': [sub_category_pk],
+                    block_filters = {'sub_category_fk': [float(sub_category_pk)],
                                      'Super Brand': [super_brand_custom_entity.name.iloc[0]]
                                      }
                     location_filters = {'scene_fk': [self.current_scene_fk]}
