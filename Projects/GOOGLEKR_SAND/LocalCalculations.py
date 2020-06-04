@@ -1,12 +1,12 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
-from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
-from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
+# from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
+# from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 import pandas as pd
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.GOOGLEKR_SAND.Calculations import Calculations
-from Projects.GOOGLEKR_SAND.SceneKpis.SceneCalculations import SceneCalculations
+# from Projects.GOOGLEKR_SAND.SceneKpis.SceneCalculations import SceneCalculations
 
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
@@ -31,7 +31,7 @@ if __name__ == '__main__':
         '9b33b4d0-cb67-4e9b-82d9-4d4c3c505491'
     ]
 
-    sessions = ['ff713862-e850-4a09-a000-3b90f762e80c']
+    sessions = ['fbf2a798-ea83-4f52-8aa7-e834698e7dbe']
 
     for session in sessions:
         # data_provider = KEngineDataProvider(project_name)
