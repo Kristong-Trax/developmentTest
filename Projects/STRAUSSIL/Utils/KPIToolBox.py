@@ -66,7 +66,7 @@ class ToolBox(GlobalSessionToolBox):
             self.common.write_to_db_result(fk=dis_sku_kpi_fk, numerator_id=sku, denominator_id=category_fk,
                                            result=result, numerator_result=result, denominator_result=result,
                                            score=facings, should_enter=True,
-                                           identifier_parent=assortment_type + "_DIS_CAT_{}".format(str(category_fk)))
+                                           identifier_parent=assortment_type + "mpa_{}".format(str(category_fk)))
 
         # category level distribution
         for category_fk in categories_dict.keys():
