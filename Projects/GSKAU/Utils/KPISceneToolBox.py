@@ -84,7 +84,7 @@ class GSKAUSceneToolBox:
                                  'Brand_Position',
                                  'Brand_Sequence',
                                  'Super_Brand_Block',
-                                 'Super_Brand_SOS'
+                                 'Super_Brand_SOS',
                                  'Secondary_Display'  # For DISPLAY_KPI
                                  ],
             key_fields=["template_fks", "super_brand_pk", "store_banner_pk", "sub_category_fk",
