@@ -17,7 +17,7 @@ class MenuToolBox(GlobalSessionToolBox):
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalcAdmin)
         self.custom_entity = self.get_custom_entity()
 
-        self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=['store_number_1', 'ean_code'])
         self.store_number = self.store_info.store_number_1
         self.common = common
 
