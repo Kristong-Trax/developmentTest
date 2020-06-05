@@ -241,7 +241,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """ This method filters and merges Match Product In Scene and Match Display In Scene DataFrames"""
         scenes_with_display = self._get_scenes_with_relevant_displays()
         filtered_matches = self.data_provider.matches.loc[self.data_provider.matches.scene_fk.isin(scenes_with_display)]
-        filtered_matches = self._add_smart_attributes_to_matches(filtered_matches)
+        if not filtered_matches.empty:
+            filtered_matches = self._add_smart_attributes_to_matches(filtered_matches)
         return filtered_matches
 
     def _add_smart_attributes_to_matches(self, matches):

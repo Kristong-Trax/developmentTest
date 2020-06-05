@@ -1,4 +1,5 @@
 import pandas as pd
+from Trax.Cloud.Services.Connector.Logger import Log
 from Projects.DIAGEOUS_SAND2.Utils.menu_count.consts import Consts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
@@ -40,7 +41,11 @@ class MenuToolBox(GlobalSessionToolBox):
 
         if self.targets.empty:
             return
-        menu_ean_codes = self.targets.ean_code.unique().tolist()
+        try:
+            menu_ean_codes = self.targets.ean_code.unique().tolist()
+        except AttributeError:
+            Log.warning('Menu Count targets are corrupt for this store')
+            return
 
         filtered_scif = self.scif[self.scif['template_group'].str.contains('Menu')]
         present_menu_scif_sub_brands = filtered_scif.sub_brand.unique().tolist()
