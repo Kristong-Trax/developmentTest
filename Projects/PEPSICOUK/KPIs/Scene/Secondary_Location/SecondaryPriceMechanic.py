@@ -26,6 +26,6 @@ class SecondaryPriceMechanicKpi(UnifiedCalculationsScript):
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
         for i, row in filtered_matches.iterrows():
             self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.PRODUCT_FK],
-                                    denominator_id=row['display_id'], denominator_result='display_id',
+                                    denominator_id=row['display_id'], denominator_result=row['display_id'],
                                     context_id=row['store_area_fk'], result=1)
         self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()

@@ -173,23 +173,47 @@ class PEPSICOUKCommonToolBox:
         if not matches.empty:
             matches = self.place_posms_at_bay_minus_one_to_bays(matches)
             matches = self.construct_display_id(matches)
+            max_display_id = matches['display_id'].max()
 
             bin_bay_scif, bin_bay_matches = self.calculate_displays_by_bin_bay_logic(scif, matches)
-            bin_bin_scif, bin_bin_matches = self.calculate_displays_by_bin_bin_logic(scif, matches)
+            bay_scif, bay_matches, max_display_id = self.calculate_displays_separated_by_bays(scif, matches,
+                                                                                              max_display_id)
+            bin_bin_scif, bin_bin_matches = self.calculate_displays_by_bin_bin_logic(scif, matches, max_display_id)
             bin_shelf_scif, bin_shelf_matches = self.calculate_displays_by_mix_logic(scif, matches)
             shelf_scif, shelf_matches = self.calculate_displays_by_shelf_logic(scif, matches)
 
             scif = bin_bay_scif.append(bin_bin_scif)
             scif = scif.append(bin_shelf_scif)
             scif = scif.append(shelf_scif)
+            scif = scif.append(bay_scif)
             scif.reset_index(drop=True, inplace=True)
 
             matches = bin_bay_matches.append(bin_bin_matches)
             matches = matches.append(bin_shelf_matches)
             matches = matches.append(shelf_matches)
+            matches = matches.append(bay_matches)
             matches.reset_index(drop=True, inplace=True)
             # maybe remove extra columns from scif and matches
         return scif, matches
+
+    def calculate_displays_separated_by_bays(self, scif, matches, max_display_id):
+        bay_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
+                                              (self.displays_template[self.BAY_TO_SEPARATE] == 'No') &
+                                              (self.displays_template[self.BIN_TO_SEPARATE] == 'No')] \
+            [self.DISPLAY_NAME_TEMPL].unique()
+        scif = scif[scif[ScifConsts.TEMPLATE_NAME].isin(bay_displays)]
+        matches = matches[matches[ScifConsts.TEMPLATE_NAME].isin(bay_displays)]
+        bay_scif = scif
+        bay_matches = matches
+        if not bay_matches.empty:
+            bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK],
+                                                  keep='last')
+            bay_matches[MatchesConsts.BAY_NUMBER] = 1
+            bay_matches = self.construct_display_id(matches)
+            bay_matches['display_id'] = bay_matches['display_id']+max_display_id
+            bay_scif, bay_matches = self.calculate_product_length_on_display(bay_scif, bay_matches)
+            max_display_id = bay_matches['display_id'].max()
+        return bay_scif, bay_matches, max_display_id
 
     def place_posms_at_bay_minus_one_to_bays(self, matches):
         bay_number_minus_one = matches[matches[MatchesConsts.BAY_NUMBER] == -1]
@@ -276,7 +300,7 @@ class PEPSICOUKCommonToolBox:
         bin_bay_matches = matches[(~matches[ScifConsts.SCENE_FK].isin(bin_bin_scenes))]
         return bin_bin_matches, bin_bay_matches
 
-    def calculate_displays_by_bin_bin_logic(self, scif, matches):
+    def calculate_displays_by_bin_bin_logic(self, scif, matches, max_display_id = None):
         bin_bin_displays = self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
                                                   (self.displays_template[self.BAY_TO_SEPARATE] == 'No') &
                                                   (self.displays_template[self.BIN_TO_SEPARATE] == 'Yes')] \
@@ -286,7 +310,7 @@ class PEPSICOUKCommonToolBox:
         bin_bin_scif = scif
         bin_bin_matches = matches
         if not bin_bin_matches.empty:
-            max_display_id = matches['display_id'].max()
+            # max_display_id = matches['display_id'].max()
             # scene_display = self.assign_bays_to_bins()
             bin_bin_matches = self.place_products_to_bays(bin_bin_matches, self.scene_display, max_display_id)
             bin_bin_scif, bin_bin_matches = self.calculate_product_length_on_display(bin_bin_scif, bin_bin_matches)
@@ -379,22 +403,9 @@ class PEPSICOUKCommonToolBox:
         bin_bay_scif = scif
         bin_bay_matches = matches
         if not  bin_bay_matches.empty:
-            bin_bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER, MatchesConsts.SCENE_FK],
-                                                      keep='last')
+            bin_bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.BAY_NUMBER,
+                                                              MatchesConsts.SCENE_FK], keep='last')
             bin_bay_scif, bin_bay_matches = self.calculate_product_length_on_display(bin_bay_scif, bin_bay_matches)
-            # bay_sku = bin_bay_matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
-            #                                      as_index=False).agg({'facings_matches': np.sum})
-            # bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
-            # bin_bay_matches = bin_bay_matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK,
-            #                                                            MatchesConsts.BAY_NUMBER], how='left')
-            # bin_bay_matches[MatchesConsts.WIDTH_MM_ADVANCE] = bin_bay_matches[self.SHELF_LEN_DISPL] / \
-            #                                                   bin_bay_matches['unique_skus']
-            #
-            # aggregated_matches =bin_bay_matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]).\
-            #     agg({'unique_skus': np.sum, MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
-            # bin_bay_scif = scif.merge(aggregated_matches, on=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK])
-            # bin_bay_scif['facings'] = bin_bay_scif['updated_facings'] = scif['unique_skus']
-            # bin_bay_scif[ScifConsts.GROSS_LEN_ADD_STACK] = scif['updated_gross_len'] = bin_bay_scif[MatchesConsts.WIDTH_MM_ADVANCE]
         return bin_bay_scif, bin_bay_matches
 
     def set_filtered_scif_and_matches_for_all_kpis_secondary(self, scif, matches):

@@ -9,7 +9,7 @@ if __name__ == '__main__':
     project_name = 'marsru-prod'
     session_uids = [
 
-        'e0dfe73b-e33b-4b4c-99d6-0e43c85d18c8'
+        'b98d3b8c-7593-46af-8bd2-8ec07ef94980'
     ]
     data_provider = KEngineSessionDataProviderLive(project_name, None, None)
     output = None

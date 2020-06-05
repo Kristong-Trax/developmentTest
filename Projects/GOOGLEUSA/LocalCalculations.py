@@ -1,12 +1,12 @@
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
-# from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
-# from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
+from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
+from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 import pandas as pd
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.GOOGLEUSA.Calculations import Calculations
-# from Projects.GOOGLEUSA.SceneKpis.SceneCalculations import SceneCalculations
+from Projects.GOOGLEUSA.SceneKpis.SceneCalculations import SceneCalculations
 
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
@@ -19,32 +19,32 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
     data_provider.set_scene_item_facts(scene_item_facts)
 
 
-# if __name__ == '__main__':
-#     LoggerInitializer.init('GOOGLEUSA calculations')
-#     Config.init()
-#     project_name = 'googleusa'
-#
-#     # all sessions still in new status
-#     sessions = [
-#         ('C481FD05-6D6D-4C9E-BABF-392D952D861C', [267, 254]),
-#         ('D4D8B30D-E6A9-4A7B-8C47-1605A5A4F79F', [359]),
-#     ]
-#
-#     for session, scenes in sessions:
-#         # if len(scenes) == 0:
-#         #     data_provider = KEngineDataProvider(project_name)
-#         #     data_provider.load_session_data(session)
-#         #     scif = data_provider['scene_item_facts']
-#         #     scenes = scif['scene_id'].unique().tolist()
-#         # for scene in scenes:
-#         #     print('scene: {}'.format(scene))
-#         #     data_provider = KEngineDataProvider(project_name)
-#         #     data_provider.load_scene_data(session, scene)
-#         #     output = VanillaOutput()
-#         #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
-#         #     save_scene_item_facts_to_data_provider(data_provider, output)
-#         #     SceneCalculations(data_provider).calculate_kpis()
-#         data_provider = KEngineDataProvider(project_name)
-#         data_provider.load_session_data(session)
-#         output = Output()
-#         Calculations(data_provider, output).run_project_calculations()
+if __name__ == '__main__':
+    LoggerInitializer.init('GOOGLEUSA calculations')
+    Config.init()
+    project_name = 'googleusa'
+
+    # all sessions still in new status
+    sessions = [
+        ('C481FD05-6D6D-4C9E-BABF-392D952D861C', [267, 254]),
+        ('D4D8B30D-E6A9-4A7B-8C47-1605A5A4F79F', [359]),
+    ]
+
+    for session, scenes in sessions:
+        # if len(scenes) == 0:
+        #     data_provider = KEngineDataProvider(project_name)
+        #     data_provider.load_session_data(session)
+        #     scif = data_provider['scene_item_facts']
+        #     scenes = scif['scene_id'].unique().tolist()
+        for scene in scenes:
+            print('scene: {}'.format(scene))
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
+        # data_provider = KEngineDataProvider(project_name)
+        # data_provider.load_session_data(session)
+        # output = Output()
+        # Calculations(data_provider, output).run_project_calculations()
