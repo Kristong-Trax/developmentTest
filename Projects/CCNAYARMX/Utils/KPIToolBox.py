@@ -452,8 +452,6 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_scoring(self, row):
         kpi_name = row[KPI_NAME]
-        if kpi_name == 'Enfriador':
-            a = 1
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         numerator_id = self.own_manuf_fk
         denominator_id = self.store_id
@@ -1597,7 +1595,7 @@ class ToolBox(GlobalSessionToolBox):
     def filter_constraints(constraints_template, kpi_name, total_sum_of_bay_in_scenes):
         constraints_df = constraints_template
         constraints_df = constraints_df[constraints_df[KPI_NAME].isin([kpi_name])]
-        constraints_df = constraints_df[constraints_df.KO_doors.isin([5])] if total_sum_of_bay_in_scenes > 5 else \
+        constraints_df = constraints_df[constraints_df.KO_doors.isin([5])] if total_sum_of_bay_in_scenes >= 5 else \
             constraints_df[constraints_df.KO_doors.isin([total_sum_of_bay_in_scenes])]
 
         relevant_columns_in_constraints_df = [item for item in constraints_df.columns if "assortment" in item]
@@ -1607,6 +1605,7 @@ class ToolBox(GlobalSessionToolBox):
 
     @staticmethod
     def calculate_assortment_passed_if_constraints(constraints_df, assortment_df, scif):
+        constraints_df = constraints_df[~ np.isnan(constraints_df)]
         assortment_passed = 0
         for facing_constraint, required_assortment in zip(constraints_df, assortment_df):
             total_facings_for_this_sum = scif[
