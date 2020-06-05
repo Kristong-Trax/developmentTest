@@ -10,8 +10,7 @@
 #     project_name = 'lionjp'
 #     data_provider = KEngineDataProvider(project_name)
 #
-#     sessions = ["20A34BF0-0E1E-4ED4-A18A-B5EF47AC6361",
-#                 "851762DC-A2D9-41B8-84BE-8E32F680AC9B"]
+#     sessions = ["67557C68-79E0-4636-BDF8-E4E1C39FA062"]
 #
 #     for session in sessions:
 #         print "Running for {}".format(session)

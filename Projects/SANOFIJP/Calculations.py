@@ -7,7 +7,7 @@ from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.SANOFIJP.Utils.KPIToolBox import SanofiJPToolBox
 import os
-from KPIUtils.GlobalProjects.SANOFI_3.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'nidhinb'
