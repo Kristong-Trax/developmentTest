@@ -1,46 +1,91 @@
 import os
 import pandas as pd
+
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Cloud.Services.Connector.Keys import DbUsers
+
 from Projects.LIONJP.Utils.SequenceCalculationsV2 import Sequence
 from KPIUtils_v2.Calculations.CalculationsUtils.Constants import AdditionalAttr
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from Projects.LIONJP.Data.Consts import Consts
 
-is_debug = True
 __author__ = 'satya'
+is_debug = True
 
 
-class LIONJPToolBox:
-    LEVEL1 = 1
-    LEVEL2 = 2
-    LEVEL3 = 3
+class LionJPSceneToolBox:
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common):
         self.output = output
         self.data_provider = data_provider
-        self.common = Common(self.data_provider)
+        self.common = common
         self.project_name = self.data_provider.project_name
         self.session_uid = self.data_provider.session_uid
         self.products = self.data_provider[Data.PRODUCTS]
+        self.templates = self.data_provider[Data.TEMPLATES]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
+        self.scif = self.data_provider.scene_item_facts
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
-        self.store_id = self.data_provider[Data.STORE_FK]
-        self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.store_info = self.data_provider[Data.STORE_INFO]
+        self.store_id = self.store_info.iloc[0].store_fk
+        self.store_type = self.data_provider.store_type
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
+        self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.match_display_in_scene = self.data_provider.match_display_in_scene
         self.setup_file = "setup.xlsx"
         self.kpi_sheet = self.get_setup(Consts.KPI_SHEET_NAME)
         self.kpi_template_file = "kpi_template.xlsx"
         self.kpi_template = self.get_kpi_template(Consts.KPI_CONFIG_SHEET)
+
+    @staticmethod
+    def get_minimum_facings(df, block_percentage):
+        facings = 0
+        if df.empty:
+            return facings
+
+        entities = df.groupby('entity')['product_fk'].count()
+        percentage = entities.apply(lambda entity_facings: entity_facings * (block_percentage / 100.00))
+        if len(percentage) > 1:
+            facings = percentage.min()
+        else:
+            # when one of the entity is missing in the scene
+            facings = 0
+
+        if (facings > 0) and (facings < 1):
+            facings = 1
+        else:
+            facings = int(facings)
+        return facings
+
+    def get_custom_entity_fk(self, name):
+        query = """
+            SELECT pk FROM static.custom_entity
+            WHERE name='{}'
+            """.format(name)
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return None if data.empty else data.values[0][0]
+
+    def get_product_fks(self, ean_codes):
+        product_pks = []
+        query = """
+            SELECT pk FROM static_new.product
+            WHERE ean_code in {}
+            """.format(ean_codes)
+        query = query.replace(",)", ")")
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        if data.empty:
+            return product_pks
+        else:
+            product_pks = list(data['pk'].unique())
+        return product_pks
 
     def get_kpi_template(self, sheet_name):
         kpi_template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data')
@@ -87,11 +132,12 @@ class LIONJPToolBox:
                 if kpi_type == Consts.FSOS:
                     self.main_sos_calculations(kpis)
                 elif kpi_type == Consts.ADJACENCY:
+                    print("scene_fk:{}".format(self.data_provider.scene_id))
                     self.main_adjacency_calculations(kpis)
                 else:
                     Log.warning("KPI_TYPE:{kt} not found in setup=>kpi_list sheet.".format(kt=kpi_type))
                     continue
-            self.common.commit_results_data()
+            # self.common.commit_results_data()
             return
         except Exception as err:
             Log.error("LionJP KPI calculation failed due to the following error: {}".format(err))
@@ -244,34 +290,6 @@ class LIONJPToolBox:
 
         return population, sequence_params, df_custom_matches
 
-    @staticmethod
-    def get_minimum_facings(df, block_percentage):
-        facings = 0
-        if df.empty:
-            return facings
-
-        entities = df.groupby('entity')['product_fk'].count()
-        percentage = entities.apply(lambda entity_facings: entity_facings * (block_percentage / 100.00))
-        if len(percentage) > 1:
-            facings = percentage.min()
-        else:
-            # when one of the entity is missing in the scene
-            facings = 0
-
-        if (facings > 0) and (facings < 1):
-            facings = 1
-        else:
-            facings = int(facings)
-        return facings
-
-    def get_custom_entity_fk(self, name):
-        query = """
-            SELECT pk FROM static.custom_entity
-            WHERE name='{}'
-            """.format(name)
-        data = pd.read_sql_query(query, self.rds_conn.db)
-        return None if data.empty else data.values[0][0]
-
     def calculate_adjacency_per_scene(self, kpi_name):
         allowed_entities = ["product", "brand", "category", "sub_category"]
         kpi_config = self.kpi_template[self.kpi_template["kpi_name"] == kpi_name].copy()
@@ -318,7 +336,9 @@ class LIONJPToolBox:
                     score = result
                     if result > 0:
                         if is_debug:
-                            Log.warning("scene_fk:{}, report_label:{}, result={}".format(scene_fk, adj_config['report_label'], result))
+                            Log.warning("scene_fk:{}, report_label:{}, result={}".format(scene_fk,
+                                                                                         adj_config['report_label'],
+                                                                                         result))
 
                     self.common.write_to_db_result(fk=kpi_level_2_fk,
                                                    numerator_id=custom_entity_pk,
@@ -328,23 +348,10 @@ class LIONJPToolBox:
                                                    denominator_result=scene_fk,
                                                    result=result,
                                                    score=score,
-                                                   target=sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY])
+                                                   target=sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY],
+                                                   by_scene=True)
                 else:
                     Log.warning("Invalid entity:{}".format(adj_config['entity']))
-
-    def get_product_fks(self, ean_codes):
-        product_pks = []
-        query = """
-            SELECT pk FROM static_new.product
-            WHERE ean_code in {}
-            """.format(ean_codes)
-        query = query.replace(",)", ")")
-        data = pd.read_sql_query(query, self.rds_conn.db)
-        if data.empty:
-            return product_pks
-        else:
-            product_pks = list(data['pk'].unique())
-        return product_pks
 
     def calculate_facings_in_cell_per_product(self):
         kpi_db = self.kpi_static_data[
@@ -376,4 +383,4 @@ class LIONJPToolBox:
                                                denominator_result=shelf_number,
                                                result=facings_count_in_cell,
                                                score=facings_count_in_cell,
-                                               by_scene=scene_fk)
+                                               by_scene=True)
