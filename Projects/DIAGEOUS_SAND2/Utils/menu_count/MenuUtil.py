@@ -1,12 +1,7 @@
-import numpy as np
 import pandas as pd
-import networkx as nx
-from collections import Counter
-from Trax.Cloud.Services.Connector.Logger import Log
 from Projects.DIAGEOUS_SAND2.Utils.menu_count.consts import Consts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
-from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
 from Projects.DIAGEOUS_SAND2.Utils.menu_count.Fetcher import DiageoQueries
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -39,6 +34,9 @@ class MenuToolBox(GlobalSessionToolBox):
     def menu_count(self):
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.MENU_KPI_CHILD)
         parent_kpi = self.get_kpi_fk_by_kpi_type(Consts.TOTAL_MENU_KPI_SCORE)
+        # we need to save a second set of KPIs with heirarchy for the mobile report
+        kpi_fk_mr = self.get_kpi_fk_by_kpi_type(Consts.MENU_KPI_CHILD_MR)
+        parent_kpi_mr = self.get_kpi_fk_by_kpi_type(Consts.TOTAL_MENU_KPI_SCORE_MR)
 
         if self.targets.empty:
             return
@@ -65,15 +63,22 @@ class MenuToolBox(GlobalSessionToolBox):
                 result = 1
                 passed_eans += 1
 
-            self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=0, denominator_result=0,
+            self.write_to_db(fk=kpi_fk_mr, numerator_id=product_fk, numerator_result=0, denominator_result=0,
                              denominator_id=custom_entity_pk,
-                             result=result, score=0, identifier_parent=parent_kpi, identifier_result=kpi_fk,
+                             result=result, score=0, identifier_parent=parent_kpi_mr, identifier_result=kpi_fk_mr,
                              should_enter=True)
 
+            self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=0, denominator_result=0,
+                             denominator_id=custom_entity_pk, result=result, score=0)
+
         target_eans = len(menu_ean_codes)
+        self.write_to_db(fk=parent_kpi_mr, numerator_id=self.manufacturer_fk, numerator_result=0, denominator_result=0,
+                         denominator_id=self.store_id,
+                         result=passed_eans, score=0, target=target_eans, identifier_result=parent_kpi_mr)
+
         self.write_to_db(fk=parent_kpi, numerator_id=self.manufacturer_fk, numerator_result=0, denominator_result=0,
                          denominator_id=self.store_id,
-                         result=passed_eans, score=0, target=target_eans, identifier_result=parent_kpi)
+                         result=passed_eans, score=0, target=target_eans)
 
     def get_relevant_targets(self):
         self.targets = self.targets[(self.targets['store_number_1'] == self.store_number.iloc[0])
