@@ -536,6 +536,7 @@ class ToolBox(GlobalSessionToolBox):
                              denominator_result=1, result=custom_result_fk, score=0)
 
     def _calculate_max_block_negative_adj_on_scene(self, kpi_row, scene_fk):
+        pre_result_list = []
         block_adj_cluster = {}
         block_scenes = {}
         sequence_letters = ['A', 'B', 'C']
@@ -565,8 +566,6 @@ class ToolBox(GlobalSessionToolBox):
             block_adj_cluster[letter] = max_block
 
         if 'A' in block_adj_cluster.keys():
-            pre_result_list = []
-
             anchor_cluster = block_adj_cluster['A']
             anchor_scene = block_scenes['A']
 
