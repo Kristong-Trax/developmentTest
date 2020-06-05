@@ -2,13 +2,13 @@
 
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Projects.SINOTH.Tests.Data.data_test_sinoth_sanity import ProjectsSanityData
-from Projects.SINOTH.Calculations import Calculations
+from Projects.SINOTH.Calculations import Calculations as SINOTHCalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.SINOTH.Tests.Data.kpi_results import SINOTHKpiResults
 # import os
 # import json
 
-__author__ = 'nidhin'
+__author__ = 'prasanna'
 
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
@@ -29,12 +29,12 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {u'3ecba6cf-b06d-4545-9f28-40b8fff5133f': []}
+        sessions = {'fef40df9-6873-402a-8502-58e6da5f8f31': []}
         kpi_results = SINOTHKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
             output = Output()
-            Calculations(data_provider, output).run_project_calculations()
+            SINOTHCalculations(data_provider, output).run_project_calculations()
             # for scene in sessions[session]:
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()
