@@ -65,8 +65,8 @@ class ToolBox(GlobalSessionToolBox):
         self.block_parent_results = {}
 
     def main_calculation(self):
-        self.calculate_adjacency_within_bay()
-        self.calculate_max_block_directional()
+        # self.calculate_adjacency_within_bay()
+        # self.calculate_max_block_directional()
         self.calculate_sku_count()
         self.calculate_facing_count()
         self.calculate_smart_tags_presence()
@@ -852,12 +852,12 @@ class ToolBox(GlobalSessionToolBox):
 
                         linear_per_format_sum_mm = relevant_mpis['width_mm_advance'].sum()
                         product_fk = relevant_mpis.product_fk.iloc[0]
-
+                        manufacturer_fk = relevant_mpis.manufacturer_fk.iloc[0]
                         linear_per_format_sum_ft = linear_per_format_sum_mm * float(0.00328)
                         self.write_to_db(fk=kpi_fk,
                                          numerator_id=product_fk, numerator_result=linear_per_format_sum_mm,
                                          context_id=product_fk,
-                                         denominator_id=self.manufacturer_fk, result=linear_per_format_sum_ft)
+                                         denominator_id=manufacturer_fk, result=linear_per_format_sum_ft)
 
     def calculate_base_measurement(self):
         template = self.kpi_template[Consts.BASE_MEASURE_SHEET]
