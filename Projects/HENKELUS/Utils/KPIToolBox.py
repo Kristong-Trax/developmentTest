@@ -219,13 +219,14 @@ class ToolBox(GlobalSessionToolBox):
         shelf_positions = []
         try:
             product_fk = filtered_mpis.product_fk.iloc[0]
+            manufacturer_fk = filtered_mpis.manufacturer_fk.iloc[0]
         except:
             product_fk = -1
 
         if param1 == 'product_fk':
             denom_id = self.store_id
         else:
-            denom_id = self.manufacturer_fk
+            denom_id = manufacturer_fk
 
         for scene in list(filtered_mpis.scene_fk.unique()):
             filtered_mpis = filtered_mpis[filtered_mpis['scene_fk'] == scene]
