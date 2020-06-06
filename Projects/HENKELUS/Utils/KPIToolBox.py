@@ -95,6 +95,8 @@ class ToolBox(GlobalSessionToolBox):
             for unique_scene_fk in self.mpis.scene_fk.unique():
                 for unique_bay in self.mpis[self.mpis.scene_fk.isin([unique_scene_fk])].bay_number.unique():
                     result = 0
+                    custom_result = Consts.CUSTOM_RESULTS['No']
+
                     anchor_sub_category_fk = map(int, self.sanitize_row(row['anchor_sub_category_fk']))
                     secondary_sub_category_fk = map(int, self.sanitize_row(row['secondary_sub_category_fk']))
 
@@ -129,8 +131,10 @@ class ToolBox(GlobalSessionToolBox):
                                 break
                 if result == 1:
                     break
+            if result == 1:
+                custom_result = Consts.CUSTOM_RESULTS['Yes']
             self.write_to_db(fk=kpi_fk, numerator_id=self.manufacturer_fk, numerator_result=1,
-                             denominator_id=self.store_id, denominator_result=1, result=result)
+                             denominator_id=self.store_id, denominator_result=1, result=custom_result)
 
     def calculate_max_block_directional(self):
         template = self.kpi_template[Consts.MAX_BLOCK_DIRECTIONAL_ADJACENCY_SHEET]
