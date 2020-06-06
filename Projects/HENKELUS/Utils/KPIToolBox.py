@@ -65,8 +65,8 @@ class ToolBox(GlobalSessionToolBox):
         self.block_parent_results = {}
 
     def main_calculation(self):
-        # self.calculate_adjacency_within_bay()
-        # self.calculate_max_block_directional()
+        self.calculate_adjacency_within_bay()
+        self.calculate_max_block_directional()
         self.calculate_sku_count()
         self.calculate_facing_count()
         self.calculate_smart_tags_presence()
@@ -217,6 +217,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_position(self, kpi_fk=None, mpis=None, filtered_mpis=None, shelf_map_df=None, param1=None):
         shelf_positions = []
+        manufacturer_fk = 0
         try:
             product_fk = filtered_mpis.product_fk.iloc[0]
             manufacturer_fk = filtered_mpis.manufacturer_fk.iloc[0]
