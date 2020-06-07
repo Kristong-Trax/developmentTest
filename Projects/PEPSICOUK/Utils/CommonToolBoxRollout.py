@@ -421,7 +421,8 @@ class PEPSICOUKCommonToolBox:
         if not self.match_product_in_scene.empty:
             secondary_scenes = self.filtered_scif_secondary[ScifConsts.SCENE_FK].unique()
             matches = self.match_product_in_scene[self.match_product_in_scene[ScifConsts.SCENE_FK].isin(secondary_scenes)]
-            matches = self.construct_display_id(matches)
+            if not matches.empty:
+                matches = self.construct_display_id(matches)
         return matches
 
     def get_scene_to_store_area_map(self):
