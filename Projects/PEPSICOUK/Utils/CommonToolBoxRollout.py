@@ -281,7 +281,8 @@ class PEPSICOUKCommonToolBox:
             bin_bin_scenes = self.scene_display[ScifConsts.SCENE_FK].unique()
 
             bin_bin_matches, bin_bay_matches = self.allocate_matches_to_logic(display_matches, bin_bin_scenes)
-            bin_bin_matches = self.place_products_to_bays(bin_bin_matches, self.scene_display)
+            if not bin_bin_matches.empty:
+                bin_bin_matches = self.place_products_to_bays(bin_bin_matches, self.scene_display)
             display_matches = bin_bin_matches.append(bin_bay_matches)
             display_matches = self.calculate_product_length_in_matches_on_display(display_matches)
 
