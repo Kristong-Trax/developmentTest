@@ -165,8 +165,8 @@ class SinoPacificToolBox:
             policy_json = json.loads(policy)
             # special case where its only one assortment for all
             # that is there is only one key and it is is_active => Y
-            if len(policy_json) == 1 and policy_json.get('is_active') == ['Y']:
-                return valid_store
+            # if len(policy_json) == 1 and policy_json.get('is_active') == ['Y']:
+            #     return valid_store
 
             store_json = json.loads(self.store_info.reset_index().to_json(orient='records'))[0]
             # map the necessary keys to those names knows
@@ -409,9 +409,14 @@ class SinoPacificToolBox:
                         join pservice.assortment_to_assortment_group atag on atp.assortment_fk = atag.assortment_fk
                         join pservice.assortment a on a.pk = atag.assortment_group_fk
                         join pservice.policy p on p.pk = a.store_policy_group_fk
-                    where a.kpi_fk={kpi_fk};
+                    where a.kpi_fk={kpi_fk}
+                    and (
+                        (atp.end_date is null and '{visit_date}' >= atp.start_date) 
+                        or 
+                        ('{visit_date}' between atp.start_date and atp.end_date)
+                    );
                     """
-        policies = pd.read_sql_query(query.format(kpi_fk=kpi_fk), self.rds_conn.db)
+        policies = pd.read_sql_query(query.format(kpi_fk=kpi_fk, visit_date=self.visit_date), self.rds_conn.db)
         return policies
 
     def filter_and_send_kpi_to_calc(self):

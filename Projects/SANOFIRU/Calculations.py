@@ -5,7 +5,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 # from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 # from Trax.Utils.Logging.Logger import Log
 import os
-from KPIUtils.GlobalProjects.SANOFI_3.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Shani'

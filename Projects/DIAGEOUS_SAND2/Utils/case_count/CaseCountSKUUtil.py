@@ -100,6 +100,9 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method prepares the data for the case count calculation. Connection between the display
         data and the tagging data."""
         closest_tag_to_display_df = self._calculate_closest_product_to_display()
+        # we need to limit each display to only being associated with up to 4 tags
+        closest_tag_to_display_df.sort_values(by=['display_in_scene_fk', 'minimum_distance'], inplace=True)
+        closest_tag_to_display_df = closest_tag_to_display_df.groupby('display_in_scene_fk').head(4)
         self._add_displays_the_closet_product_fk(closest_tag_to_display_df)
         self._add_matches_display_data(closest_tag_to_display_df)
 
@@ -155,7 +158,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         for product_fk in self.target.keys():
             result = total_score_per_sku.get(product_fk, 0)
             # convert results ending in .99 to .00 - this unpleasant situation is caused by using float arithmetic
-            if str(result * 100)[-2:] in ['99', '49']:
+            if str(int(result * 100))[-2:] in ['99', '49']:
                 result = math.ceil(result * 10) / 10
             results.append({Sc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk})
         return results
@@ -238,7 +241,33 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """ This method filters and merges Match Product In Scene and Match Display In Scene DataFrames"""
         scenes_with_display = self._get_scenes_with_relevant_displays()
         filtered_matches = self.data_provider.matches.loc[self.data_provider.matches.scene_fk.isin(scenes_with_display)]
+        if not filtered_matches.empty:
+            filtered_matches = self._add_smart_attributes_to_matches(filtered_matches)
         return filtered_matches
+
+    def _add_smart_attributes_to_matches(self, matches):
+        smart_attribute_df = self.get_match_product_in_probe_state_values(matches.probe_match_fk.tolist())
+        matches = pd.merge(matches, smart_attribute_df, on='probe_match_fk', how='left')
+        matches['match_product_in_probe_state_fk'].fillna(0, inplace=True)
+        return matches
+
+    def get_match_product_in_probe_state_values(self, probe_match_fks):
+        query = """select mpipsv.match_product_in_probe_fk as 'probe_match_fk', 
+                    mpips.name as 'match_product_in_probe_state_value',
+                    mpips.pk as 'match_product_in_probe_state_fk'
+                    from probedata.match_product_in_probe_state_value mpipsv
+                    left join static.match_product_in_probe_state mpips 
+                    on mpipsv.match_product_in_probe_state_fk = mpips.pk
+                    where mpipsv.match_product_in_probe_fk in ({});""".format(
+            ','.join([str(x) for x in probe_match_fks]))
+
+        cur = self.ps_data_provider.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()
+        df = pd.DataFrame(list(res), columns=['probe_match_fk', 'match_product_in_probe_state_value',
+                                              'match_product_in_probe_state_fk'])
+        df.drop_duplicates(subset=['probe_match_fk'], keep='first', inplace=True)
+        return df
 
     @staticmethod
     def _filter_edges_by_degree(adj_g, requested_direction):
@@ -250,6 +279,22 @@ class CaseCountCalculator(GlobalSessionToolBox):
         relevant_range = degree_direction_dict[requested_direction]
         valid_edges = [(u, v) for u, v, c in adj_g.edges.data('degree') if int(c) in relevant_range]
         return valid_edges
+
+    def _filter_redundant_in_edges(self, adj_g):
+        edges_to_remove = []
+        for node_fk, node_data in adj_g.nodes(data=True):
+            in_edges = list(adj_g.in_edges(node_fk))
+            out_edges = list(adj_g.out_edges(node_fk))
+            if len(out_edges) != 0:
+                continue
+            if len(in_edges) <= 1:
+                continue
+            else:
+                shortest_in_edge = self._get_shortest_path(adj_g, in_edges)
+                edges_to_remove.extend([edge for edge in in_edges if edge != shortest_in_edge])
+
+        edges_filter = [edge for edge in list(adj_g.edges()) if edge not in edges_to_remove]
+        return edges_filter
 
     def _filter_redundant_edges(self, adj_g):
         """Since the edges determines by the masking only, there's a chance that there will be two edges
@@ -298,7 +343,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
                                                                       maskings, add_node_attr, use_masking_only=True)
             adj_g = AdjacencyGraphBuilder.condense_graph_by_level(Consts.DISPLAY_IN_SCENE_FK, adj_g)
             filtered_adj_g = adj_g.edge_subgraph(self._filter_edges_by_degree(adj_g, requested_direction='UP'))
-            filtered_adj_g = adj_g.edge_subgraph(self._filter_redundant_edges(filtered_adj_g))
+            filtered_adj_g = filtered_adj_g.edge_subgraph(self._filter_redundant_edges(filtered_adj_g))
+            filtered_adj_g = filtered_adj_g.edge_subgraph(self._filter_redundant_in_edges(filtered_adj_g))
             return filtered_adj_g
 
     def _prepare_matches_for_graph_creation(self, scene_fk):
@@ -308,6 +354,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         scene_matches = scene_matches.loc[scene_matches.stacking_layer > 0]  # For the Graph Creation
         scene_matches.drop('pk', axis=1, inplace=True)
         scene_matches.rename({'scene_match_fk': 'pk'}, axis=1, inplace=True)
+        scene_matches = scene_matches.loc[scene_matches.display_name.notna()]  # get rid of orphaned tags
         return scene_matches
 
     @staticmethod
@@ -382,13 +429,11 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method returns only scene with "Open" or "Close" display tags"""
         return self.filtered_mdis.scene_fk.unique().tolist()
 
-    def create_graph_image(self, scene_id, graph=None):
-        if not graph:
-            return
-
+    @staticmethod
+    def create_graph_image(scene_id, graph):
         filtered_figure = GraphPlot.plot_networkx_graph(graph, overlay_image=True,
                                                         scene_id=scene_id, project_name='diageous-sand2')
-        filtered_figure.update_layout(autosize=False, width=1000, height=800)
+        filtered_figure.update_layout(autosize=False, width=1000, height=800, title=str(scene_id))
         iplot(filtered_figure)
 
 
