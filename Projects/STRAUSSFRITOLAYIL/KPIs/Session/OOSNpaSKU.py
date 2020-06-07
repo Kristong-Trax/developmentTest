@@ -17,6 +17,7 @@ class OOSNpaSKUKpi(UnifiedCalculationsScript):
             in_store = sku_row['in_store']
             facings = sku_row['facings_all_products']
             assortment_fk = sku_row['assortment_fk']
+            # 1 for OOS, 2 for DISTRIBUTED
             result = 2 if (in_store == 1) else 1
             self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result,
                                     denominator_id=assortment_fk, score=facings)

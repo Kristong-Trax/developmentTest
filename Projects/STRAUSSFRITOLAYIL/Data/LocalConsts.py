@@ -31,3 +31,6 @@ class Consts(object):
     # external targets operation type
     SOS_KPIS = 'SOS_KPIs'
     AVA_KPIS = 'AVAILABILITY_KPIs'
+
+    # KPIs threshold
+    UNIQUE_SKUS_THRESHOLD = 5
