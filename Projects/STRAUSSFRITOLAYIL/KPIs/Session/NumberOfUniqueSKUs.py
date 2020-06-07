@@ -19,20 +19,22 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         if template.empty:
             categories = ['Core Salty']
         else:
-            categories = template['category'][0].split(",")
+            categories = template.iloc[0]['category'].split(",")
         sku_results = self.dependencies_data
         df = self.utils.match_product_in_scene_wo_hangers.copy()
         df['facings'] = 1
         store_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
             ['bay_number', 'shelf_number', 'facings']]
         # filter only specific categories
-        df = df[df['category_fk'].isin(categories)]
+        df = df[(df['category_fk'].isin(categories)) & (df['manufacturer_fk'] == self.utils.own_manuf_fk)]
         category_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
             ['bay_number', 'shelf_number', 'facings']]
-        shelves_category_percentage = category_df / store_df
-        denominator = len(shelves_category_percentage)
+        category_df.columns = ['bay_number', 'shelf_number', 'facings category']
+        join_df = store_df.merge(category_df, on=['bay_number', 'shelf_number'], how="left").fillna(0)
+        join_df['percentage'] = join_df['facings category'] / join_df['facings']
         # number of shelves with more than 50% strauss products
-        numerator = len(shelves_category_percentage[shelves_category_percentage['facings'] >= 0.5])
+        denominator = len(join_df)
+        numerator = len(join_df[join_df['percentage'] >= 0.5])
 
         # number of strauss facings on all shelves
         facings = sku_results['result'].sum()
@@ -41,7 +43,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         sadot = math.ceil((numerator + 0.001) / 5.0)
         relevant_field = fields_df[fields_df['Field'] == sadot]
         if not relevant_field.empty:
-            target = relevant_field['Target']
+            target = relevant_field['Target'].values[0]
         else:
             target = -1
         # todo: no target case

@@ -14,16 +14,15 @@ class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_BRANDS_BRAND_KPI)
         template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
                                                    Consts.NUMBER_OF_UNQIUE_BRANDS_KPI]
-        if template.empty:
-            categories = ['Crackers']
+        if len(template) == 1:
+            categories = template['category'][0].split(",")
         elif len(template) != 1:
             Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
             categories = ['Crackers']
         else:
-            categories = template['category'][0].split(",")
+            categories = ['Crackers']
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
-        own_manufacturer_matches = own_manufacturer_matches[~own_manufacturer_matches['product_type'].isin(
-            ['Other', 'Empty'])]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['product_type'].isin(['SKU'])]
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category'].isin(categories)]
         own_manufacturer_matches['facings'] = 1
         # strauss are looking at sub_brand as brand in this KPI

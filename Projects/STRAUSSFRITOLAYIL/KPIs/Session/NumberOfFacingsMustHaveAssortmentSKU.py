@@ -29,14 +29,15 @@ class NumberOfFacingsMustHaveAssortmentSKUKpi(UnifiedCalculationsScript):
         # not_existing_products_df = assortment[assortment['in_store_wo_hangers'] == 0]
         sadot_dict = {}
         for category_fk in categories:
-            df = matches[matches['category_fk'] == category_fk]
+            df = matches[(matches['category_fk'] == category_fk) & (matches['manufacturer_fk'] ==
+                                                                    self.utils.own_manuf_fk)]
             category_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
                 ['bay_number', 'shelf_number', 'facings']]
             category_df.columns = ['bay_number', 'shelf_number', 'facings category']
             join_df = store_df.merge(category_df, on=['bay_number', 'shelf_number'], how="left").fillna(0)
-            join_df['precentage'] = join_df['facings category'] / join_df['facings']
+            join_df['percentage'] = join_df['facings category'] / join_df['facings']
             # number of shelves with more than 50% strauss products
-            number_of_shelves = len(join_df[join_df['precentage'] >= 0.5])
+            number_of_shelves = len(join_df[join_df['percentage'] >= 0.5])
             # Adding 0.001 to prevent 0 sadot case
             sadot = math.ceil((number_of_shelves + 0.001) / 5.0)
             sadot_dict[category_fk] = sadot
