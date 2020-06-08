@@ -419,7 +419,7 @@ class ToolBox(GlobalSessionToolBox):
             relevant_dict = block_sequence_filter_dict[letter]
             allow_smart_tags = True
             block_result_df = self.calculate_block_for_sequence(relevant_dict, location, allow_smart_tags)
-            passed_blocks = block_result_df # stubbing future logic for threshold
+            passed_blocks = block_result_df  # stubbing future logic for threshold
             if passed_blocks.empty:
                 continue
 
@@ -914,7 +914,8 @@ class ToolBox(GlobalSessionToolBox):
             param1_list = self.remove_type_none_from_list(list(self.scif[params1].unique()))
             param2_list = self.remove_type_none_from_list(list(self.scif[params2].unique()))
             for value1 in param1_list:
-                filtered_scif_df = self.scif[self.scif[params1] == value1]
+                relevant_scif = self.scif[~self.scif["facings_ign_stack"].isin([0, None])]
+                filtered_scif_df = relevant_scif[relevant_scif[params1] == value1]
                 for value2 in param2_list:
                     reduce_scif_df = filtered_scif_df[filtered_scif_df[params2] == value2]
                     if not reduce_scif_df.empty:
