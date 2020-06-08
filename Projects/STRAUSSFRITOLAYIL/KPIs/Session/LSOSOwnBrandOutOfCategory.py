@@ -15,24 +15,33 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
         template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
                                                    Consts.LSOS_MANUFACTURER_OUT_OF_CATEGORY_KPI]
         if template.empty:
-            categories = ['Crackers', 'Core Salty']
+            template_categories = ['Crackers', 'Core Salty']
             target = -1
-        elif len(template) != 1:
-            Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
-            categories = ['Crackers', 'Core Salty']
-            target = -1
+        # elif len(template) != 1:
+        #     Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
+        #     categories = ['Crackers', 'Core Salty']
+        #     target = -1
         else:
-            categories = template['category'][0].split(",")
-            target = template['Target'][0]
-        category_fks = set(self.utils.all_products[self.utils.all_products['category'].isin(
-            categories)]['category_fk'])
+            template_categories = set(template['category'])
+        # template_category_fks = set(self.utils.all_products[self.utils.all_products[
+        #     'category'].isin(template_categories)]['category_fk'])
         target_range = 5
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['stacking_layer'] == 1]
-        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category_fk'].isin(category_fks)]
-        categories = set(own_manufacturer_matches['category_fk'])
-        for category_fk in categories:
-            category_df = own_manufacturer_matches[own_manufacturer_matches['category_fk'] == category_fk]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches[
+            'category'].isin(template_categories)]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches[
+            'product_type'].isin(['Empty', 'Other', 'SKU'])]
+        # categories = set(own_manufacturer_matches['category_fk'])
+        for category in template_categories:
+            target = template[template['category'] == category]['target']
+            if target:
+                target = target.values[0]
+            else:
+                target = -1
+            category_fk = self.utils.all_products[self.utils.all_products['category'] == category][
+                'category_fk'].values[0]
+            category_df = own_manufacturer_matches[own_manufacturer_matches['category'] == category]
             category_linear_length = category_df['width_mm_advance'].sum()
             # strauss are looking at sub_brand as brand in this KPI
             sub_brands = set(category_df['sub_brand_fk'])
