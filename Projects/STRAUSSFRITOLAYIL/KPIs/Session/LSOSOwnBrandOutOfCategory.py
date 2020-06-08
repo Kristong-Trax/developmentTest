@@ -35,7 +35,7 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
         # categories = set(own_manufacturer_matches['category_fk'])
         for category in template_categories:
             target = template[template['category'] == category][Consts.TARGET]
-            if target:
+            if not target.empty:
                 target = target.values[0]
             else:
                 target = -1
