@@ -26,9 +26,14 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.add_sub_brand_to_scif()
         self.match_probe_in_scene = self.ps_data.get_product_special_attribute_data(self.session_uid)
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
-        self.match_product_in_scene = self.match_product_in_scene.merge(self.scif[Consts.RELEVENT_FIELDS],
-                                                                        on=["scene_fk", "product_fk"], how="left")
-        self.filter_scif_and_mpis_to_contain_only_primary_shelf()
+        if not self.match_product_in_scene.empty:
+            self.match_product_in_scene = self.match_product_in_scene.merge(self.scif[Consts.RELEVENT_FIELDS],
+                                                                            on=["scene_fk", "product_fk"], how="left")
+            self.filter_scif_and_mpis_to_contain_only_primary_shelf()
+        else:
+            unique_fields = [ele for ele in Consts.RELEVENT_FIELDS if ele not in ["product_fk", "scene_fk"]]
+            self.match_product_in_scene = pd.concat([self.match_product_in_scene,
+                                                     pd.DataFrame(columns=unique_fields)], axis=1)
         self.match_product_in_scene_wo_hangers = self.exclude_special_attribute_products(df=self.match_product_in_scene)
         self.visit_date = self.data_provider[Data.VISIT_DATE]
         self.session_info = self.data_provider[Data.SESSION_INFO]
@@ -79,8 +84,8 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         if assortment_result.empty:
             return assortment_result
         assortment_result['in_store_wo_hangers'] = assortment_result['in_store'].copy()
-        products_in_session = self.match_product_in_scene['product_fk'].values
-        products_in_session_wo_hangers = self.match_product_in_scene_wo_hangers['product_fk'].values
+        products_in_session = list(self.match_product_in_scene['product_fk'].values)
+        products_in_session_wo_hangers = list(self.match_product_in_scene_wo_hangers['product_fk'].values)
         assortment_result.loc[assortment_result['product_fk'].isin(products_in_session), 'in_store'] = 1
         assortment_result.loc[assortment_result['product_fk'].isin(products_in_session_wo_hangers),
                               'in_store_wo_hangers'] = 1
