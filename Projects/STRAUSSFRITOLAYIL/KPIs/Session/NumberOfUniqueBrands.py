@@ -23,7 +23,10 @@ class NumberOfUniqueBrandsKpi(UnifiedCalculationsScript):
         else:
             target = -1
         # strauss are looking at sub_brand as brand in this KPI
-        number_of_sub_brands = len(sku_results[sku_results['result'] >= 1])
+        if sku_results.empty:
+            number_of_sub_brands = 0
+        else:
+            number_of_sub_brands = len(sku_results[sku_results['result'] >= 1])
         score = 1 if number_of_sub_brands >= target else 0
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
                                 result=number_of_sub_brands, denominator_id=self.utils.store_id, score=score)

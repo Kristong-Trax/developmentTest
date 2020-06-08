@@ -37,7 +37,10 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         numerator = len(join_df[join_df['percentage'] >= 0.5])
 
         # number of strauss facings on all shelves
-        facings = sku_results['result'].sum()
+        if sku_results.empty:
+            facings = 0
+        else:
+            facings = sku_results['result'].sum()
 
         # Adding 0.001 to prevent 0 sadot case
         sadot = math.ceil((numerator + 0.001) / 5.0)
