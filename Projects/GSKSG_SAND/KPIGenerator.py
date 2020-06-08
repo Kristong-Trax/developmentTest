@@ -7,7 +7,7 @@ from KPIUtils_v2.DB.Common import Common
 
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-__author__ = 'urid'
+__author__ = 'jasmine'
 
 
 class Generator:
@@ -29,7 +29,6 @@ class Generator:
         if self.tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         self.tool_box.main_calculation()
-        # for kpi_set_fk in self.tool_box.kpi_static_data['kpi_set_fk'].unique().tolist():
-        #     score = self.tool_box.main_calculation(kpi_set_fk=kpi_set_fk)
-        #     self.common.write_to_db_result(kpi_set_fk, self.tool_box.LEVEL1, score)
-        self.common.commit_results_data()
+
+
+
