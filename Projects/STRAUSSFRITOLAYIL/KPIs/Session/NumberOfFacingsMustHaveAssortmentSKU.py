@@ -17,7 +17,7 @@ class NumberOfFacingsMustHaveAssortmentSKUKpi(UnifiedCalculationsScript):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_FACINGS_MUST_HAVE_KPI)
         template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
                                                    Consts.NUMBER_OF_FACINGS_MUST_HAVE_KPI]
-        fields_df = template[['EAN Code', 'Field', 'Target']]
+        fields_df = template[[Consts.EAN_CODE, Consts.FIELD, Consts.TARGET]]
         matches = self.utils.match_product_in_scene_wo_hangers.copy()
         matches['facings'] = 1
         store_df = matches.groupby(['bay_number', 'shelf_number']).sum().reset_index()[

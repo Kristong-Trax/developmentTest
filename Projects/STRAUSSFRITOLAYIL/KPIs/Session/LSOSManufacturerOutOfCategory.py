@@ -22,8 +22,8 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
             categories = ['Crackers', 'Core Salty']
             target = -1
         else:
-            categories = template['category'][0].split(",")
-            target = template['Target'][0]
+            categories = template[Consts.CATEGORY][0].split(",")
+            target = template[Consts.TARGET][0]
         template_category_fks = set(self.utils.all_products[self.utils.all_products['category'].isin(
             categories)]['category_fk'])
         session_category_fks = set(self.utils.match_product_in_scene_wo_hangers['category_fk'])

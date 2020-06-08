@@ -22,7 +22,7 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
         #     categories = ['Crackers', 'Core Salty']
         #     target = -1
         else:
-            template_categories = set(template['category'])
+            template_categories = set(template[Consts.CATEGORY])
         # template_category_fks = set(self.utils.all_products[self.utils.all_products[
         #     'category'].isin(template_categories)]['category_fk'])
         target_range = 5
@@ -34,7 +34,7 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
             'product_type'].isin(['Empty', 'Other', 'SKU'])]
         # categories = set(own_manufacturer_matches['category_fk'])
         for category in template_categories:
-            target = template[template['category'] == category]['target']
+            target = template[template['category'] == category][Consts.TARGET]
             if target:
                 target = target.values[0]
             else:

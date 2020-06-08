@@ -15,11 +15,11 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_SKUS_KPI)
         template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
                                                    Consts.NUMBER_OF_UNQIUE_SKUS_KPI]
-        fields_df = template[['Field', 'Target']]
+        fields_df = template[[Consts.FIELD, Consts.TARGET]]
         if template.empty:
             categories = ['Core Salty']
         else:
-            categories = template.iloc[0]['category'].split(",")
+            categories = template.iloc[0][Consts.CATEGORY].split(",")
         sku_results = self.dependencies_data
         df = self.utils.match_product_in_scene_wo_hangers.copy()
         df['facings'] = 1

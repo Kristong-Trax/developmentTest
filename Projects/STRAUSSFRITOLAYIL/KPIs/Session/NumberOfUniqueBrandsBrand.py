@@ -15,7 +15,7 @@ class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
         template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
                                                    Consts.NUMBER_OF_UNQIUE_BRANDS_KPI]
         if len(template) == 1:
-            categories = template['category'][0].split(",")
+            categories = template[Consts.CATEGORY][0].split(",")
         elif len(template) != 1:
             Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
             categories = ['Crackers']

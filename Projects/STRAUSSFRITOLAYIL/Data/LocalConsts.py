@@ -17,6 +17,15 @@ class Consts(object):
     SKU_FACINGS_KPI = 'SKU Facings'
     SKU_LINEAR_KPI = 'SKU Linear'
 
+    # Template params
+    TARGET = "Target"
+    CATEGORY = 'category'
+    REGION = 'region'
+    STORE_TYPE = 'Store Type'
+    BRAND = 'brand'
+    EAN_CODE = 'EAN Code'
+    FIELD = 'Field'
+
     # Consts
     PRIMARY_SHELF = 'Primary Shelf'
     REPLACMENT_EAN_CODES = "Replacement Ean Codes"
@@ -25,8 +34,8 @@ class Consts(object):
                        'category', 'category_fk', 'sub_brand', 'sub_brand_fk', 'location_type']
 
     # external targets keys
-    KEY_FIELDS = ['Store Type', 'region', 'category', 'brand', 'EAN Code', 'Field']
-    DATA_FIELDS = ['Target']
+    KEY_FIELDS = [STORE_TYPE, REGION, CATEGORY, BRAND, EAN_CODE, FIELD]
+    DATA_FIELDS = [TARGET]
 
     # external targets operation type
     SOS_KPIS = 'SOS_KPIs'

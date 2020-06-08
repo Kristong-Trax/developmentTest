@@ -17,7 +17,7 @@ class NumberOfUniqueSKUsSKUKpi(UnifiedCalculationsScript):
         if template.empty:
             categories = ['Core Salty']
         else:
-            categories = template.iloc[0]['category'].split(",")
+            categories = template.iloc[0][Consts.CATEGORY].split(",")
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['product_type'].isin(['SKU'])]
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category'].isin(categories)]
