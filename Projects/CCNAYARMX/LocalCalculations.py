@@ -6,7 +6,7 @@ from Projects.CCNAYARMX.Calculations import Calculations
 
 
 if __name__ == '__main__':
-    # LoggerInitializer.init('ccnayarmx calculations')
+    LoggerInitializer.init('ccnayarmx calculations')
     Config.init()
     project_name = 'ccnayarmx'
     data_provider = KEngineDataProvider(project_name)
