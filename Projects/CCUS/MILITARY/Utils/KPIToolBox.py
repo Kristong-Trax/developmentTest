@@ -1,12 +1,15 @@
 from __future__ import division
+import os
 
-# from KPIUtils_v2.Utils.Consts.DataProvider import
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Algo.Calculations.Core.DataProvider import Data
 
 from Projects.CCUS.MILITARY.Utils import Const
 
 __author__ = 'trevaris'
+
+PATH = os.path.dirname(__file__)
+COLUMNS = ['scene_match_fk', 'scene_fk', 'bay_number', 'manufacturer_fk', 'product_fk', 'category_fk', 'template_fk']
 
 
 class MilitaryToolBox:
@@ -16,47 +19,53 @@ class MilitaryToolBox:
         self.common = Common(self.data_provider)
         self.session_uid = self.data_provider.session_uid
         self.own_manufacturer = self.data_provider[Data.OWN_MANUFACTURER].iloc[0]['param_value']
-        self.match_product_in_scene = data_provider[Data.MATCHES]
-        self.products = data_provider[Data.PRODUCTS]
-        self.scene_info = data_provider[Data.SCENES_INFO]
         self.store_info = data_provider[Data.STORE_INFO]
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.products = self.data_provider[Data.ALL_PRODUCTS]
 
+        self.match_product_in_scene = data_provider[Data.MATCHES]
+        self.products = data_provider[Data.PRODUCTS]
+        self.scene_info = data_provider[Data.SCENES_INFO]
+
         self.mpis = self.match_product_in_scene \
             .merge(self.products, on='product_fk', suffixes=['', '_p']) \
-            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])
+            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])[COLUMNS]
 
     def main_calculation(self):
         if self.filter_df(self.store_info, {'region_name': Const.REGION}).empty:
             return
 
         self.calculate_compliant_bay_kpi()
+        # self.calculate_scene_availability_kpi()
+        # self.calculate_facings_sos_kpi()
+        self.calculate_share_of_scenes_kpi()
 
     def calculate_compliant_bay_kpi(self):
         for kpi in Const.KPIs[Const.COMPLIANT_BAY_COUNT]:
             self.calculate_compliant_bay(
-                kpi['name'], kpi['template'], kpi['manufacturers'], kpi['exclude_manufacturers'])
+                kpi['name'], kpi['template'], kpi['manufacturer'], kpi['exclude_manufacturers'])
 
     def calculate_compliant_bay(self, kpi, templates, manufacturers, exclude_manufacturers=False, sos_threshold=.501):
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
         template_ids = self.get_template_fks(templates)
         manufacturer_ids = self.get_manufacturer_fks(manufacturers)
 
-        filtered_df = self.filter_df(self.mpis, filters={'template_fk': template_ids})
-        
-        if filtered_df.empty:
+        template_df = self.filter_df(self.mpis, filters={'template_fk': template_ids})
+
+        num_df = self.filter_df(template_df, {'manufacturer_fk': manufacturer_ids}, exclude=exclude_manufacturers) \
+            .groupby(by=['scene_fk', 'bay_number'], as_index=False) \
+            .count() \
+            .rename(columns={'scene_match_fk': 'count'})
+
+        if num_df.empty:
             return
 
-        num_df = self.filter_df(filtered_df, {'manufacturer_fk': manufacturer_ids})
-        num_df = num_df.groupby(by=['scene_fk', 'bay_number'], as_index=False).count()
-        num_df.rename(columns={'scene_match_fk': 'count'}, inplace=True)
+        den_df = template_df.groupby(by=['scene_fk', 'bay_number'], as_index=False) \
+            .count() \
+            .rename(columns={'scene_match_fk': 'count'})
 
-        den_df = filtered_df.groupby(['scene_fk', 'bay_number'], as_index=False).count()
-        den_df.rename(columns={'scene_match_fk': 'count'}, inplace=True)
-
-        result_df = num_df.merge(den_df, how='left', on=['scene_fk', 'bay_number'])
-        result_df['sos'] = num_df['count'] / den_df['count']
+        result_df = num_df.merge(den_df, how='left', on=['scene_fk', 'bay_number'], suffixes=['_num', '_den'])
+        result_df['sos'] = result_df['count_num'] / result_df['count_den']
         result_df['result'] = result_df.apply(lambda row: 1 if row['sos'] >= sos_threshold else 0, axis=1)
         result = sum(result_df['result'])
 
@@ -64,20 +73,109 @@ class MilitaryToolBox:
             fk=kpi_id,
             numerator_id=self.own_manufacturer,
             numerator_result=result,
-            denominator_id=self.store_info.iloc[0]['store_fk'],
+            denominator_id=self.store_info['store_fk'][0],
             denominator_result=1,
             result=result
         )
 
+    def calculate_scene_availability_kpi(self):
+        for kpi in Const.KPIs[Const.SCENE_AVAILABILITY]:
+            self.calculate_scene_availability(
+                kpi=kpi['name'],
+                template=kpi['template']
+            )
+
+    def calculate_scene_availability(self, kpi, template):
+        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
+        template_ids = self.get_template_fks(template)
+
+        filtered_df = self.filter_df(self.mpis,
+                                     filters={
+                                         'template_fk': template_ids
+                                     })
+
+        self.common.write_to_db_result(
+            fk=kpi_id,
+        )
+
+    def calculate_facings_sos_kpi(self):
+        for kpi in Const.KPIs[Const.FACINGS_SOS]:
+            self.calculate_facings_sos(
+                kpi[Const.NAME],
+                kpi[Const.TEMPLATE],
+                kpi[Const.PRODUCT]
+            )
+
+    def calculate_facings_sos(self, kpi, templates, products):
+        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
+        template_ids = self.get_template_fks(templates)
+        product_ids = self.get_product_fks(products)
+
+        filtered_df = self.filter_df(self.mpis, filters={'template_fk': template_ids})
+
+        if filtered_df.empty:
+            return
+
+        num_df = filtered_df.groupby(by=['manufacturer_fk', 'category_fk'], as_index=False).count()
+        num_df.rename({'scene_match_fk': 'num_count'})
+        num_df['den_count'] = num_df.groupby('category_fk', as_index=False).count()['num_count']
+
+        self.common.write_to_db_result(
+            fk=kpi_id,
+        )
+
+    def calculate_share_of_scenes_kpi(self):
+        for kpi in Const.KPIs[Const.SHARE_OF_SCENES]:
+            self.calculate_share_of_scenes(
+                kpi['name'],
+                kpi['template']
+            )
+
+    def calculate_share_of_scenes(self, kpi, templates):
+        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
+        template_ids = self.get_template_fks(templates)
+
+        template_df = self.filter_df(self.mpis, {'template_fk': template_ids})
+
+        category_df = template_df.groupby(by=['category_fk', 'scene_fk'], as_index=False).count()
+        category_df['scene_count'] = 1
+        category_df = category_df.groupby(by=['category_fk'], as_index=False).count()[['category_fk', 'scene_count']]
+
+        product_count = template_df.groupby(by=['category_fk', 'scene_fk', 'manufacturer_fk'], as_index=False) \
+            .count() \
+            .rename(columns={'scene_match_fk': 'count'})
+        scene_max = product_count[
+            product_count
+                .groupby(by=['category_fk', 'scene_fk'])['count']
+                .transform(max) == product_count['count']]
+        scene_max['count'] = 1
+        scene_max_count = scene_max.groupby(by=['category_fk', 'manufacturer_fk'], as_index=False).count()
+        scene_max_count = scene_max_count.merge(category_df, on='category_fk')
+
+        for manufacturer_category in scene_max_count.itertuples():
+            self.common.write_to_db_result(
+                fk=kpi_id,
+                numerator_id=manufacturer_category['manufacturer_fk'],
+                numerator_result=manufacturer_category['count'],
+                denominator_id=manufacturer_category['category_fk'],
+                denominator_result=manufacturer_category['scene_count'],
+                result=manufacturer_category['count'] / manufacturer_category['scene_count']
+            )
+
     def get_template_fks(self, template_names):
-        if not isinstance(template_names, list):
+        if not hasattr(template_names, '__iter__'):
             template_names = [template_names]
         return self.templates[self.templates['template_name'].isin(template_names)]['template_fk']  # unique?
 
     def get_manufacturer_fks(self, manufacturer_names):
-        if not isinstance(manufacturer_names, list):
+        if not hasattr(manufacturer_names, '__iter__'):
             manufacturer_names = [manufacturer_names]
         return self.products[self.products['manufacturer_name'].isin(manufacturer_names)]['manufacturer_fk'].unique()
+
+    def get_product_fks(self, product_names):
+        if not hasattr(product_names, '__iter__'):
+            product_names = [product_names]
+        return self.products[self.products['product_name'].isin(product_names)]['product_fk']  # unique?
 
     @staticmethod
     def filter_df(df, filters, exclude=False):

@@ -9,6 +9,7 @@ from Projects.CCUS.MILITARY.KPIGenerator import MilitaryGenerator
 __author__ = "trevaris"
 
 test_sessions = [
+    '1e55cbe5-027d-450a-92c6-bcbf31661dd7',
     '59e685be-0734-4b6f-8097-fcd09ef777b9',
 ]
 
@@ -21,7 +22,7 @@ def run_sessions(sessions):
 
 
 def run_session(session_uid):
-    print("= {} =".format(session_uid))
+    print("========== {} ==========".format(session_uid))
     data_provider.load_session_data(session_uid)
     output = Output()
     MilitaryGenerator(data_provider, output).main_function()
