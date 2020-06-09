@@ -8,9 +8,8 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'straussfritolayil'
 
-    session_uid, session_id = '8B184570-DCA6-4A10-803A-06A35B66CA01', 22 # empty session
-    # session_uid = '865aa384-4b22-4f37-90cd-d9fd2d6b9072'
-    # session_id = 78
+    # session_uid, session_id = '8B184570-DCA6-4A10-803A-06A35B66CA01', 22 # empty session
+    session_uid, session_id = '865aa384-4b22-4f37-90cd-d9fd2d6b9072', 78
 
     message_session = {'event_name': 'SESSION_PROCESSED', 'timestamp': '', 'project_name': project_name,
                        'session_uid': session_uid, 'session_id': session_id, 'scene_ids': [], 'scene_uids': [],

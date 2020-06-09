@@ -14,18 +14,18 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.LSOS_MANUFACTURER_OUT_OF_CATEGORY_KPI)
         template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
                                                    Consts.LSOS_MANUFACTURER_OUT_OF_CATEGORY_KPI]
+
         if template.empty:
-            categories = ['Crackers', 'Core Salty']
+            template_categories = ['Crackers', 'Core Salty']
             target = -1
-        elif len(template) != 1:
-            Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
-            categories = ['Crackers', 'Core Salty']
-            target = -1
+        # elif len(template) != 1:
+        #     Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
+        #     categories = ['Crackers', 'Core Salty']
+        #     target = -1
         else:
-            categories = template[Consts.CATEGORY][0].split(",")
-            target = template[Consts.TARGET][0]
+            template_categories = set(template[Consts.CATEGORY])
         template_category_fks = set(self.utils.all_products[self.utils.all_products['category'].isin(
-            categories)]['category_fk'])
+            template_categories)]['category_fk'])
         session_category_fks = set(self.utils.match_product_in_scene_wo_hangers['category_fk'])
         category_fks = set(template_category_fks) - session_category_fks
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()

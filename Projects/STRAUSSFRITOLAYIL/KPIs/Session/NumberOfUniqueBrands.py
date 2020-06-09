@@ -16,7 +16,7 @@ class NumberOfUniqueBrandsKpi(UnifiedCalculationsScript):
                                                    Consts.NUMBER_OF_UNQIUE_BRANDS_KPI]
         sku_results = self.dependencies_data
         if len(template) == 1:
-            target = template[Consts.TARGET][0]
+            target = template.iloc[0][Consts.TARGET]
         elif len(template) != 1:
             Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
             target = -1
