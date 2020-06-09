@@ -1,6 +1,7 @@
 from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
-from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
+# from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
+from Projects.GSKJP_SAND.Utils.Global.KPIGenerator import GSKGenerator
 from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts, HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -560,11 +561,12 @@ class GSKJP_SANDToolBox:
 
         # Calculate KPI : GSK_POS_DISTRIBUTION_STORE
         assortment_pos['in_store'] = assortment_pos['in_store'].astype('int')
-        # TODO: Make sure No duplicate in assortment_pos by product_fk
+        # TODO: Multiple-granular groups for a store's policy - Remove Duplicate product_fks if Any
         Log.info("Dropping duplicate product_fks accros multiple-granular groups")
         Log.info("Before : {}".format(len(assortment_pos)))
         assortment_pos = assortment_pos.drop_duplicates(subset=[ProductsConsts.PRODUCT_FK])
         Log.info("After : {}".format(len(assortment_pos)))
+
         # TODO: Make sure product type is "POS" only
 
         # Implement the logic to calculate the numerator & denominator
