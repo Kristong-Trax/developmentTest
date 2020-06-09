@@ -4,7 +4,7 @@ __author__ = 'Nicolas Keeton'
 
 
 class Consts(object):
-    template_file_name = "KPI Template - Working 5-11-2020 v7.xlsx"
+    template_file_name = "KPI Template - Working 6-08-2020 v8.xlsx"
     KPI_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                      template_file_name)
 

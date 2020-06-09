@@ -59,7 +59,7 @@ class CalculateKpi(LiveSessionBaseClass):
         if lvl3_result.empty:
             Log.warning('Assortment is Empty for this session')
             return
-        # self.assortment_result_base_actions(lvl3_result)  # this function will have the actions affect on lvl3_result
+        self.assortment_result_base_actions(lvl3_result)  # this function will have the actions affect on lvl3_result
         lvl_2_result = self.assortment.calculate_lvl2_assortment(lvl3_result)
         lvl_2_result.rename(columns={'passes': 'numerator_result', 'total': 'denominator_result', 'kpi_fk_lvl2': 'kpi_level_2_fk'},
                             inplace=True)
