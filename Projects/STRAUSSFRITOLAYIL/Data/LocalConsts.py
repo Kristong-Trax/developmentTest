@@ -43,3 +43,8 @@ class Consts(object):
 
     # KPIs threshold
     UNIQUE_SKUS_THRESHOLD = 5
+
+    # kpi score values
+    PASS = 4
+    FAIL = 5
+    NO_TARGET = 6

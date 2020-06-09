@@ -4,7 +4,7 @@ from Trax.Apps.Services.KEngine.Handlers.UnifiedHandler import KEngineUnifiedHan
 from mock import MagicMock
 
 if __name__ == '__main__':
-    LoggerInitializer.init('straussfritolayil calculations')
+    LoggerInitializer.init('KEngine')
     Config.init()
     project_name = 'straussfritolayil'
 
