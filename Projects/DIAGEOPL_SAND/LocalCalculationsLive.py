@@ -5,7 +5,7 @@ from Projects.DIAGEOPL_SAND.LiveSessionKpis.Calculation import CalculateKpi
 
 if __name__ == '__main__':
     Config.init()
-    LoggerInitializer.init('DIAGEOPL Live local calculations')
+    LoggerInitializer.init('KEngine')
     project_name = 'diageopl-sand'
     session_uids = [
 
