@@ -61,7 +61,8 @@ class TestPngcn(TestUnitCase):
                    'session_info': session_info,
                    'store_fk': session_info['store_fk'].iloc[0],
                    'visit_date': session_info['visit_date'].iloc[0],
-                   'session_and_store_info': pd.DataFrame({'values': [4, 67, 8, 2]})}
+                   'session_and_store_info': pd.DataFrame({'values': [4, 67, 8, 2]}),
+                   'templates': pd.DataFrame([{'template_fk': None}])}
 
         # decode manufacturer_name (to work around get_png_manufacturer_fk method)
         my_dict['all_products']['manufacturer_name'] = my_dict['all_products']['manufacturer_name'].str.decode(
@@ -453,6 +454,20 @@ class TestPngcn(TestUnitCase):
         kpi_results = scene_tool_box.get_eye_level_shelves(data)
         self.assertEqual(len(kpi_results[kpi_results['bay_number'] == 3]), 4, 'expects to have 4 lines with bay number 3')
         self.assertTrue(kpi_results[kpi_results['bay_number'] == 1].empty, "Expected to have an empty df where bay number =1")
+
+        # try blade & razor template
+        blade_template_fk = 144
+        self.data_provider_mock['templates'] = pd.DataFrame([{'template_fk': 144}])
+        scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
+                                        self.common_mock, 16588190,
+                                        self.data_provider_mock)
+        scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
+        scene_tool_box.common.write_to_db_result = MagicMock()
+        kpi_results = scene_tool_box.get_eye_level_shelves(data, template_fk=blade_template_fk)
+        self.assertEqual(len(kpi_results[kpi_results['bay_number'] == 3]), 2,
+                         'expects to have only 2 lines with bay number 3 since the eye level for blade is [2, 3]')
+        self.assertEqual(len(kpi_results[kpi_results['bay_number'] == 2]), 1,
+                         'expects to have only 1 line with bay number 2 since the eye level for blade is [2, 3]')
 
     # def test_calculate_sequence_eye_level(self):
     #     scene_tool_box = PngcnSceneKpis(self.ProjectConnector_mock,
