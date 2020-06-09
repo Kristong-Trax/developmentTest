@@ -6,7 +6,9 @@ def get(coll, keys):
 NAME = 'name'
 TEMPLATE = 'template'
 MANUFACTURER = 'manufacturer'
+CATEGORY = 'category'
 PRODUCT = 'product'
+RESULTS = 'results'
 
 COMPLIANT_BAY_COUNT = 'compliant_bay_count'
 SCENE_AVAILABILITY = 'scene_availability'
@@ -32,16 +34,17 @@ EMPTY = 'empty'
 FILTER = 'filter'
 NUMERATOR = 'numerator'
 DENOMINATOR = 'denominator'
+CONTEXT = 'context'
 
 KEY_PACKAGE = 'KEY PACKAGE'
 
 TEMPLATES = {
-    'main_coolers': 'M - Main Checkout Coolers Only',
-    'self_coolers': 'M - Self Check-Out Coolers',
+    MAIN_COOLERS: 'M - Main Checkout Coolers Only',
+    SELF_COOLERS: 'M - Self Check-Out Coolers',
     DISPLAY: 'M - Display (Pallet Drop/Rack/ Shipper)',
     ENDCAP: 'M - Displays Endcap Only',
     FRONT_ENTRANCE: 'M - Front Entrance Primary Displays Only',
-    'beverage_aisle': 'M - Beverage Aisle/Shelf - All (Separated by Category)',
+    BEVERAGE_AISLE: 'M - Beverage Aisle/Shelf - All (Separated by Category)',
 }
 
 MANUFACTURERS = {
@@ -135,24 +138,23 @@ KPIs = {
         {
             NAME: 'SOVI Main Bev Aisle Man win Cat',
             TEMPLATE: [TEMPLATES[BEVERAGE_AISLE]],
-            NUMERATOR: {},
-            DENOMINATOR: {},
-            PRODUCT: [PRODUCTS[EMPTY]],
-            FILTER: {
-
-            }
+            NUMERATOR: MANUFACTURER,
+            DENOMINATOR: CATEGORY,
+            CONTEXT: ''
         },
         {
             NAME: '% Empty By Manufacturer within Category',
             TEMPLATE: [TEMPLATES[BEVERAGE_AISLE]],
-            PRODUCT: [PRODUCTS[EMPTY]]
+            NUMERATOR: EMPTY,
+            DENOMINATOR: MANUFACTURER,
+            CONTEXT: CATEGORY
         },
         {
             NAME: 'SOVI Displays (all scenes) Man within Cat',
-            TEMPLATE: [TEMPLATES[DISPLAY], TEMPLATES[ENDCAP], TEMPLATES[FRONT_ENTRANCE]],
             TEMPLATE: get(TEMPLATES, [DISPLAY, ENDCAP, FRONT_ENTRANCE]),
-            TEMPLATE: [TEMPLATES.get(key) for key in [DISPLAY, ENDCAP, FRONT_ENTRANCE]],
-            PRODUCT: [None]
+            NUMERATOR: MANUFACTURER,
+            DENOMINATOR: CATEGORY,
+            CONTEXT: ''
         },
     ],
     SHARE_OF_SCENES: [

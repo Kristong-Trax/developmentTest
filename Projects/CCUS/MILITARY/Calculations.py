@@ -22,7 +22,7 @@ def run_sessions(sessions):
 
 
 def run_session(session_uid):
-    print("========== {} ==========".format(session_uid))
+    print("==================== {} ====================".format(session_uid))
     data_provider.load_session_data(session_uid)
     output = Output()
     MilitaryGenerator(data_provider, output).main_function()

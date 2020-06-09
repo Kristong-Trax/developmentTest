@@ -1,5 +1,6 @@
 from __future__ import division
 import os
+import pandas as pd
 
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -31,21 +32,35 @@ class MilitaryToolBox:
             .merge(self.products, on='product_fk', suffixes=['', '_p']) \
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])[COLUMNS]
 
+        with open(os.path.join(PATH, "mock_data.csv"), 'rb') as f:
+            self.mpis = pd.read_csv(f)
+
     def main_calculation(self):
-        if self.filter_df(self.store_info, {'region_name': Const.REGION}).empty:
-            return
+        # if self.filter_df(self.store_info, {'region_name': Const.REGION}).empty:
+        #     return
 
         self.calculate_compliant_bay_kpi()
         # self.calculate_scene_availability_kpi()
-        # self.calculate_facings_sos_kpi()
+        self.calculate_facings_sos_kpi()
         self.calculate_share_of_scenes_kpi()
 
     def calculate_compliant_bay_kpi(self):
+        """Iterates through Compliant Bay type KPI."""
         for kpi in Const.KPIs[Const.COMPLIANT_BAY_COUNT]:
             self.calculate_compliant_bay(
                 kpi['name'], kpi['template'], kpi['manufacturer'], kpi['exclude_manufacturers'])
 
     def calculate_compliant_bay(self, kpi, templates, manufacturers, exclude_manufacturers=False, sos_threshold=.501):
+        """
+        Calculates the something I've already forgotten.
+
+        :param kpi: Name of KPI.
+        :param templates:
+        :param manufacturers:
+        :param exclude_manufacturers: If True, exclues `manufacturers` in filter.
+        :param sos_threshold: Minimum percentage to determine display branding.
+        """
+
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
         template_ids = self.get_template_fks(templates)
         manufacturer_ids = self.get_manufacturer_fks(manufacturers)
@@ -79,6 +94,8 @@ class MilitaryToolBox:
         )
 
     def calculate_scene_availability_kpi(self):
+        """Iterates through Scene Availability type KPI"""
+
         for kpi in Const.KPIs[Const.SCENE_AVAILABILITY]:
             self.calculate_scene_availability(
                 kpi=kpi['name'],
@@ -86,6 +103,10 @@ class MilitaryToolBox:
             )
 
     def calculate_scene_availability(self, kpi, template):
+        """
+
+        """
+
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
         template_ids = self.get_template_fks(template)
 
@@ -99,32 +120,59 @@ class MilitaryToolBox:
         )
 
     def calculate_facings_sos_kpi(self):
+        """Iterates through Facings SOS type KPI."""
+
         for kpi in Const.KPIs[Const.FACINGS_SOS]:
             self.calculate_facings_sos(
                 kpi[Const.NAME],
                 kpi[Const.TEMPLATE],
-                kpi[Const.PRODUCT]
+                kpi[Const.NUMERATOR],
+                kpi[Const.DENOMINATOR],
+                kpi[Const.CONTEXT]
             )
 
-    def calculate_facings_sos(self, kpi, templates, products):
+    def calculate_facings_sos(self, kpi, templates, numerator, denominator, context):
+        """
+        Calculates the SOS for manufacturer in category.
+
+        :param kpi: The KPI name.
+        :param templates: The list of templates to filter by.
+        :param numerator:
+        :param denominator:
+        :param context:
+        """
+
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
         template_ids = self.get_template_fks(templates)
-        product_ids = self.get_product_fks(products)
 
-        filtered_df = self.filter_df(self.mpis, filters={'template_fk': template_ids})
+        template_df = self.filter_df(self.mpis, filters={'template_fk': template_ids})
+        empty_df = self.filter_df(template_df, filters={'product_fk': 0}) \
+            .groupby(by=['category_fk', 'manufacturer_fk'], as_index=False) \
+            .count()[['category_fk', 'manufacturer_fk', 'scene_match_fk']] \
+            .rename(columns={'scene_match_fk': 'empty_count'})
+        cat_man = template_df.groupby(by=['category_fk', 'manufacturer_fk'], as_index=False) \
+            .count() \
+            .rename(columns={'scene_match_fk': 'manufacturer_count'})
+        cat_count = cat_man.groupby('category_fk', as_index=False) \
+            .sum() \
+            .rename(columns={'manufacturer_count': 'category_count'})[['category_fk', 'category_count']]
+        cat_man = cat_man.merge(empty_df, on=['category_fk', 'manufacturer_fk'])
+        cat_man_count = cat_man.merge(cat_count, on='category_fk')
 
-        if filtered_df.empty:
-            return
-
-        num_df = filtered_df.groupby(by=['manufacturer_fk', 'category_fk'], as_index=False).count()
-        num_df.rename({'scene_match_fk': 'num_count'})
-        num_df['den_count'] = num_df.groupby('category_fk', as_index=False).count()['num_count']
-
-        self.common.write_to_db_result(
-            fk=kpi_id,
-        )
+        for _, row in cat_man_count.iterrows():
+            self.common.write_to_db_result(
+                fk=kpi_id,
+                numerator_id=row[numerator+'_fk'],
+                numerator_result=row[numerator+'_count'],
+                denominator_id=row[denominator+'_fk'],
+                denominator_result=row[denominator+'_count'],
+                context_id=row.get(context+'_fk'),
+                result=row[numerator+'_count'] / row[denominator+'_count'],
+            )
 
     def calculate_share_of_scenes_kpi(self):
+        """Iterates through Share of Scenes type KPI."""
+
         for kpi in Const.KPIs[Const.SHARE_OF_SCENES]:
             self.calculate_share_of_scenes(
                 kpi['name'],
@@ -132,6 +180,13 @@ class MilitaryToolBox:
             )
 
     def calculate_share_of_scenes(self, kpi, templates):
+        """
+        Calculates the number manufacturer-plurality scenes for manufacturer in category.
+
+        :param kpi: Name of KPI.
+        :param templates: List of templates to filter by.
+        """
+
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
         template_ids = self.get_template_fks(templates)
 
@@ -149,8 +204,9 @@ class MilitaryToolBox:
                 .groupby(by=['category_fk', 'scene_fk'])['count']
                 .transform(max) == product_count['count']]
         scene_max['count'] = 1
-        scene_max_count = scene_max.groupby(by=['category_fk', 'manufacturer_fk'], as_index=False).count()
-        scene_max_count = scene_max_count.merge(category_df, on='category_fk')
+        scene_max_count = scene_max.groupby(by=['category_fk', 'manufacturer_fk'], as_index=False) \
+            .count() \
+            .merge(category_df, on='category_fk')
 
         for manufacturer_category in scene_max_count.itertuples():
             self.common.write_to_db_result(
@@ -179,6 +235,15 @@ class MilitaryToolBox:
 
     @staticmethod
     def filter_df(df, filters, exclude=False):
+        """
+        Filters dataframe based on `filters`.
+
+        :param df: Dataframe to be filtered.
+        :param filters: Dictionary of column-value pairs to filter by.
+        :param exclude: If true, filter excludes values in `filters`.
+        :return: Returns filtered dataframe.
+        """
+
         for key, val in filters.items():
             if not hasattr(val, '__iter__'):
                 val = [val]
