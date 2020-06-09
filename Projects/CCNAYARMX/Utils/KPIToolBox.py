@@ -356,9 +356,11 @@ class ToolBox(GlobalSessionToolBox):
             count_of_bays_in_template = 0
 
             for relevant_scene_fk in set(relevant_template_fk_scif[SCENE_FK]):
-                bay_count = len(set(
-                    relevant_template_fk_scif[relevant_template_fk_scif[SCENE_FK].isin([relevant_scene_fk])][
-                        BAY_NUMBER]))
+                all_bay_in_scene = \
+                relevant_template_fk_scif[relevant_template_fk_scif[SCENE_FK].isin([relevant_scene_fk])][
+                    BAY_NUMBER].unique()
+                positive_bay = all_bay_in_scene[all_bay_in_scene > 0]
+                bay_count = len(positive_bay)
                 count_of_bays_in_template = count_of_bays_in_template + bay_count
 
             self.common.write_to_db_result(fk=kpi_fk, numerator_id=relevant_template_fk,
@@ -378,7 +380,9 @@ class ToolBox(GlobalSessionToolBox):
         plataformas = self.platformas_data
         relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values)) & (
                     plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
-        child_score = 1
+        if not relevant_platformas.empty:
+            relevant_platformas = df.merge(relevant_platformas, how='left', on='scene_id')
+
         for i, child_row in plat_template[plat_template[PARENT_KPI] == kpi_name].iterrows():
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if df.empty:
@@ -387,8 +391,13 @@ class ToolBox(GlobalSessionToolBox):
                 child_score = 0
             elif not relevant_platformas.empty:
                 child_result = relevant_platformas[child_row['Data_Column']].iloc[0]
-                child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0] if not (
-                            child_row['dependency_on_scoring'] == 'y' and child_score == 0) else 0
+                if child_row['dependency_on_scoring'] == 'y':
+                    if not np.all(relevant_platformas[['Mandatory SKUs found','Minimum facings met', 'Survey Question']].values):
+                        child_score = 0
+                    else:
+                        child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0]
+                else:
+                    child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0]
                 scene_id = relevant_platformas['scene_id'].iloc[0]
                 self.platformas_data.loc[relevant_platformas.index.values[0], 'consumed'] = 'yes'
             else:

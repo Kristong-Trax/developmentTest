@@ -403,8 +403,10 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         plat_template = self.templates[PLATFORMAS]
         plataformas = self.platformas_data
         relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values)) & (
-                plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
-        child_score = 1
+                    plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
+        if not relevant_platformas.empty:
+            relevant_platformas = df.merge(relevant_platformas, how='left', on='scene_id')
+
         for i, child_row in plat_template[plat_template[PARENT_KPI] == kpi_name].iterrows():
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if df.empty:
@@ -413,8 +415,13 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                 child_score = 0
             elif not relevant_platformas.empty:
                 child_result = relevant_platformas[child_row['Data_Column']].iloc[0]
-                child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0] if not (
-                        child_row['dependency_on_scoring'] == 'y' and child_score == 0) else 0
+                if child_row['dependency_on_scoring'] == 'y':
+                    if not np.all(relevant_platformas[['Mandatory SKUs found','Minimum facings met', 'Survey Question']].values):
+                        child_score = 0
+                    else:
+                        child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0]
+                else:
+                    child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0]
                 scene_id = relevant_platformas['scene_id'].iloc[0]
                 self.platformas_data.loc[relevant_platformas.index.values[0], 'consumed'] = 'yes'
             else:
@@ -574,8 +581,6 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                                                 'Mandatory SKUs found', 'Minimum facings met', 'Coke purity',
                                                 'consumed'])
         for scene in self.scif[['scene_id', 'template_name']].drop_duplicates().itertuples():
-            if scene.scene_id == 485940:
-                a = 1
             scene_scif = self.scif[self.scif['scene_id'] == scene.scene_id]
             product_names_in_scene = \
                 set(scene_scif['product_short_name'].unique().tolist())
