@@ -1,7 +1,7 @@
 from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
 from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
 # from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
-from Projects.GSKJP_SAND.Utils.Global.KPIGenerator import GSKGenerator
+from Projects.GSKJP_SAND.Utils.KPILocalGenerator import GSKLocalGenerator as GSKGenerator
 from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts, HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
