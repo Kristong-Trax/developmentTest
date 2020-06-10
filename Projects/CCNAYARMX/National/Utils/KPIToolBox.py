@@ -102,9 +102,9 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
                               MERCADEO_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplate2020Nacionalv0.5.xlsx')
+                             'CCNayarTemplate2020Nacionalv0.6.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_v8.xlsx')
+                                         'CCNayar_POS_Options_v10.xlsx')
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                           'CCNayarNational_Portafolios_y_Precios.xlsx')
 GENERAL_ASSORTMENTS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
@@ -185,13 +185,16 @@ class NationalToolBox(GlobalSessionToolBox):
         self.results_df.rename(columns={'kpi_fk': 'fk'}, inplace=True)
         self.results_df.loc[~self.results_df['identifier_parent'].isnull(), 'should_enter'] = True
         # set result to NaN for records that do not have a parent
-        identifier_results = self.results_df[self.results_df['result'].notna()]['identifier_result'].unique().tolist()
+        # identifier_results = self.results_df[self.results_df['result'].notna()]['identifier_result'].unique().tolist()
+        # self.results_df['result'] = self.results_df.apply(
+        #     lambda row: pd.np.nan if (pd.notna(row['identifier_parent']) and row[
+        #         'identifier_parent'] not in identifier_results) else row['result'], axis=1)
         self.results_df['result'] = self.results_df.apply(
-            lambda row: pd.np.nan if pd.notna(row['identifier_parent']) and row[
-                'identifier_parent'] not in identifier_results else row['result'], axis=1)
+            lambda row: row['result'] if (
+                    pd.notna(row['identifier_parent']) or pd.notna(row['identifier_result'])) else np.nan, axis=1)
         # get rid of 'not applicable' results
         self.results_df.dropna(subset=['result'], inplace=True)
-        self.results_df.fillna(0)
+        self.results_df.fillna(0, inplace=True)
         results = self.results_df.to_dict('records')
         for result in results:
             self.write_to_db(**result)
@@ -272,7 +275,7 @@ class NationalToolBox(GlobalSessionToolBox):
     def calculate_ejecucion_sombra(self, row):
         return_holder = self._get_kpi_name_and_fk(row)
         result = self.calculate_prereq_ejecucion()
-        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'result': np.nan}
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'result': 0}
         if result:
             brand_fk = self.all_products[self.all_products.brand_name.isin([result[0][2]])].brand_fk.iloc[0]  # denom id
             product_fk = self.all_products[self.all_products.product_short_name.isin([result[0][1]])].product_fk.iloc[
@@ -311,25 +314,33 @@ class NationalToolBox(GlobalSessionToolBox):
         result_container = self._get_kpi_name_and_fk(row)
         kpi_name = result_container[0]
         kpi_fk = result_container[1]
-        df = self.prereq[self.prereq['KPI Name'] == kpi_name]
+        df = self.prereq[self.prereq['KPI Name'] == kpi_name] if not self.prereq.empty else pd.DataFrame()
         if not df.empty:
-            df = df.sort_values(by=['actual_score'],ascending=False).head(1)
+            df = df.sort_values(by=['actual_score'], ascending=False).head(1)
 
         plat_template = self.templates[PLATFORMAS]
         plataformas = self.platformas_data
         relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values)) & (
-                    plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
-        child_score = 1
+                plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
+        if not relevant_platformas.empty:
+            relevant_platformas = df.merge(relevant_platformas, how='left', on='scene_id')
+
         for i, child_row in plat_template[plat_template[PARENT_KPI] == kpi_name].iterrows():
             child_kpi_fk = self.get_kpi_fk_by_kpi_type(child_row[KPI_NAME])
             if df.empty:
-                child_result = np.nan
-                scene_id = np.nan
-                child_score = np.nan
+                child_result = 0
+                scene_id = 0
+                child_score = 0
             elif not relevant_platformas.empty:
                 child_result = relevant_platformas[child_row['Data_Column']].iloc[0]
-                child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0] if not (
-                            child_row['dependency_on_scoring'] == 'y' and child_score == 0) else 0
+                if child_row['dependency_on_scoring'] == 'y':
+                    if not np.all(relevant_platformas[
+                                      ['Mandatory SKUs found', 'Minimum facings met', 'Survey Question']].values):
+                        child_score = 0
+                    else:
+                        child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0]
+                else:
+                    child_score = (child_row.parent_score_portion * child_result * df.Score).iloc[0]
                 scene_id = relevant_platformas['scene_id'].iloc[0]
                 self.platformas_data.loc[relevant_platformas.index.values[0], 'consumed'] = 'yes'
             else:
@@ -550,11 +561,7 @@ class NationalToolBox(GlobalSessionToolBox):
                 if not any(product in product_names_in_scene for product in assortment):
                     mandatory_skus_found = 0  # False
                     break
-            limited_product = self.sanitize_values(targets_and_constraints['max_facings_product_local_name'].iloc[0])
-            if limited_product and limited_product is not np.nan:
-                if scene_scif[scene_scif['product_short_name'].isin(limited_product)]['facings'].sum() > \
-                        targets_and_constraints['max_facings'].iloc[0]:
-                    mandatory_skus_found = 0
+
             # this should be refactored to be more programmatic
             if targets_and_constraints['Assortment_Facings_Constraints'].iloc[0] == 'Assortment_2>Assortment_1':
                 assortment_1_facings = \
@@ -573,7 +580,9 @@ class NationalToolBox(GlobalSessionToolBox):
                 minimum_facings_met = 0  # False
 
             # calculate the coke purity (coke SOS) of this scene
-            coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif, assortment_groups)
+            coke_purity_assortment = np.delete(assortment_groups, -1) if pd.notna(
+                targets_and_constraints.excluding_invasion.values[0]) else assortment_groups
+            coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif, coke_purity_assortment)
 
             platformas_data.loc[len(platformas_data), platformas_data.columns.tolist()] = [
                 scene.scene_id, platform_name, pos_option_found, mandatory_skus_found,
@@ -1432,7 +1441,7 @@ class NationalToolBox(GlobalSessionToolBox):
     def _filter_scif(self, row, df):
         columns_in_scif = row.index[np.in1d(row.index, df.columns)]
         for column_name in columns_in_scif:
-            if pd.notna(row[column_name]):
+            if pd.notna(row[column_name]) and not df.empty:
                 df = df[df[column_name].isin(self.sanitize_values(row[column_name]))]
         return df
 
