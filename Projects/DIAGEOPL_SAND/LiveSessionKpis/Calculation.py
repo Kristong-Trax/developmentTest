@@ -1,3 +1,4 @@
+import pandas as pd
 from datetime import datetime
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import LiveSessionBaseClass
 from KPIUtils.GlobalProjects.DIAGEO.Utils.DiageoAssortment import DiageoAssortment
@@ -38,5 +39,6 @@ class CalculateKpi(LiveSessionBaseClass):
         """
         kpi_types = [Consts.GDPA_KPI_TYPE]
         assortment_results = self.assortment.main_assortment_calculation(kpi_types)
+        assortment_results = pd.DataFrame(assortment_results)
         self.common.write_to_db_results(assortment_results)
         self.common.commit_results_data()
