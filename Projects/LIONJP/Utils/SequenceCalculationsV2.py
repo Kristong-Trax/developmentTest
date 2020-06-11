@@ -77,23 +77,27 @@ class Sequence(BaseCalculation):
 
         min_tags_per_entity = seq_params[AdditionalAttr.MIN_TAGS_OF_ENTITY]
         # check if the two blocks Satisfy the minimum block Criteria
-        Log.info("min_tags_per_entity", min_tags_per_entity)
+        Log.info("min_tags_per_entity {}".format(min_tags_per_entity))
 
-        no_of_nodes_satisfy_min_tags = []
-        for node, attr in adj_g.nodes(data=True):
-            Log.info(attr)
-            if int(attr['facings']) >= int(min_tags_per_entity):
-                no_of_nodes_satisfy_min_tags.append((node, attr))
+        adj_g_undirected = adj_g.to_undirected()
+        for nodes_in_each_cluster in nx.connected_components(adj_g_undirected):
+            adj_g_sub_graph = adj_g.subgraph(nodes_in_each_cluster)
+            no_of_nodes_satisfy_min_tags = []
+            for node, attr in adj_g_sub_graph.nodes(data=True):
+                Log.info(attr)
+                if int(attr['facings']) >= int(min_tags_per_entity):
+                    no_of_nodes_satisfy_min_tags.append((node, attr))
+                else:
+                    Log.info("Node {} - doesnt satisfy the minimum tags criteria".format(node))
+
+            if len(no_of_nodes_satisfy_min_tags) == len(adj_g_sub_graph.nodes()):
+                result = 1
+                resultdf = pd.DataFrame(columns=self._results_df.columns,
+                                        data=[[adj_g_sub_graph, scene_fk, seq_params[AdditionalAttr.DIRECTION]]])
+                self._results_df = self._results_df.append(resultdf)
             else:
-                Log.info("Node {} - doesnt satisfy the minimum tags criteria".format(node))
+                result = 0
 
-        if len(no_of_nodes_satisfy_min_tags) == len(adj_g.nodes()):
-            result = 1
-            resultdf = pd.DataFrame(columns=self._results_df.columns,
-                                    data=[[adj_g, scene_fk, seq_params[AdditionalAttr.DIRECTION]]])
-            self._results_df = self._results_df.append(resultdf)
-        else:
-            result = 0
         return result
 
     def _find_sequence_per_scene(self, scene_fk, adj_g, seq_params, graph_key, graph_value):
