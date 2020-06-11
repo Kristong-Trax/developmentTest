@@ -119,8 +119,7 @@ ASSORTMENT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file_
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                           'CCNayar_Portafolios_y_Precios.xlsx')
 GENERAL_ASSORTMENTS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                        'CCNayar_Assortment_Templates_V3.xlsx')
-
+                                        'CCNayar_Assortment_Templates_V4.xlsx')
 
 def log_runtime(description, log_start=False):
     def decorator(func):
