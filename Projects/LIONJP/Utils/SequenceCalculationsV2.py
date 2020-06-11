@@ -10,7 +10,6 @@ import pandas as pd
 import itertools
 import numpy as np
 
-
 # This sequence module created in order to support sequence calculation using NetworkX graph.
 # Explanations and more example about the parameters can be found in the confluence page:
 # https://confluence.trax-cloud.com/display/PS/Sequence+KPI
@@ -61,9 +60,41 @@ class Sequence(BaseCalculation):
         graph_key, graph_value = self._prepare_data_for_graph_creation(population, sequence_params)
         for scene in scenes_to_check:
             adj_g = self._create_adjacency_graph(scene, population, sequence_params, graph_key)
-            result = self._find_sequence_per_scene(scene, adj_g, sequence_params, graph_key, graph_value)
+            # Added this check to support vertical adjacency sequence
+            if sequence_params[AdditionalAttr.DIRECTION] in ["DOWN", "UP"]:
+                result = self._find_sequence_per_scene_for_vertical_adj(scene, adj_g, sequence_params, graph_key, graph_value)
+            else:
+                result = self._find_sequence_per_scene(scene, adj_g, sequence_params, graph_key, graph_value)
             if result and not sequence_params[AdditionalAttr.CHECK_ALL_SEQUENCES]:
                 break
+
+    def _find_sequence_per_scene_for_vertical_adj(self, scene_fk, adj_g, seq_params, graph_key, graph_value):
+        """
+        """
+        result = 0
+        if not adj_g:
+            return result
+
+        min_tags_per_entity = seq_params[AdditionalAttr.MIN_TAGS_OF_ENTITY]
+        # check if the two blocks Satisfy the minimum block Criteria
+        Log.info("min_tags_per_entity", min_tags_per_entity)
+
+        no_of_nodes_satisfy_min_tags = []
+        for node, attr in adj_g.nodes(data=True):
+            Log.info(attr)
+            if int(attr['facings']) >= int(min_tags_per_entity):
+                no_of_nodes_satisfy_min_tags.append((node, attr))
+            else:
+                Log.info("Node {} - doesnt satisfy the minimum tags criteria".format(node))
+
+        if len(no_of_nodes_satisfy_min_tags) == len(adj_g.nodes()):
+            result = 1
+            resultdf = pd.DataFrame(columns=self._results_df.columns,
+                                    data=[[adj_g, scene_fk, seq_params[AdditionalAttr.DIRECTION]]])
+            self._results_df = self._results_df.append(resultdf)
+        else:
+            result = 0
+        return result
 
     def _find_sequence_per_scene(self, scene_fk, adj_g, seq_params, graph_key, graph_value):
         """
@@ -250,7 +281,7 @@ class Sequence(BaseCalculation):
         direction = sequence_params[AdditionalAttr.DIRECTION]
         include_stacking = sequence_params[AdditionalAttr.INCLUDE_STACKING]
         if graph_key != CalcConst.PRODUCT_FK or sequence_params[AdditionalAttr.REPEATING_OCCURRENCES]:
-            if sequence_params[AdditionalAttr.DIRECTION] in ['RIGHT', 'LEFT']:
+            if sequence_params[AdditionalAttr.DIRECTION] in ['RIGHT', 'LEFT', 'UP', 'DOWN']:
                 adj_g = AdjacencyGraphBuilder.condense_graph_by_level(ColumnNames.GRAPH_KEY, adj_g)
             use_degrees = True
         adj_g = self._filter_graph_by_edge_direction(adj_g, direction, include_stacking, use_degrees)

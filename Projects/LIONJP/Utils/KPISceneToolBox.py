@@ -263,6 +263,8 @@ class LionJPSceneToolBox:
             else:
                 overlap_percentage = 0.1
 
+            df_custom_matches = df_custom_matches.drop_duplicates()
+
             df = df_custom_matches[(~df_custom_matches['product_fk'].isin(extra)) &
                                    (df_custom_matches['scene_fk'] == scene_fk)]
             minimum_tags_per_entity = self.get_minimum_facings(df, blocking_percentage)
