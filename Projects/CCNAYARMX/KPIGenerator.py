@@ -4,6 +4,7 @@ from Projects.CCNAYARMX.Utils.KPIToolBox import ToolBox
 from Projects.CCNAYARMX.National.Utils.KPIToolBox import NationalToolBox
 from Projects.CCNAYARMX.Especializado.Utils.KPIToolBox import EspecializadoToolBox
 from Projects.CCNAYARMX.Fondas.Utils.KPIToolBox import FONDASToolBox
+from Projects.CCNAYARMX.Comidas.Utils.KPIToolBox import ComidasToolBox
 
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -40,6 +41,9 @@ class Generator:
         if tool_box.scif.empty:
             Log.warning('Scene item facts is empty for this session')
         else:
+            comidas_tool_box = ComidasToolBox(self.data_provider, self.output, common)
+            comidas_tool_box.main_calculation()
+
             especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
             especializado_tool_box.main_calculation()
 

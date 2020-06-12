@@ -11,13 +11,12 @@ if __name__ == '__main__':
     project_name = 'ccnayarmx'
     data_provider = KEngineDataProvider(project_name)
     session_list = [
-        '4d736be9-2c61-4336-b980-4921f2b8f134',
+        'e4aa24a5-d13e-4b6a-8941-0a195d589070',
 #         '5f20ba65-63ae-4057-a8b0-3491accf7869',
         # '69b028e2-5119-4c11-a846-94ca29adede4',
         # 'cf7bd046-0acc-4c60-bb33-3ed5dfdd836e',
         # 'E45618DB-39E9-45A4-B541-054C85515A69'
         # '0eda0210-b4ed-461c-8b32-09bfddf0cab8',
-        '036de825-5353-416d-8347-6b1c5cb1521f',
         # '1c7303e6-96bc-4360-822f-e00886701a1b',
         #'9ba32139-c2bd-4d36-96b3-6268628960ee'
         # '69b028e2-5119-4c11-a846-94ca29adede4',
