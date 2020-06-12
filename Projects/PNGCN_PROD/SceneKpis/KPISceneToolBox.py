@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -100,9 +99,6 @@ MATCH_PRODUCT_IN_PROBE_FK = 'match_product_in_probe_fk'
 MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK = 'match_product_in_probe_state_reporting_fk'
 MISSING_VALUE_FK = 999
 
-BLADE_RAZOR_TEMPLATE_FKS_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), '../Data', 'blade_razor_template_fks.csv')
-
 
 class PngcnSceneKpis(object):
 
@@ -127,9 +123,11 @@ class PngcnSceneKpis(object):
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.location_type = "" if self.scif.empty else self.scif.iloc[0]['location_type']
+        self.psdataprovider = PsDataProvider(data_provider=self.data_provider)
         if self.location_type == 'Primary Shelf':
             template_fk = self.data_provider[Data.TEMPLATES].iloc[0].get('template_fk')
-            self.eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider, template_fk)
+            self.eye_level_df = self.get_eye_level_shelves(
+                self.matches_from_data_provider, self.psdataprovider, template_fk)
             eye_level_shelves = self.eye_level_df[['scene_match_fk', 'shelf_number']].copy()
             eye_level_shelves = eye_level_shelves.rename(columns={"shelf_number": "eye_level_shelf_number"})
             self.matches_from_data_provider = pd.merge(self.matches_from_data_provider, eye_level_shelves,
@@ -137,7 +135,6 @@ class PngcnSceneKpis(object):
         self.store_id = self.data_provider[Data.SESSION_INFO].store_fk.values[0]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.png_manufacturer_fk = self.get_png_manufacturer_fk()
-        self.psdataprovider = PsDataProvider(data_provider=self.data_provider)
         self.parser = Parser
         self.match_probe_in_scene = self.get_product_special_attribute_data(self.scene_id)
         self.match_product_in_probe_state_reporting = self.psdataprovider.get_match_product_in_probe_state_reporting()
@@ -517,7 +514,7 @@ class PngcnSceneKpis(object):
                 self.scif.iloc[0]['location_type'] != 'Primary Shelf':
             return
         template_fk = self.data_provider[Data.TEMPLATES].iloc[0].get('template_fk')
-        eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider, template_fk)
+        eye_level_df = self.get_eye_level_shelves(self.matches_from_data_provider, self.psdataprovider, template_fk)
         full_eye_level_df = pd.merge(eye_level_df, self.all_products, on="product_fk")
         max_shelf_count = self.matches_from_data_provider["shelf_number"].max()
         self.calculate_facing_eye_level(full_eye_level_df, max_shelf_count)
@@ -606,18 +603,24 @@ class PngcnSceneKpis(object):
             self.common.write_to_db_result(**row)
 
     @staticmethod
-    def get_eye_level_shelves(df, template_fk=None):
+    def get_eye_level_shelves(df, psdataprovider=None, template_fk=None):
         """
         Gives us the two relevant shelves according to the costumer request.
         :param df: the df to work on
+        :param df: the psdataprovider to load the template fks
         :param template_fk: the template_fk to decide the rules of the definition for eye level
         :return: the two relevant eye_level shelves out of the df given
         """
         if df.empty:
             return df
 
-        # blade & razor templates
-        blade_razor_template_fks = set(pd.read_csv(BLADE_RAZOR_TEMPLATE_FKS_PATH)['template_fk'].values)
+        if psdataprovider:
+            # blade & razor templates
+            template_fk_target = psdataprovider.get_kpi_external_targets(key_fields=["template_fk"], data_fields=[])
+            blade_razor_template_fks = (
+                template_fk_target.iloc[0].get("template_fk", []) if len(template_fk_target) else [])
+        else:
+            blade_razor_template_fks = []
 
         def _eye_level_shelves(total_shelf_number, template, blade_razor_templates):
             """ Return the eye level shelves, if the template of the scene is a blade&razor scene, always return

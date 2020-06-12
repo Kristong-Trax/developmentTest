@@ -76,6 +76,10 @@ class TestPngcn(TestUnitCase):
         self.data_provider_mock.__getitem__.side_effect = my_dict.__getitem__
         self.data_provider_mock.__iter__.side_effect = my_dict.__iter__
 
+        self.psdataprovider = self.mock_object('PsDataProvider',
+                                               path='Projects.PNGCN_PROD.SceneKpis.KPISceneToolBox')
+        self.psdataprovider.get_kpi_external_targets.return_value = pd.DataFrame([{'template_fk': [144, 145]}])
+
     def test_insert_data_into_custom_scif(self):
         """
             test type delete qury type.
@@ -463,7 +467,8 @@ class TestPngcn(TestUnitCase):
                                         self.data_provider_mock)
         scene_tool_box.get_filterd_matches = MagicMock(return_value=pd.DataFrame(data))
         scene_tool_box.common.write_to_db_result = MagicMock()
-        kpi_results = scene_tool_box.get_eye_level_shelves(data, template_fk=blade_template_fk)
+        kpi_results = scene_tool_box.get_eye_level_shelves(
+            data, psdataprovider=self.psdataprovider, template_fk=blade_template_fk)
         self.assertEqual(len(kpi_results[kpi_results['bay_number'] == 3]), 2,
                          'expects to have only 2 lines with bay number 3 since the eye level for blade is [2, 3]')
         self.assertEqual(len(kpi_results[kpi_results['bay_number'] == 2]), 1,
