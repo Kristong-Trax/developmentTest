@@ -27,6 +27,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         self.ps_data_provider = PsDataProvider(data_provider)
         self.target = self._get_case_count_targets()
         self.matches = self.get_filtered_matches()
+        self.adj_graphs_per_scene = {}
         self.common = common
 
     def _get_case_count_targets(self):
@@ -50,6 +51,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         if not (self.filtered_mdis.empty or self.filtered_scif.empty or not self.target or self.matches.empty):
             try:
                 self._prepare_data_for_calculation()
+                self._generate_adj_graphs()
                 facings_res = self._calculate_display_size_facings()
                 sku_cases_res = self._count_number_of_cases()
                 unshoppable_cases_res = self._non_shoppable_case_kpi()
@@ -126,13 +128,62 @@ class CaseCountCalculator(GlobalSessionToolBox):
         results_df = results_df.fillna(0)
         return results_df.to_dict('records')
 
+    def _get_results_for_branded_other_cases(self):
+        """This method identifies branded other cases and attempts to distribute them across the products in the
+        open case most closely above the branded other case"""
+        results = []
+        for scene_fk in self.matches.scene_fk.unique().tolist():
+            adj_g = self.adj_graphs_per_scene[scene_fk]
+            branded_other_cases = self.matches[(self.matches['product_type'] == 'Other') &
+                                               (self.matches[Consts.MPIPS_FK] == Consts.PACK_FK) &
+                                               (self.matches['scene_fk'] == scene_fk)]
+            branded_other_match_fks = branded_other_cases.scene_match_fk.tolist()
+            for node, node_data in adj_g.nodes(data=True):
+                node_scene_match_fks = list(node_data['match_fk'].values)
+                if any(match in node_scene_match_fks for match in branded_other_match_fks):
+                    results.append(self._find_open_case_above(node, adj_g))
+        return results
+
+    def _find_open_case_above(self, node, adj_g):
+        node_data = adj_g.nodes[node]
+        root_brand_name = list(node_data['brand_name'].values)
+        paths = self._get_relevant_path_for_calculation(adj_g)
+        paths = [path for path in paths if node in path]
+        activated = False
+        case_data = None
+        result = list(node_data['substitution_product_fk'].values)
+        for case in paths[0]:
+            if case == node:
+                activated = True
+            if not activated:
+                continue  # we haven't reached the brand-other case in the path yet
+            if not self._get_case_status(adj_g.nodes[case]):
+                continue  # the case is closed, and we haven't reached the first open case yet
+            else:
+                case_data = adj_g.nodes[case]
+                break
+
+        if case_data:
+            case_brand_names = list(case_data['brand_name'].values)
+            if any(brand in root_brand_name for brand in case_brand_names):
+                result = list(case_data['substitution_product_fk'].values)
+
+        return result
+
     def _count_number_of_cases(self):
         """This method counts the number of cases per SKU.
         It identify the closest SKU tag to every case and using it to define the case's brand
         """
         total_res, results_for_db, kpi_fk = Counter(), list(), self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI)
-        results = self.matches.groupby(Consts.DISPLAY_IN_SCENE_FK, as_index=False)[Sc.SUBSTITUTION_PRODUCT_FK].apply(
-            list).values
+        matches = self.matches[~((self.matches['product_type'] == 'Other') &
+                                (self.matches[Consts.MPIPS_FK] == Consts.PACK_FK))]
+        # get results for all cases that aren't considered branded other
+        results = list(matches.groupby(Consts.DISPLAY_IN_SCENE_FK, as_index=False)[Sc.SUBSTITUTION_PRODUCT_FK].apply(
+            list).values)
+        # add results from branded other cases
+        branded_other_results = self._get_results_for_branded_other_cases()
+        results.extend(branded_other_results)
+
         for res in results:
             for sku in res:
                 total_res[int(sku)] += (1/float(len(res)))
@@ -151,10 +202,10 @@ class CaseCountCalculator(GlobalSessionToolBox):
         scenes_to_calculate = self.matches.scene_fk.unique().tolist()
         total_score_per_sku = Counter()
         for scene_fk in scenes_to_calculate:
-            adj_g = self._create_adjacency_graph_per_scene(scene_fk)
+            adj_g = self.adj_graphs_per_scene[scene_fk]
             paths = self._get_relevant_path_for_calculation(adj_g)
             total_score_per_sku += self._calculate_case_count(adj_g, paths)
-            # self.create_graph_image(scene_fk, adj_g)
+            # self.create_graph_image(scene_fk, adj_g)  # DO NOT DEPLOY WITH THIS UNCOMMENTED
         for product_fk in self.target.keys():
             result = total_score_per_sku.get(product_fk, 0)
             # convert results ending in .99 to .00 - this unpleasant situation is caused by using float arithmetic
@@ -162,6 +213,12 @@ class CaseCountCalculator(GlobalSessionToolBox):
                 result = math.ceil(result * 10) / 10
             results.append({Sc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk})
         return results
+
+    def _generate_adj_graphs(self):
+        """This method generates all of the adjacency graphs for the unique scenes in the session"""
+        scenes_to_calculate = self.matches.scene_fk.unique().tolist()
+        for scene_fk in scenes_to_calculate:
+            self.adj_graphs_per_scene[scene_fk] = self._create_adjacency_graph_per_scene(scene_fk)
 
     def _non_shoppable_case_kpi(self):
         """ This method calculates the number of unshoppable SKUs.
@@ -243,7 +300,13 @@ class CaseCountCalculator(GlobalSessionToolBox):
         filtered_matches = self.data_provider.matches.loc[self.data_provider.matches.scene_fk.isin(scenes_with_display)]
         if not filtered_matches.empty:
             filtered_matches = self._add_smart_attributes_to_matches(filtered_matches)
+            filtered_matches = self._add_product_data_to_matches(filtered_matches)
         return filtered_matches
+
+    def _add_product_data_to_matches(self, matches):
+        matches = pd.merge(matches, self.all_products[['brand_name', 'product_fk', 'product_type']],
+                           on='product_fk', how='left')
+        return matches
 
     def _add_smart_attributes_to_matches(self, matches):
         smart_attribute_df = self.get_match_product_in_probe_state_values(matches.probe_match_fk.tolist())
@@ -338,7 +401,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
         filtered_matches = self._prepare_matches_for_graph_creation(scene_fk)
         if not filtered_matches.empty:
             maskings = AdjacencyGraphBuilder._load_maskings(self.project_name, scene_fk)
-            add_node_attr = [Consts.DISPLAY_IN_SCENE_FK, 'display_rect_x', 'display_rect_y', 'display_name']
+            add_node_attr = [Consts.DISPLAY_IN_SCENE_FK, 'display_rect_x', 'display_rect_y', 'display_name',
+                             'brand_name', 'substitution_product_fk']
             adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches,
                                                                       maskings, add_node_attr, use_masking_only=True)
             adj_g = AdjacencyGraphBuilder.condense_graph_by_level(Consts.DISPLAY_IN_SCENE_FK, adj_g)
@@ -381,16 +445,20 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """
         case_count_score = Counter()
         for path in paths_to_check:
-            open_detection_indicator = False
-            for stacking_layer, node in enumerate(path):
-                case_status = self._get_case_status(adj_g.nodes[node])
-                if not (case_status or open_detection_indicator):
-                    continue  # Closed case
+            last_node = path[-1]
+            previous_stack_height = 0
+            for stacking_layer, node in enumerate(path, 1):  # start at 1 for easier debugging
+                case_is_open = self._get_case_status(adj_g.nodes[node])
+                case_is_last = (node == last_node)
+                if not (case_is_open or case_is_last):
+                    continue  # closed case that isn't the last
+                if not previous_stack_height:  # we skip the first stack since they cannot be implied
+                    previous_stack_height = stacking_layer
+                    continue
                 else:
-                    if open_detection_indicator:
-                        case_count_score += self._divide_score_among_skus(adj_g.nodes[node], stacking_layer)
-                    else:
-                        open_detection_indicator = True
+                    case_count_score += self._divide_score_among_skus(adj_g.nodes[node], previous_stack_height)
+                    previous_stack_height = stacking_layer
+
         return case_count_score
 
     def _divide_score_among_skus(self, node, stacking_layer):
