@@ -49,6 +49,7 @@ class SceneGPUSToolBox:
         self.manufacturer_fk = int(self.data_provider[Data.OWN_MANUFACTURER].iloc[0, 1])
         self.gp_manufacturer = self.get_gp_manufacturer()
         self.gp_categories = self.get_gp_categories()
+        self.brands = self.get_brands()
         self.gp_brands = self.get_gp_brands()
         self.man_fk_filter = {'manufacturer_name': list(self.gp_manufacturer.keys())}
         self.cat_filter = {'category': list(self.gp_categories.keys())}
@@ -78,7 +79,7 @@ class SceneGPUSToolBox:
     def base_adjacency(self):
         data = defaultdict(dict)
         mpis, all_graph, filters = self.base_adj_graph()
-        brands = set(self.filter_df(self.mpis, self.brand_filter)['brand_name'])
+        brands = self.brands  # set(self.filter_df(self.mpis, self.brand_filter)['brand_name'])
         for brand in brands:
             for edge_dir in Const.ALLOWED_EDGES:
                 items = set(self.filter_df(self.mpis, {'brand_name': brand})['scene_match_fk'])
@@ -90,7 +91,7 @@ class SceneGPUSToolBox:
                                         for item in items], []))
                 adjacent_items = edge_matches - items
                 adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
-                adj_mpis['num_brand_fk'] = self.gp_brands[brand]
+                adj_mpis['num_brand_fk'] = self.brands[brand]
                 adj_mpis['num_category_fk'] = self.get_brand_category(brand)
                 data[brand][edge_dir] = adj_mpis
         return data
@@ -170,6 +171,13 @@ class SceneGPUSToolBox:
         cats = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['category', 'category_fk']]\
                               .drop_duplicates().set_index('category')['category_fk'].to_dict()
         return cats
+
+    def get_brands(self):
+        brands = self.mpis[~self.mpis['manufacturer_name'].isin(['General', 'Irrelevant'])][['brand_name', 'brand_fk']] \
+            .drop_duplicates() \
+            .set_index('brand_name')['brand_fk'] \
+            .to_dict()
+        return brands
 
     def get_gp_brands(self):
         brands = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['brand_name', 'brand_fk']]\
