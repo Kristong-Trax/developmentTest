@@ -18,4 +18,5 @@ class Consts(object):
     RLV_FIELDS_FOR_DISPLAY_IN_SCENE_CLOSET_TAG_CALC = ['pk', 'rect_x', 'rect_y', 'scene_fk']
 
     MIN_DIST = 'minimum_distance'
+    MPIPS_FK = 'match_product_in_probe_state_fk'
     PACK_FK = 8  # for match_product_in_probe_state_fk
