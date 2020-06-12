@@ -113,7 +113,7 @@ class SceneGPUSToolBox:
         for i, row in df.iterrows():
             res_ident = '{}_{}'.format(dir, row[self_id]) if self_id else None
             res_parent = '{}_{}'.format(dir, row[parent]) if parent else None
-            dupe_tuple = (row[kpi_col], row[num_id_col], row[den_id_col], res_ident, res_parent)
+            dupe_tuple = (row[kpi_col], row[num_id_col], row[den_id_col], row['num_brand_fk'], res_ident, res_parent)
             if dupe_tuple not in self.dedupe:
                 self.dedupe.add(dupe_tuple)
 
@@ -139,7 +139,8 @@ class SceneGPUSToolBox:
                                'ident_parent': res_parent}
                     self.kpi_results.append(kpi_res)
 
-    def prune_edges(self, g, allowed_edges, keep_or_cut=Const.KEEP):
+    @staticmethod
+    def prune_edges(g, allowed_edges, keep_or_cut=Const.KEEP):
         for node in g.nodes():
             for edge in g.edges(node, data=True):
                 edge_dir = edge[2]['direction']
