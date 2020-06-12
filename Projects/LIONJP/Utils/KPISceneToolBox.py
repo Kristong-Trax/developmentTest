@@ -162,12 +162,12 @@ class LionJPSceneToolBox:
         include_empty = adj_config['include_empty']
         include_irrelevant = adj_config['include_irrelevant']
 
-        if include_empty == "exclude":
+        if include_empty == "include":
             allowed_filters.append("Empty")
         else:
             exclude_filters.append("Empty")
 
-        if include_irrelevant == "exclude":
+        if include_irrelevant == "include":
             allowed_filters.append("Irrelevant")
         else:
             exclude_filters.append("Irrelevant")
@@ -179,6 +179,10 @@ class LionJPSceneToolBox:
         else:
             allowed_products_filters = {"product_type": allowed_filters}
 
+        if not pd.isnull(adj_config['include_other_ean_codes']):
+            include_others_eans = ["{}".format(other.strip()) for other in adj_config['include_other_ean_codes'].split(",")]
+            allowed_products_filters["product_ean_code"] = include_others_eans
+
         if len(exclude_filters) == 0:
             exclude_products_filters = None
         else:
@@ -187,22 +191,6 @@ class LionJPSceneToolBox:
         return exclude_products_filters, allowed_products_filters
 
     def build_entity_groups(self, adj_config, scene_fk):
-        extra = []
-        # include_empty
-        if adj_config['include_empty'] == "exclude":
-            extra.append(Consts.GENERAL_EMPTY)
-            extra.append(Consts.EMPTY)
-
-        # include_irrelevant
-        if adj_config['include_irrelevant'] == "exclude":
-            extra.append(Consts.IRRELEVANT)
-
-        # include_others
-        if not pd.isnull(adj_config['include_other_ean_codes']):
-            include_others = tuple(["{}".format(other.strip()) for other in adj_config['include_other_ean_codes'].split(",")])
-            if len(include_others) != 0:
-                product_fks = self.get_product_fks(include_others)
-                extra.extend(product_fks)
 
         entity_1_type = adj_config['entity_1_type']
         entity_2_type = adj_config['entity_2_type']
@@ -237,6 +225,24 @@ class LionJPSceneToolBox:
                 return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
             df_entities = df_entities.append(df_entity)
 
+        ## Adding include_other_ean_codes to entity groups if included
+        if not pd.isnull(adj_config['include_other_ean_codes']):
+            include_others = tuple(["{}".format(other.strip()) for other in adj_config['include_other_ean_codes'].split(",")])
+            include_others_pks = []
+            if len(include_others) != 0:
+                product_fks = self.get_product_fks(include_others)
+                include_others_pks.extend(product_fks)
+            if len(include_others_pks) > 0:
+                # add th ese product fks to both entity group
+                for others_product_fk in include_others_pks:
+                    row = {"entity": "other", "product_fk": others_product_fk}
+                    df_entities = df_entities.append(row, ignore_index=True)
+                    # for entity in entities:
+                    #     row = {"product_fk": others_product_fk, "entity": "other"}
+                    #     df_entities = df_entities.append(row,  ignore_index=True)
+                    # row = {"product_fk": others_product_fk}
+                    # df_entities = df_entities.append(row, ignore_index=True)
+
         df_entities = df_entities.reset_index(drop=True)
 
         product_pks = list(df_entities['product_fk'].unique())
@@ -265,8 +271,7 @@ class LionJPSceneToolBox:
 
             df_custom_matches = df_custom_matches.drop_duplicates()
 
-            df = df_custom_matches[(~df_custom_matches['product_fk'].isin(extra)) &
-                                   (df_custom_matches['scene_fk'] == scene_fk)]
+            df = df_custom_matches[(df_custom_matches['scene_fk'] == scene_fk)]
             minimum_tags_per_entity = self.get_minimum_facings(df, blocking_percentage)
             population = {'entity': list(df_entities['entity'].unique())}
             exclude_filter, allowed_products_filter = self.exclude_and_include_filter(adj_config)
@@ -332,7 +337,7 @@ class LionJPSceneToolBox:
                         continue
 
                     seq = Sequence(self.data_provider, custom_matches)
-                    sequence_res = seq.calculate_sequence(population, location, sequence_params)
+                    sequence_res = seq.calculate_sequence(population, location, sequence_params, adj_config['report_label'])
                     result_count = len(sequence_res)
                     result = 1 if result_count > 0 else 0
                     score = result

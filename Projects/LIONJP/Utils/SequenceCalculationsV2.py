@@ -22,7 +22,7 @@ class Sequence(BaseCalculation):
         self.data_provider = data_provider
         self.custom_matches = custom_matches
 
-    def calculate_sequence(self, population, location=None, additional=None):
+    def calculate_sequence(self, population, location=None, additional=None, report_label=""):
         """
         :param location: The locations parameters which the sequences are checked for.
         E.g: {'template_group': 'Primary Shelf'}.
@@ -44,6 +44,7 @@ class Sequence(BaseCalculation):
         :return: A DataFrame with the following fields: cluster (Graph), scene_fk and direction
         """
         try:
+            self.report_label = report_label
             self._sequence_calculation(population, location, additional)
         except Exception as err:
             Log.error("Sequence calculation failed due to the following error: {}".format(err))
@@ -111,7 +112,7 @@ class Sequence(BaseCalculation):
         all_paths = self._get_all_paths_in_graph(adj_g, graph_value)
         node_entity_dict = nx.get_node_attributes(adj_g, graph_key)
         for path in all_paths:
-            filtered_path = self._filter_allowed_product_filters_from_path(path, adj_g, seq_params)
+            filtered_path = self._filter_allowed_product_filters_from_path(path, adj_g, seq_params) # [1,2,3]
             result = self._check_if_path_is_a_sequence(filtered_path, seq_params, graph_value, node_entity_dict, adj_g)
             if result:
                 cluster = adj_g.subgraph(path)
@@ -131,7 +132,21 @@ class Sequence(BaseCalculation):
             return path
         for key, values in allowed_filters.iteritems():
             values = [values] if not isinstance(values, list) else values
-            filtered_nodes = list(node for node in path if adj_g.nodes[node][key].value in values)
+
+            nodes_temp = []
+            for node in path:
+                try:
+                    if len(adj_g.nodes[node][key].values) > 1:
+                        for n in adj_g.nodes[node][key].values:
+                            if n in values:
+                                nodes_temp.append(n)
+                    else:
+                        if adj_g.nodes[node][key].value in values:
+                            nodes_temp.append(node)
+                except Exception as e:
+                    print ("Error: {}".format(e))
+            filtered_nodes = nodes_temp
+            # filtered_nodes = list(node for node in path if adj_g.nodes[node][key].value in values)
             nodes_to_remove.extend(filtered_nodes)
         return [node for node in path if node not in nodes_to_remove]
 
@@ -272,7 +287,9 @@ class Sequence(BaseCalculation):
         kwargs = {'minimal_overlap_ratio': sequence_params[AdditionalAttr.ADJACENCY_OVERLAP_RATIO],
                   }  # AdditionalAttr.USE_MASKING_ONLY: True
         adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches, masking_df, graph_attr, **kwargs)
+        self.plot_adj_graph(adj_g, 1000, 1000, "lionjp", 1048634, outputfname="before_{}.html".format(self.report_label))
         adj_g = self._filter_adjacency_graph(adj_g, graph_key, sequence_params)
+        self.plot_adj_graph(adj_g, 1000, 1000, "lionjp", 1048634, outputfname="after_{}.html".format(self.report_label))
         return adj_g
 
     def _filter_adjacency_graph(self, adj_g, graph_key, sequence_params):
@@ -511,3 +528,22 @@ class Sequence(BaseCalculation):
     @staticmethod
     def _get_results_df():
         return pd.DataFrame(columns=[ColumnNames.CLUSTER, ColumnNames.SCENE_FK, AdditionalAttr.DIRECTION])
+
+    @staticmethod
+    def plot_adj_graph(adj_g, width, height, project, scene_ids, outputfname=""):
+        import pandas as pd
+        import numpy as np
+        from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
+        from plotly.subplots import make_subplots
+        from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
+        from Trax.Algo.Calculations.Core.AdjacencyGraph.Plots import GraphPlot, MaskingPlot
+        from Trax.Utils.Conf.Configuration import Config
+        from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+        from Trax.Utils.Conventions.Log import Severities
+        gf = GraphPlot.plot_networkx_graph(adj_g, overlay_image=True, scene_id=scene_ids, project_name=project)
+        gf.update_layout(autosize=False, width=width, height=height)
+        outputfname = "/opt/localtmp/{}".format(outputfname)
+        if outputfname:
+            plot(gf, filename=outputfname)
+        else:
+            plot(gf)
