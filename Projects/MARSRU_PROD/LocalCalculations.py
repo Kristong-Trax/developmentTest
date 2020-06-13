@@ -11,8 +11,9 @@ if __name__ == '__main__':
     session_uids = [
 
         # 'ffee5551-647f-4552-b296-d5aafb96f842',
-        'ff9701b2-38b0-4798-8b2b-5578975f8818'
-
+        # 'ff9701b2-38b0-4798-8b2b-5578975f8818'
+        'fffe707c-55f6-4f57-b8d1-67c76638f654',
+        'ffcd785d-c621-4f15-b202-581b8f73c13f'
     ]
     data_provider = KEngineDataProvider(project_name)
     output = Output()
