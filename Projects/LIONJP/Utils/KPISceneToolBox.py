@@ -44,6 +44,8 @@ class LionJPSceneToolBox:
         self.kpi_sheet = self.get_setup(Consts.KPI_SHEET_NAME)
         self.kpi_template_file = "kpi_template.xlsx"
         self.kpi_template = self.get_kpi_template(Consts.KPI_CONFIG_SHEET)
+        self.custom_entity = self.get_custom_entity()
+        self.other_products = self.get_other_products()
 
     @staticmethod
     def get_minimum_facings(df, block_percentage):
@@ -65,25 +67,36 @@ class LionJPSceneToolBox:
             facings = int(facings)
         return facings
 
-    def get_custom_entity_fk(self, name):
+    def get_other_products(self):
         query = """
-            SELECT pk FROM static.custom_entity
-            WHERE name='{}'
-            """.format(name)
+            SELECT pk, ean_code FROM static_new.product
+            WHERE type='Other'
+            """
+        query = query.replace(",)", ")")
         data = pd.read_sql_query(query, self.rds_conn.db)
-        return None if data.empty else data.values[0][0]
+        return data
+
+    def get_custom_entity(self):
+        query = """select
+                    pk,
+                    name
+                    from 
+                    static.custom_entity 
+                    where 
+                    entity_type_fk in (select pk from static.kpi_entity_type where name ='adjacency')
+                    """
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data
+
+    def get_custom_entity_fk(self, name):
+        return None if self.custom_entity.empty else self.custom_entity[self.custom_entity['name'] == name].iloc[0][0]
 
     def get_product_fks(self, ean_codes):
         product_pks = []
-        query = """
-            SELECT pk FROM static_new.product
-            WHERE ean_code in {}
-            """.format(ean_codes)
-        query = query.replace(",)", ")")
-        data = pd.read_sql_query(query, self.rds_conn.db)
-        if data.empty:
+        if self.other_products.empty:
             return product_pks
         else:
+            data = self.other_products[self.other_products['ean_code'].isin(ean_codes)]
             product_pks = list(data['pk'].unique())
         return product_pks
 
@@ -337,7 +350,10 @@ class LionJPSceneToolBox:
                         continue
 
                     seq = Sequence(self.data_provider, custom_matches)
-                    sequence_res = seq.calculate_sequence(population, location, sequence_params, adj_config['report_label'])
+                    sequence_res = seq.calculate_sequence(population, location,
+                                                          sequence_params, adj_config['report_label'],
+                                                          custom_entity_pk
+                                                          )
                     result_count = len(sequence_res)
                     result = 1 if result_count > 0 else 0
                     score = result

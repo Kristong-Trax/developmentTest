@@ -22,13 +22,16 @@ class Sequence(BaseCalculation):
         self.data_provider = data_provider
         self.custom_matches = custom_matches
 
-    def calculate_sequence(self, population, location=None, additional=None, report_label=""):
+    def calculate_sequence(self, population, location=None, additional=None, report_label="", report_label_fk=0):
         """
         :param location: The locations parameters which the sequences are checked for.
         E.g: {'template_group': 'Primary Shelf'}.
         :param population: These are the parameters which the sequences are checked for.
         E.g: {'product_fk': [1, 2, 3]}, {'brand_name': ['brand1', 'brand2', 'brand3']}.
         :param additional: Additional attributes for the sequence calculation:
+
+        :param report_label: To print the report label in the debug mode
+
         1. direction (str): LEFT/RIGHT/UP/DOWN - the direction of the sequence.
         2. exclude_filter (dict): In order to exclude data from the population
         3. check_all_sequences (boolean): Should we calculated all of the sequences or should we stop when one passed
@@ -45,6 +48,7 @@ class Sequence(BaseCalculation):
         """
         try:
             self.report_label = report_label
+            self.report_label_fk = report_label_fk
             self._sequence_calculation(population, location, additional)
         except Exception as err:
             Log.error("Sequence calculation failed due to the following error: {}".format(err))
@@ -63,13 +67,45 @@ class Sequence(BaseCalculation):
             adj_g = self._create_adjacency_graph(scene, population, sequence_params, graph_key)
             # Added this check to support vertical adjacency sequence
             if sequence_params[AdditionalAttr.DIRECTION] in ["DOWN", "UP"]:
-                result = self._find_sequence_per_scene_for_vertical_adj(scene, adj_g, sequence_params, graph_key, graph_value)
+                result = self._find_sequence_per_scene_for_vertical_adj(scene, adj_g, sequence_params)
             else:
-                result = self._find_sequence_per_scene(scene, adj_g, sequence_params, graph_key, graph_value)
+                result = self._find_sequence_per_scene_for_horizontal_adj(scene, adj_g, sequence_params)
             if result and not sequence_params[AdditionalAttr.CHECK_ALL_SEQUENCES]:
                 break
 
-    def _find_sequence_per_scene_for_vertical_adj(self, scene_fk, adj_g, seq_params, graph_key, graph_value):
+    def _find_sequence_per_scene_for_vertical_adj(self, scene_fk, adj_g, seq_params):
+        """
+        """
+        result = 0
+        if not adj_g:
+            return result
+
+        min_tags_per_entity = seq_params[AdditionalAttr.MIN_TAGS_OF_ENTITY]
+        # check if the two blocks Satisfy the minimum block Criteria
+        Log.info("min_tags_per_entity {}".format(min_tags_per_entity))
+
+        adj_g_undirected = adj_g.to_undirected()
+        for nodes_in_each_cluster in nx.connected_components(adj_g_undirected):
+            adj_g_sub_graph = adj_g.subgraph(nodes_in_each_cluster)
+            no_of_nodes_satisfy_min_tags = []
+            for node, attr in adj_g_sub_graph.nodes(data=True):
+                Log.info(attr)
+                if int(attr['facings']) >= int(min_tags_per_entity):
+                    no_of_nodes_satisfy_min_tags.append((node, attr))
+                else:
+                    Log.info("Node {} - doesnt satisfy the minimum tags criteria".format(node))
+
+            if len(no_of_nodes_satisfy_min_tags) == len(adj_g_sub_graph.nodes()):
+                result = 1
+                resultdf = pd.DataFrame(columns=self._results_df.columns,
+                                        data=[[adj_g_sub_graph, scene_fk, seq_params[AdditionalAttr.DIRECTION]]])
+                self._results_df = self._results_df.append(resultdf)
+            else:
+                result = 0
+
+        return result
+
+    def _find_sequence_per_scene_for_horizontal_adj(self, scene_fk, adj_g, seq_params):
         """
         """
         result = 0
@@ -287,9 +323,13 @@ class Sequence(BaseCalculation):
         kwargs = {'minimal_overlap_ratio': sequence_params[AdditionalAttr.ADJACENCY_OVERLAP_RATIO],
                   }  # AdditionalAttr.USE_MASKING_ONLY: True
         adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches, masking_df, graph_attr, **kwargs)
-        self.plot_adj_graph(adj_g, 1000, 1000, "lionjp", 1048634, outputfname="before_{}.html".format(self.report_label))
+        # self.plot_adj_graph(adj_g, 1000, 1000, "lionjp", scene_fk,
+        #                     outputfname="before_{}_{}.html".format(self.report_label_fk),
+        #                     self.report_label.replace(" ", ""))
         adj_g = self._filter_adjacency_graph(adj_g, graph_key, sequence_params)
-        self.plot_adj_graph(adj_g, 1000, 1000, "lionjp", 1048634, outputfname="after_{}.html".format(self.report_label))
+        # self.plot_adj_graph(adj_g, 1000, 1000, "lionjp", scene_fk,
+        #                     outputfname="after_{}_{}.html".format(self.report_label_fk,
+        #                                                           self.report_label.replace(" ", "")))
         return adj_g
 
     def _filter_adjacency_graph(self, adj_g, graph_key, sequence_params):
@@ -542,7 +582,7 @@ class Sequence(BaseCalculation):
         from Trax.Utils.Conventions.Log import Severities
         gf = GraphPlot.plot_networkx_graph(adj_g, overlay_image=True, scene_id=scene_ids, project_name=project)
         gf.update_layout(autosize=False, width=width, height=height)
-        outputfname = "/opt/localtmp/{}".format(outputfname)
+        outputfname = "/tmp/graphs/{}".format(outputfname)
         if outputfname:
             plot(gf, filename=outputfname)
         else:
