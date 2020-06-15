@@ -19,10 +19,12 @@ class Consts(object):
 
     # Template params
     TARGET = "Target"
+    TARGET_MIN = "Target_Min"
+    TARGET_MAX = "Target_Max"
     CATEGORY = 'category'
     REGION = 'region'
     STORE_TYPE = 'Store Type'
-    BRAND = 'brand'
+    BRAND = 'Brand Mix'
     EAN_CODE = 'EAN Code'
     FIELD = 'Field'
 
@@ -35,7 +37,7 @@ class Consts(object):
 
     # external targets keys
     KEY_FIELDS = [STORE_TYPE, REGION, CATEGORY, BRAND, EAN_CODE, FIELD]
-    DATA_FIELDS = [TARGET]
+    DATA_FIELDS = [TARGET, TARGET_MIN, TARGET_MAX]
 
     # external targets operation type
     SOS_KPIS = 'SOS_KPIs'
@@ -45,6 +47,8 @@ class Consts(object):
     UNIQUE_SKUS_THRESHOLD = 5
 
     # kpi score values
+    OOS = 1
+    DISTRIBUTED = 2
     PASS = 4
     FAIL = 5
     NO_TARGET = 6

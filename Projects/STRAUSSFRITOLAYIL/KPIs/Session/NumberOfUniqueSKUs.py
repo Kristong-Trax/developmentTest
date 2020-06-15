@@ -35,25 +35,30 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         # number of shelves with more than 50% strauss products
         denominator = len(join_df)
         numerator = len(join_df[join_df['percentage'] >= 0.5])
-
-        # number of strauss facings on all shelves
-        if sku_results.empty:
-            facings = 0
-        else:
-            facings = sku_results['result'].sum()
-
+        number_of_unique_skus = len(sku_results)
         # Adding 0.001 to prevent 0 sadot case
         sadot = math.ceil((numerator + 0.001) / 5.0)
-        relevant_field = fields_df[fields_df['Field'] == sadot]
-        if not relevant_field.empty:
-            target = relevant_field['Target'].values[0]
-        else:
-            target = -1
-        # todo: no target case
-        score = 1 if facings >= target else 2
+        target, upper_target = self.get_target(fields_df, sadot)
+        score = 1 if target <= number_of_unique_skus <= upper_target else 2
+        if target == 0:
+            score = Consts.NO_TARGET
+        result = (number_of_unique_skus / float(upper_target)) * 100
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, denominator_id=self.utils.store_id,
-                                numerator_result=numerator, denominator_result=denominator, result=facings,
+                                numerator_result=number_of_unique_skus, denominator_result=denominator, result=result,
                                 target=target, weight=sadot, score=score)
+
+    @staticmethod
+    def get_target(fields_df, sadot):
+        if sadot in fields_df[Consts.FIELD].values:
+            target = fields_df[fields_df['Field'] == sadot]['Target'].values[0]
+            upper_target = 100
+        elif sadot >= fields_df[Consts.FIELD].max():
+            target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()]['Target'].values[0]
+            upper_target = 100
+        else:
+            target = 0
+            upper_target = 100000
+        return target, upper_target
 
     def kpi_type(self):
         pass
