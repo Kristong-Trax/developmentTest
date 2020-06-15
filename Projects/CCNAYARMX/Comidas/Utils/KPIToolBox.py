@@ -76,7 +76,7 @@ class ComidasToolBox(GlobalSessionToolBox):
     def main_calculation(self):
         if self.store_type == 'Fondas-Rsr':
             relevant_kpi_template = self.templates[KPIS]
-            foundation_kpi_types = [SOS]
+            foundation_kpi_types = [SOS, SHARE_OF_EMPTY]
             foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
             combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == COMBO]
             scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE] == SCORING]
@@ -115,6 +115,7 @@ class ComidasToolBox(GlobalSessionToolBox):
                     0]
             except IndexError:
                 pass
+
             result_data = calculation_function(kpi_row)
             if result_data:
                 if isinstance(result_data, dict):
@@ -152,12 +153,30 @@ class ComidasToolBox(GlobalSessionToolBox):
     def _get_calculation_function_by_kpi_type(self, kpi_type):
         if kpi_type == SOS:
             return self.calculate_sos
-        if kpi_type == DISTRIBUTION:
-            return self.calculate_distribution
+        elif kpi_type == SHARE_OF_EMPTY:
+            return self.calculate_share_of_empty
 
     def calculate_distribution(self, row):
         return_holder = self._get_kpi_name_and_fk(row)
         a = 1
+
+    def calculate_share_of_empty(self, row):
+        target = row['target']
+        numerator_param1 = row[NUMERATOR_PARAM_1]
+        numerator_value1 = row[NUMERATOR_VALUE_1]
+
+        return_holder = self._get_kpi_name_and_fk(row)
+        denominator_scif = self._filter_df_based_on_row(row, self.scif)
+        numerator_scif = denominator_scif[denominator_scif[numerator_param1].isin([numerator_value1])]
+
+        result_dict = {'kpi_name':return_holder[0], 'kpi_fk':return_holder[1], 'result':0}
+        if not numerator_scif.empty:
+            denominator_result = denominator_scif.facings_ign_stack.sum()
+            numerator_result = numerator_scif.facings_ign_stack.sum()
+            result = (numerator_result / denominator_result)
+            result_dict['result'] = self.calculate_score_for_sos(target, result)
+
+        return result_dict
 
     def calculate_sos(self, row):
         target = row['target']
@@ -178,6 +197,55 @@ class ComidasToolBox(GlobalSessionToolBox):
             result_dict['score'] = score
 
         return result_dict
+
+    # def calculate_scoring(self, row):
+    #     kpi_name = row[KPI_NAME]
+    #     kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+    #     numerator_id = self.own_manuf_fk
+    #     denominator_id = self.store_id
+    #
+    #     result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'numerator_id': numerator_id,
+    #                    'denominator_id': denominator_id}
+    #
+    #     component_kpis = self.sanitize_values(row['Component KPIs'])
+    #     dependency_kpis = self.sanitize_values(row['Dependency'])
+    #     relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
+    #     passing_results = relevant_results[(relevant_results['result'] != 0) &
+    #                                        (relevant_results['result'].notna()) &
+    #                                        (relevant_results['score'] != 0)]
+    #     nan_results = relevant_results[relevant_results['result'].isna()]
+    #     if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
+    #         result_dict['result'] = pd.np.nan
+    #     elif row['Component aggregation'] == 'one-passed':
+    #         if len(relevant_results) > 0 and len(passing_results) > 0:
+    #             result_dict['result'] = 1
+    #         else:
+    #             result_dict['result'] = 0
+    #     elif row['Component aggregation'] == 'sum':
+    #         if len(relevant_results) > 0:
+    #             result_dict['score'] = relevant_results['score'].sum()
+    #             if 'result' not in result_dict.keys():
+    #                 if row['score_based_result'] == 'y':
+    #                     result_dict['result'] = 0 if result_dict['score'] == 0 else result_dict['score'] / row['Score']
+    #                 elif row['composition_based_result'] == 'y':
+    #                     result_dict['result'] = 0 if passing_results.empty else float(len(passing_results)) / len(
+    #                         relevant_results)
+    #                 else:
+    #                     result_dict['result'] = result_dict['score']
+    #         else:
+    #             result_dict['score'] = 0
+    #             if 'result' not in result_dict.keys():
+    #                 result_dict['result'] = result_dict['score']
+    #     if dependency_kpis and dependency_kpis is not pd.np.nan:
+    #         dependency_results = self.results_df[self.results_df['kpi_name'].isin(dependency_kpis)]
+    #         passing_dependency_results = dependency_results[dependency_results['result'] != 0]
+    #         if len(dependency_results) > 0 and len(dependency_results) == len(passing_dependency_results):
+    #             result_dict['result'] = 1
+    #         else:
+    #             result_dict['result'] = 0
+    #
+    #     return result_dict
+
 
 
     def _filter_df_based_on_row(self, row, df):
