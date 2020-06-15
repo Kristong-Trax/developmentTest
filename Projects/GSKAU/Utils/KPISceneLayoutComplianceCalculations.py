@@ -310,7 +310,9 @@ class SceneLayoutComplianceCalc(object):
                              format(br=brand_pk_to_check,
                                     seq=sequence_brand_pks))
                     min_shelf_of_brand = stack_filtered_mpis[
-                        stack_filtered_mpis['brand_fk'] == brand_pk_to_check]['shelf_number'].min()
+                        (stack_filtered_mpis['brand_fk'] == brand_pk_to_check) &
+                        (stack_filtered_mpis['sub_category_fk'] == sub_category_pk)
+                    ]['shelf_number'].min()
                     idx_brand_start_check = sequence_brand_pks.index(brand_pk_to_check) - 1
                     while idx_brand_start_check >= 0:
                         predecessor_brand_to_check = sequence_brand_pks[idx_brand_start_check]
