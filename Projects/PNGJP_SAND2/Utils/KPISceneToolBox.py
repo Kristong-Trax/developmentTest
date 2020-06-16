@@ -7,6 +7,7 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from Trax.Utils.Logging.Logger import Log
+from Projects.PNGJP_SAND2.Utils.TemplateParser import PNGJPTemplateParser
 
 __author__ = 'prasanna'
 
@@ -52,27 +53,8 @@ class PNGJPSceneToolBox:
         self.block = Block(self.data_provider, self.output)
 
     def load_external_targets(self):
-        targets = self.ps_data_provider.get_kpi_external_targets(
-            kpi_operation_types=['Brand_Position',
-                                 'Super_Brand_Block',
-                                 ],
-            key_fields=["template_fks",
-                        "super_brand_pk",
-                        "store_banner_pk",
-                        "sub_category_fk",
-                        "brand_pk",
-                        "sequence_brand_pks"
-                        ],
-            data_fields=["stacking_include",
-                         "block_threshold_perc",
-                         "1_5_shelf",
-                         "6_7_shelf",
-                         "8_9_shelf",
-                         "10_12_shelf",
-                         "target_perc",
-                         "above_12_shelf"
-                         ]
-        )
+        parser = PNGJPTemplateParser(self.data_provider, self.rds_conn)
+        targets = parser.get_targets()
         return targets
 
     @staticmethod
@@ -92,22 +74,19 @@ class PNGJPSceneToolBox:
         return status
 
     def get_relevant_custom_entity_data(self):
+        # TODO: Needs to fix this also
         Log.info("Getting custom entity data for the present super brands and store banner...")
-        columns_to_check = ["store_banner_pk", "super_brand_pk"]
-        status = True
-        for column in columns_to_check:
-            if column not in self.targets.columns:
-                Log.error("Error: {} not found in external targets".format(column))
-                status = False
 
-        if not status:
-            return pd.DataFrame()
+        custom_entity_data = pd.DataFrame()
 
-        query = """ select * from static.custom_entity where pk in {custom_entity_pks};"""
-        custom_entity_data = pd.read_sql_query(query.format(
-            custom_entity_pks=tuple(np.concatenate((self.targets['store_banner_pk'].dropna().unique().astype('int'),
-                                                    self.targets['super_brand_pk'].dropna().unique().astype('int'))))),
-            self.rds_conn.db)
+        # for pks in self.targets['Block']['product_group_name_fks'].dropna().values:
+        #     pks
+        #
+        # query = """ select * from static.custom_entity where pk in {custom_entity_pks};"""
+        # custom_entity_data = pd.read_sql_query(query.format(
+        #     custom_entity_pks=tuple(np.concatenate((self.targets['Block']['product_group_name_fks'].dropna().unique().astype('int'),
+        #                                             self.targets['Golden Zone'].dropna().unique().astype('int'))))),
+        #     self.rds_conn.db)
         return custom_entity_data
 
     def calculate_layout_compliance(self):
@@ -131,7 +110,7 @@ class PNGJPSceneToolBox:
 
     def calculate_pngjp_block_compliance(self):
         if not self.check_if_the_kpis_is_available(PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE):
-            Log.warning('Unable to calculate PNGJP_LAYOUT_COMPLIANCE_KPIs: KPIs are not in kpi_level_2')
+            Log.warning('Unable to calculate PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE: KPIs are not in kpi_level_2')
             return
 
         kpi_details = self.kpi_static_data[
@@ -143,11 +122,10 @@ class PNGJPSceneToolBox:
             sess=self.session_uid,
             scene=self.current_scene_fk,
         ))
-        block_targets = self.targets[
-            self.targets['kpi_fk'] == kpi_details['pk'].iloc[0]]
+        block_targets = self.targets["Block"]
         # if no targets return
         if block_targets.empty:
-            Log.warning('There is no target policy for calculating {}'.format(
+            Log.warning('There is no target policy in the template for calculating {}'.format(
                 kpi_details.iloc[0][KPI_TYPE_COL]
             ))
             return False
@@ -186,6 +164,7 @@ class PNGJPSceneToolBox:
                             scat=sub_category_pk,
                         ))
                     stacking_include = bool(int(each_target.stacking_include))
+
                     # able to pass sub cat and super brand[?] // or get the prods and pass
                     block_filters = {'sub_category_fk': [float(sub_category_pk)],
                                      'Super Brand': [super_brand_custom_entity.name.iloc[0]]
@@ -241,7 +220,7 @@ class PNGJPSceneToolBox:
 
     def calculate_pngjp_golden_zone_compliance(self):
         if not self.check_if_the_kpis_is_available(PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE):
-            Log.warning('Unable to calculate PNGJP_LAYOUT_COMPLIANCE_KPIs: KPIs are not in kpi_level_2')
+            Log.warning('Unable to calculate PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE: KPIs are not in kpi_level_2')
             return
 
         kpi_details = self.kpi_static_data[
@@ -253,8 +232,7 @@ class PNGJPSceneToolBox:
             sess=self.session_uid,
             scene=self.current_scene_fk,
         ))
-        position_targets = self.targets[
-            self.targets['kpi_fk'] == kpi_details['pk'].iloc[0]]
+        position_targets = self.targets["Golden Zone"]
 
         def _get_shelf_range(sh):
             """Input => string ~ '1_2_shelf
