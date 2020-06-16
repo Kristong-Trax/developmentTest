@@ -11,13 +11,11 @@ from Trax.Utils.Logging.Logger import Log
 __author__ = 'prasanna'
 
 # The KPIs for Layout Compliance
-PNGJP_LAYOUT_COMPLIANCE_BLOCK = 'PNGJP_LAYOUT_COMPLIANCE_BLOCK'
-PNGJP_LAYOUT_COMPLIANCE_POSITION = 'PNGJP_LAYOUT_COMPLIANCE_POSITION'
+PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE = 'PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE'
+PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE = 'PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE'
 
 # other constants
 KPI_TYPE_COL = 'type'
-POS_TYPE = 'POS'
-POSM_KEY = 'posm_pk'
 
 
 class PNGJPSceneToolBox:
@@ -77,15 +75,6 @@ class PNGJPSceneToolBox:
         )
         return targets
 
-    def calculate_layout_compliance(self):
-        try:
-            current_scene_fk = self.scene_info.iloc[0].scene_fk
-            Log.info('Calculate Layout Compliance for session: {sess} - scene: {scene}'
-                     .format(sess=self.session_uid, scene=current_scene_fk))
-            self.calculate_all()
-        except Exception as e:
-            Log.error("Error: {}".format(e))
-
     @staticmethod
     def ensure_as_list(template_fks):
         if isinstance(template_fks, list):
@@ -121,28 +110,32 @@ class PNGJPSceneToolBox:
             self.rds_conn.db)
         return custom_entity_data
 
-    def calculate_all(self):
+    def calculate_layout_compliance(self):
+        current_scene_fk = self.scene_info.iloc[0].scene_fk
+        Log.info('Calculate Layout Compliance for session: {sess} - scene: {scene}'
+                 .format(sess=self.session_uid, scene=current_scene_fk))
+
         if self.targets.empty:
             Log.warning('Unable to calculate PNGJP_LAYOUT_COMPLIANCE_KPIs: external targets are empty')
             return
 
         try:
-            self.calculate_pngjp_layout_compliance_block()
+            self.calculate_pngjp_block_compliance()
         except Exception as e:
             Log.error("Error : {}".format(e))
 
         try:
-            self.calculate_pngjp_layout_compliance_position()
+            self.calculate_pngjp_golden_zone_compliance()
         except Exception as e:
             Log.error("Error : {}".format(e))
 
-    def calculate_pngjp_layout_compliance_block(self):
-        if not self.check_if_the_kpis_is_available(PNGJP_LAYOUT_COMPLIANCE_BLOCK):
+    def calculate_pngjp_block_compliance(self):
+        if not self.check_if_the_kpis_is_available(PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE):
             Log.warning('Unable to calculate PNGJP_LAYOUT_COMPLIANCE_KPIs: KPIs are not in kpi_level_2')
             return
 
         kpi_details = self.kpi_static_data[
-            (self.kpi_static_data[KPI_TYPE_COL] == PNGJP_LAYOUT_COMPLIANCE_BLOCK)
+            (self.kpi_static_data[KPI_TYPE_COL] == PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE)
             & (self.kpi_static_data['delete_time'].isnull())]
 
         Log.info("Calculating {kpi} for session: {sess} and scene: {scene}".format(
@@ -246,13 +239,13 @@ class PNGJPSceneToolBox:
                         by_scene=True,
                     )
 
-    def calculate_pngjp_layout_compliance_position(self):
-        if not self.check_if_the_kpis_is_available(PNGJP_LAYOUT_COMPLIANCE_POSITION):
+    def calculate_pngjp_golden_zone_compliance(self):
+        if not self.check_if_the_kpis_is_available(PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE):
             Log.warning('Unable to calculate PNGJP_LAYOUT_COMPLIANCE_KPIs: KPIs are not in kpi_level_2')
             return
 
         kpi_details = self.kpi_static_data[
-            (self.kpi_static_data[KPI_TYPE_COL] == PNGJP_LAYOUT_COMPLIANCE_POSITION)
+            (self.kpi_static_data[KPI_TYPE_COL] == PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE)
             & (self.kpi_static_data['delete_time'].isnull())]
 
         Log.info("Calculating {kpi} for session: {sess} and scene: {scene}".format(
