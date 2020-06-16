@@ -103,9 +103,9 @@ class PEPSICOUKCommonToolBox:
 
         self.displays_template = self.get_display_parameters()
         self.full_pallet_len = self.displays_template[self.displays_template[self.DISPLAY_NAME_TEMPL] == \
-                                                      'o. Full Pallet'][self.SHELF_LEN_DISPL].values[0]
+                                                      'HO Agreed Full Pallet'][self.SHELF_LEN_DISPL].values[0]
         self.half_pallet_len = self.displays_template[self.displays_template[self.DISPLAY_NAME_TEMPL] == \
-                                                      'g. Half Pallet'][self.SHELF_LEN_DISPL].values[0]
+                                                      'HO Agreed Half Pallet'][self.SHELF_LEN_DISPL].values[0]
         self.shelf_len_mixed_shelves = self.calculate_shelf_len_for_mixed_shelves()
         self.scene_display = self.get_match_display_in_scene()
         self.assign_bays_to_bins()
