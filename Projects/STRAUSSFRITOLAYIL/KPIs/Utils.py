@@ -39,8 +39,9 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_info = self.data_provider[Data.STORE_INFO]
-        self.store_type = self.store_info['store_type'].values[0]
-        self.region = self.store_info['region_name'].values[0]
+        self.additional_attribute_2 = self.store_info[Consts.ADDITIONAL_ATTRIBUTE_2].values[0]
+        self.additional_attribute_3 = self.store_info[Consts.ADDITIONAL_ATTRIBUTE_3].values[0]
+        self.additional_attribute_4 = self.store_info[Consts.ADDITIONAL_ATTRIBUTE_4].values[0]
         self.store_id = self.store_info['store_fk'].values[0] if self.store_info['store_fk'] is not None else 0
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.toolbox = GENERALToolBox(self.data_provider)
@@ -69,8 +70,12 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
 
     def filter_external_targets(self):
         self.kpi_external_targets = self.kpi_external_targets[
-            (self.kpi_external_targets['Store Type'].str.encode("utf8") == self.store_type.encode("utf8")) &
-            (self.kpi_external_targets['region'].str.encode("utf8") == self.region.encode("utf8"))]
+            (self.kpi_external_targets[Consts.ADDITIONAL_ATTRIBUTE_2].str.encode("utf8").isin(
+                [None, self.additional_attribute_2.encode("utf8")])) &
+            (self.kpi_external_targets[Consts.ADDITIONAL_ATTRIBUTE_3].str.encode("utf8").isin(
+                [None, self.additional_attribute_3.encode("utf8")])) &
+            (self.kpi_external_targets[Consts.ADDITIONAL_ATTRIBUTE_4].str.encode("utf8").isin(
+                [None, self.additional_attribute_4.encode("utf8")]))]
 
     def calculate_lvl3_assortment(self, assortment_result):
         """
@@ -99,6 +104,8 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
 
     def handle_replacment_products_row(self, assortment_result):
         additional_products_df = assortment_result[~assortment_result[Consts.REPLACMENT_EAN_CODES].isnull()]
+        products_in_session = set(self.match_product_in_scene['product_ean_code'].values)
+        products_in_session_wo_hangers = set(self.match_product_in_scene_wo_hangers['product_ean_code'].values)
         for i, row in additional_products_df.iterrows():
             replacement_products = row[Consts.REPLACMENT_EAN_CODES]
             facings = len(self.match_product_in_scene[self.match_product_in_scene[
@@ -109,17 +116,18 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
             assortment_result.loc[i, 'facings_all_products_wo_hangers'] = facings_wo_hangers + row['facings_wo_hangers']
             if row['in_store'] != 1:
                 for sku in replacement_products:
-                    if sku in self.match_product_in_scene['product_ean_code'].values:
-                        product_fk = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk']
-
+                    if sku in products_in_session:
+                        product_df = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk']
+                        assortment_result.loc[i, 'product_fk'] = product_df.values[0]
                         assortment_result.loc[i, 'in_store'] = 1
+                        break
             if row['in_store_wo_hangers'] != 1:
                 for sku in replacement_products:
-                    if sku in self.match_product_in_scene_wo_hangers['product_ean_code'].values:
+                    if sku in products_in_session_wo_hangers:
                         product_df = self.all_products[self.all_products['product_ean_code'] == sku]['product_fk']
-                        product_fk = int(product_df.values[0]) if product_df.values[0] else -1
-                        assortment_result.loc[i, 'product_fk'] = product_fk
+                        assortment_result.loc[i, 'product_fk'] = product_df.values[0]
                         assortment_result.loc[i, 'in_store_wo_hangers'] = 1
+                        break
         return assortment_result
 
     def filter_scif_and_mpis_to_contain_only_primary_shelf(self):

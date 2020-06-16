@@ -21,7 +21,7 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['stacking_layer'] == 1]
         for category in template_categories:
-            target = template[template['category'] == category][Consts.TARGET]
+            target = template[template[Consts.CATEGORY] == category][Consts.TARGET]
             if not target.empty:
                 target = target.values[0]
             else:

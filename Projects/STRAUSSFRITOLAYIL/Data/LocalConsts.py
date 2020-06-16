@@ -21,10 +21,11 @@ class Consts(object):
     TARGET = "Target"
     TARGET_MIN = "Target_Min"
     TARGET_MAX = "Target_Max"
-    CATEGORY = 'category'
-    REGION = 'region'
-    STORE_TYPE = 'Store Type'
-    BRAND = 'Brand Mix'
+    CATEGORY = 'Category'
+    ADDITIONAL_ATTRIBUTE_2 = 'additional_attribute_2'
+    ADDITIONAL_ATTRIBUTE_3 = 'additional_attribute_3'
+    ADDITIONAL_ATTRIBUTE_4 = 'additional_attribute_4'
+    BRAND_MIX = 'Brand_Mix'
     EAN_CODE = 'EAN Code'
     FIELD = 'Field'
 
@@ -36,7 +37,8 @@ class Consts(object):
                        'category', 'category_fk', 'sub_brand', 'sub_brand_fk', 'location_type']
 
     # external targets keys
-    KEY_FIELDS = [STORE_TYPE, REGION, CATEGORY, BRAND, EAN_CODE, FIELD]
+    KEY_FIELDS = [ADDITIONAL_ATTRIBUTE_2, ADDITIONAL_ATTRIBUTE_3, ADDITIONAL_ATTRIBUTE_4, CATEGORY, BRAND_MIX,
+                  EAN_CODE, FIELD]
     DATA_FIELDS = [TARGET, TARGET_MIN, TARGET_MAX]
 
     # external targets operation type

@@ -26,7 +26,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         store_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
             ['bay_number', 'shelf_number', 'facings']]
         # filter only specific categories
-        df = df[(df['category_fk'].isin(categories)) & (df['manufacturer_fk'] == self.utils.own_manuf_fk)]
+        df = df[(df['category'].isin(categories)) & (df['manufacturer_fk'] == self.utils.own_manuf_fk)]
         category_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
             ['bay_number', 'shelf_number', 'facings']]
         category_df.columns = ['bay_number', 'shelf_number', 'facings category']
