@@ -786,7 +786,7 @@ class NationalToolBox(GlobalSessionToolBox):
 
         relevant_columns_in_constraints_df = [item for item in constraints_df.columns if "assortment" in item]
         constraints_df = constraints_df[relevant_columns_in_constraints_df]
-        final_constraints = constraints_df.values[0]
+        final_constraints = constraints_df.values[0:1]
         return final_constraints
 
     @staticmethod
@@ -804,7 +804,10 @@ class NationalToolBox(GlobalSessionToolBox):
                 scif.product_short_name.isin(required_assortment)].facings.sum()
             if total_facings_for_this_sum >= facing_constraint:
                 assortment_passed = assortment_passed + 1
-        result = float(assortment_passed) / len(constraints_df)
+        try:
+            result = float(assortment_passed) / len(constraints_df)
+        except ZeroDivisionError:
+            result = 0
         return result
 
     def calculate_sos(self, row):
