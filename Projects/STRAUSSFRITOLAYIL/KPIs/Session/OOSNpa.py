@@ -18,8 +18,7 @@ class OOSNpaKpi(UnifiedCalculationsScript):
         for assortment_fk in assortment_fks:
             assortment_df = sku_results[sku_results['denominator_id'] == assortment_fk]
             denominator = len(assortment_df)
-            # OOS KPI, 1 for OOS, 2 for DISTRIBUTED
-            numerator = len(assortment_df[assortment_df['result'] == 1])
+            numerator = len(assortment_df[assortment_df['result'] == Consts.OOS])
             result = self.utils.calculate_sos_result(numerator, denominator)
             self.write_to_db_result(fk=kpi_fk, numerator_id=assortment_fk, result=result,
                                     numerator_result=numerator, denominator_result=denominator)

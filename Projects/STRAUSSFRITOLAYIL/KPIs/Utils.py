@@ -59,10 +59,8 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         replacement_eans_df = pd.DataFrame([json_normalize(json.loads(js)).values[0] for js
                                             in assortment_result['additional_attributes']])
         replacement_eans_df.columns = [Consts.REPLACMENT_EAN_CODES]
-        replacement_eans_df = pd.DataFrame(replacement_eans_df[Consts.REPLACMENT_EAN_CODES].str.split(','),
-                                           columns=[Consts.REPLACMENT_EAN_CODES])
-        replacement_eans_df = replacement_eans_df[Consts.REPLACMENT_EAN_CODES].apply(lambda row: [x.strip() for x in
-                                                                                                  row] if row else None)
+        replacement_eans_df = replacement_eans_df[Consts.REPLACMENT_EAN_CODES].apply(lambda row: [
+            x.strip() for x in str(row).split(",")] if row else None)
         assortment_result = assortment_result.join(replacement_eans_df)
         assortment_result['facings_all_products'] = assortment_result['facings'].copy()
         assortment_result['facings_all_products_wo_hangers'] = assortment_result['facings_wo_hangers'].copy()
