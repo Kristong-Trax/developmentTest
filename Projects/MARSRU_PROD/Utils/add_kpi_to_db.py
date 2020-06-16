@@ -312,7 +312,7 @@ if __name__ == '__main__':
     # dbusers_mock.return_value = docker_user
     kpi = MARSRU_PRODAddKPIs(
         'marsru-prod', '/home/sergey/dev/kpi_factory/Projects/MARSRU_PROD/Data/2020_06_14/KPIs for DB - MARS KPIs.xlsx', 'Sheet5')
-    kpi.add_kpis_from_template()
-    # kpi.update_atomic_kpi_data()
+    # kpi.add_kpis_from_template()
+    kpi.update_atomic_kpi_data()
     # kpi.update_kpi_weights()
     # kpi.update_atomic_weights()
