@@ -6,14 +6,14 @@ from Projects.BATRU.Calculations import BATRUCalculations
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('BATRU calculations')
+    LoggerInitializer.init('KEngine')
     Config.init()
 
     project_name = 'batru'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
 
-        '56a0fd5c-d83a-4a57-944b-df43a4fea6b9'
+        '7345E20D-99D8-4499-91D9-26BCF249AF38'
     ]
     for session in sessions:
         data_provider.load_session_data(session)
