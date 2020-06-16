@@ -1,5 +1,5 @@
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import SceneBaseClass
-from Projects.PNGJP_SAND.KPISceneGenerator import SceneGenerator
+from Projects.PNGJP_SAND2.KPISceneGenerator import SceneGenerator
 
 
 class SceneCalculations(SceneBaseClass):

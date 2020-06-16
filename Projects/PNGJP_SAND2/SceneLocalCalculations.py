@@ -5,8 +5,8 @@ from Trax.Utils.Logging.Logger import Log
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
-from Projects.PNGJP_SAND.SceneKpis.SceneCalculations import SceneCalculations
-from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Projects.PNGJP_SAND2.SceneKpis import SceneCalculations
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS_COLUMNS
 
@@ -23,9 +23,9 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('pngjp-sand Scene Calculations')
+    LoggerInitializer.init('pngjp-sand2 Scene Calculations')
     Config.init()
-    project_name = 'pngjp-sand'
+    project_name = 'pngjp-sand2'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
         # ('', [''])

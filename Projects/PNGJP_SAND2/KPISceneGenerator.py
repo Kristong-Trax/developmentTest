@@ -1,6 +1,6 @@
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
-from Projects.PNGJP_SAND.Utils.KPISceneToolBox import PNGJPSceneToolBox
+from Projects.PNGJP_SAND2.Utils.KPISceneToolBox import PNGJPSceneToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 
