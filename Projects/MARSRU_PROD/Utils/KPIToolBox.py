@@ -2757,7 +2757,8 @@ class MARSRU_PRODKPIToolBox:
         """
         product_fks = []
         for attributes in attributes_list:
+            products = self.products
             for attribute in attributes.keys():
-                product_fks += self.products[self.products[attribute].isin(attributes[attribute])][
-                    'product_fk'].tolist()
+                products = products[products[attribute].isin(attributes[attribute])]
+            product_fks += products['product_fk'].tolist()
         return list(set(product_fks))
