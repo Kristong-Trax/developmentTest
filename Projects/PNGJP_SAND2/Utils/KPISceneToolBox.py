@@ -48,7 +48,6 @@ class PNGJPSceneToolBox:
 
         self.match_display_in_scene = self.data_provider.match_display_in_scene
         self.current_scene_fk = self.scene_info.iloc[0].scene_fk
-        self.store_banner_name = self.store_info.iloc[0].additional_attribute_20
         self.template_name = self.templates.iloc[0].template_name
         self.match_product_data = self.match_product_in_scene.merge(self.products, on='product_fk', how='left')
         self.block = Block(self.data_provider, self.output)
