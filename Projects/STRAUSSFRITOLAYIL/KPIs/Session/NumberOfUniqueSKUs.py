@@ -36,16 +36,17 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         denominator = len(join_df)
         numerator = len(join_df[join_df['percentage'] >= 0.5])
         number_of_unique_skus = len(sku_results)
-        # Adding 0.001 to prevent 0 sadot case
         sadot = math.ceil(numerator / 5.0)
         sadot = sadot if sadot != 0 else 1
         target, upper_target = self.get_target(fields_df, sadot)
-        score = 1 if target <= number_of_unique_skus <= upper_target else 2
-        if target == 0:
+        if target == -1:
             score = Consts.NO_TARGET
-        result = (number_of_unique_skus / float(upper_target)) * 100
+            ratio = 0
+        else:
+            score = Consts.PASS if target <= number_of_unique_skus <= upper_target else Consts.FAIL
+            ratio = (number_of_unique_skus / float(upper_target)) * 100
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, denominator_id=self.utils.store_id,
-                                numerator_result=number_of_unique_skus, denominator_result=denominator, result=result,
+                                numerator_result=number_of_unique_skus, denominator_result=denominator, result=ratio,
                                 target=target, weight=sadot, score=score)
 
     @staticmethod
@@ -57,8 +58,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
             target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()][Consts.TARGET_MIN].values[0]
             upper_target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()][Consts.TARGET_MAX].values[0]
         else:
-            target = 0
-            upper_target = 100000
+            target = upper_target = -1
         return target, upper_target
 
     def kpi_type(self):

@@ -18,7 +18,7 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
             template_categories = ['Crackers', 'Core Salty']
         else:
             template_categories = set(template[Consts.CATEGORY])
-        target_range = 0.05
+        target_range = 0.02
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['stacking_layer'] == 1]
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches[
@@ -30,7 +30,7 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
             if not target.empty:
                 target = target.values[0]
             else:
-                target = 0
+                target = -1
             category_fk = self.utils.all_products[self.utils.all_products['category'] == category][
                 'category_fk'].values[0]
             category_df = own_manufacturer_matches[own_manufacturer_matches['category'] == category]
@@ -41,7 +41,7 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
                 sub_brand_df = category_df[category_df['sub_brand_fk'] == sub_brand_fk]
                 sub_brand_linear_length = sub_brand_df['width_mm_advance'].sum()
                 sos_result = self.utils.calculate_sos_result(sub_brand_linear_length, category_linear_length)
-                if target == 0:
+                if target == -1:
                     kpi_score = Consts.NO_TARGET
                 else:
                     kpi_score = Consts.PASS if ((target - target_range) <= sos_result <=

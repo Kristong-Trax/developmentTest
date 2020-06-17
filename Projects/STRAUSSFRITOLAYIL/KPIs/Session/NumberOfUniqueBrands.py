@@ -16,18 +16,19 @@ class NumberOfUniqueBrandsKpi(UnifiedCalculationsScript):
                                                    Consts.NUMBER_OF_UNQIUE_BRANDS_KPI]
         sku_results = self.dependencies_data
         if len(template) == 1:
-            target = template.iloc[0][Consts.TARGET]
-        elif len(template) != 1:
-            Log.warning("There is more than one fitting row for KPI {}".format(str(kpi_fk)))
-            target = -1
+            target = template.iloc[0][Consts.TARGET_MAX]
         else:
+            Log.warning("There are no fitting rows or more than one fitting row for KPI {}".format(str(kpi_fk)))
             target = -1
         # strauss are looking at sub_brand as brand in this KPI
         if sku_results.empty:
             number_of_sub_brands = 0
         else:
             number_of_sub_brands = len(sku_results[sku_results['result'] >= 1])
-        score = 1 if number_of_sub_brands >= target else 0
+        if target == -1:
+            score = Consts.NO_TARGET
+        else:
+            score = Consts.PASS if number_of_sub_brands >= target else Consts.FAIL
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
                                 result=number_of_sub_brands, denominator_id=self.utils.store_id, score=score)
 
