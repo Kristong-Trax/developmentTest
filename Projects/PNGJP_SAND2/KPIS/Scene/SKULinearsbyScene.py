@@ -4,9 +4,9 @@ from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ScifConsts
 import numpy as np
 
 
-class SKUFacingsbySceneKpi(UnifiedCalculationsScript):
+class SKULinearbySceneKpi(UnifiedCalculationsScript):
     def __init__(self, data_provider, config_params=None, **kwargs):
-        super(SKUFacingsbySceneKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
+        super(SKULinearbySceneKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PNGJP_SAND2Util(None, data_provider)
         self.kpi_name = self._config_params['kpi_type']
 
@@ -28,16 +28,22 @@ class SKUFacingsbySceneKpi(UnifiedCalculationsScript):
 
                 if target_prameters['Include Stacking']:
                     result_df = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SHELF_NUMBER,
-                                                 MatchesConsts.BAY_NUMBER], as_index=False).agg({'count': np.sum})
+                                                 MatchesConsts.BAY_NUMBER],
+                                                as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum,
+                                                                     MatchesConsts.WIDTH_MM_NET: np.sum})
                     result_df = result_df.merge(max_shelf, on=MatchesConsts.BAY_NUMBER, how='left')
                 else:
                     matches = matches[matches[MatchesConsts.STACKING_LAYER] == 1]
                     result_df = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SHELF_NUMBER,
-                                                 MatchesConsts.BAY_NUMBER], as_index=False).agg({'count': np.sum})
+                                                 MatchesConsts.BAY_NUMBER],
+                                                as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum,
+                                                                     MatchesConsts.WIDTH_MM_NET: np.sum})
                     result_df = result_df.merge(max_shelf, on=MatchesConsts.BAY_NUMBER, how='left')
                 for i, row in result_df.iterrows():
                     self.write_to_db_result(fk=kpi_fk, numerator_id=row[MatchesConsts.PRODUCT_FK],
                                             numerator_result=row[MatchesConsts.BAY_NUMBER],
                                             denominator_id=template_fk,
                                             denominator_result=row[MatchesConsts.SHELF_NUMBER],
-                                            result=row['count'], score=row[self.util.MAX_SHELF], by_scene=True)
+                                            result=row[MatchesConsts.WIDTH_MM_ADVANCE],
+                                            score=row[self.util.MAX_SHELF], target=[MatchesConsts.WIDTH_MM_NET],
+                                            by_scene=True)

@@ -15,7 +15,7 @@ class PNGJP_SAND2Queries(object):
     @staticmethod
     def get_match_display(session_uid):
         return """
-            select d.display_name, m.scene_fk, sdt.name as display_type
+            select d.display_name, d.pk as display_fk, m.scene_fk, sdt.name as display_type
             from probedata.match_display_in_scene m
             join probedata.scene s on s.pk = m.scene_fk
             join static.display d on d.pk = m.display_fk
