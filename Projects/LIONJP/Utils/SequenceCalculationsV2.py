@@ -21,17 +21,20 @@ class Sequence(BaseCalculation):
         super(Sequence, self).__init__(data_provider, **kwargs)
         self.data_provider = data_provider
         self.custom_matches = custom_matches
+        self.condensed_graph = None
+        self.adjacency_graph = None
+        self.is_debug = kwargs.get("is_debug", False)
+        self.report_label = kwargs.get("report_label", "graph")
+        self.custom_entity_fk = kwargs.get("custom_entity_fk", 0)
+        self._results_df = pd.DataFrame()
 
-    def calculate_sequence(self, population, location=None, additional=None, report_label="", report_label_fk=0):
+    def calculate_sequence(self, population, location=None, additional=None):
         """
         :param location: The locations parameters which the sequences are checked for.
         E.g: {'template_group': 'Primary Shelf'}.
         :param population: These are the parameters which the sequences are checked for.
         E.g: {'product_fk': [1, 2, 3]}, {'brand_name': ['brand1', 'brand2', 'brand3']}.
         :param additional: Additional attributes for the sequence calculation:
-
-        :param report_label: To print the report label in the debug mode
-
         1. direction (str): LEFT/RIGHT/UP/DOWN - the direction of the sequence.
         2. exclude_filter (dict): In order to exclude data from the population
         3. check_all_sequences (boolean): Should we calculated all of the sequences or should we stop when one passed
@@ -47,8 +50,6 @@ class Sequence(BaseCalculation):
         :return: A DataFrame with the following fields: cluster (Graph), scene_fk and direction
         """
         try:
-            self.report_label = report_label
-            self.report_label_fk = report_label_fk
             self._sequence_calculation(population, location, additional)
         except Exception as err:
             Log.error("Sequence calculation failed due to the following error: {}".format(err))
@@ -59,21 +60,22 @@ class Sequence(BaseCalculation):
         """
         The full documentation can be found under sequence_calculation function or in the confluence page.
         """
+
         scenes_to_check, sequence_params = self._parse_sequence_arguments(location, additional)
         if not self._params_validation(scenes_to_check, sequence_params, population):
             return
         graph_key, graph_value = self._prepare_data_for_graph_creation(population, sequence_params)
         for scene in scenes_to_check:
+            result = None
             adj_g = self._create_adjacency_graph(scene, population, sequence_params, graph_key)
             # Added this check to support vertical adjacency sequence
-            if sequence_params[AdditionalAttr.DIRECTION] in ["DOWN", "UP"]:
-                result = self._find_sequence_per_scene_for_vertical_adj(scene, adj_g, sequence_params)
-            else:
-                result = self._find_sequence_per_scene_for_horizontal_adj(scene, adj_g, sequence_params)
+            direction = "VERTICAL" if sequence_params[AdditionalAttr.DIRECTION] in ["DOWN", "UP"] else "HORIZONTAL"
+            result = self.find_sequence_per_scene_horizontal_or_vertical(scene, adj_g, sequence_params,direction)
+
             if result and not sequence_params[AdditionalAttr.CHECK_ALL_SEQUENCES]:
                 break
 
-    def _find_sequence_per_scene_for_vertical_adj(self, scene_fk, adj_g, seq_params):
+    def find_sequence_per_scene_horizontal_or_vertical(self, scene_fk, adj_g, seq_params, direction):
         """
         """
         result = 0
@@ -82,58 +84,65 @@ class Sequence(BaseCalculation):
 
         min_tags_per_entity = seq_params[AdditionalAttr.MIN_TAGS_OF_ENTITY]
         # check if the two blocks Satisfy the minimum block Criteria
-        Log.info("min_tags_per_entity {}".format(min_tags_per_entity))
+        if self.is_debug:
+            Log.info("min_tags_per_entity: {}".format(min_tags_per_entity))
 
         adj_g_undirected = adj_g.to_undirected()
         for nodes_in_each_cluster in nx.connected_components(adj_g_undirected):
+            result = 0
             adj_g_sub_graph = adj_g.subgraph(nodes_in_each_cluster)
             no_of_nodes_satisfy_min_tags = []
             for node, attr in adj_g_sub_graph.nodes(data=True):
-                Log.info(attr)
-                if int(attr['facings']) >= int(min_tags_per_entity):
+                if int(attr['facings']) >= int(min_tags_per_entity) and ("entity_1" in list(attr['entity']) or "entity_2" in list(attr['entity'])):
                     no_of_nodes_satisfy_min_tags.append((node, attr))
                 else:
-                    Log.info("Node {} - doesnt satisfy the minimum tags criteria".format(node))
+                    if self.is_debug:
+                        Log.info("Node {} - doesnt satisfy the minimum tags criteria".format(node))
 
-            if len(no_of_nodes_satisfy_min_tags) == len(adj_g_sub_graph.nodes()):
-                result = 1
-                resultdf = pd.DataFrame(columns=self._results_df.columns,
-                                        data=[[adj_g_sub_graph, scene_fk, seq_params[AdditionalAttr.DIRECTION]]])
-                self._results_df = self._results_df.append(resultdf)
-            else:
-                result = 0
+            entity_1_shelf_number = []
+            entity_2_shelf_number = []
+            for ndx in no_of_nodes_satisfy_min_tags:
+                node, attr = ndx
+                if "entity_1" in list(attr['entity']):
+                    message = "Entity 1: Number of entities in the"
+                    message += " condensed node {}={}".format(node, len(list(attr["entity"])))
+                    entity_1_shelf_number.append(list(attr['shelf_number'])[0])
+                    if self.is_debug:
+                        Log.info(message)
 
-        return result
+                if "entity_2" in list(attr['entity']):
+                    message = "Entity 2: Number of entities in the"
+                    message += " condensed node {}={}".format(node, len(list(attr["entity"])))
+                    entity_2_shelf_number.append(list(attr['shelf_number'])[0])
+                    if self.is_debug:
+                        Log.info(message)
 
-    def _find_sequence_per_scene_for_horizontal_adj(self, scene_fk, adj_g, seq_params):
-        """
-        """
-        result = 0
-        if not adj_g:
-            return result
+            if direction == "HORIZONTAL":
+                if len(entity_1_shelf_number) != 0 and len(entity_2_shelf_number) != 0:
+                    result = len(set.intersection(set(entity_1_shelf_number), set(entity_2_shelf_number)))
+                    if result > 0:
+                        result = 1
+                    else:
+                        result = 0
+                        if self.is_debug:
+                            Log.info("Entity 1 and Entity 2 are linked but not horizontally")
 
-        min_tags_per_entity = seq_params[AdditionalAttr.MIN_TAGS_OF_ENTITY]
-        # check if the two blocks Satisfy the minimum block Criteria
-        Log.info("min_tags_per_entity {}".format(min_tags_per_entity))
-
-        adj_g_undirected = adj_g.to_undirected()
-        for nodes_in_each_cluster in nx.connected_components(adj_g_undirected):
-            adj_g_sub_graph = adj_g.subgraph(nodes_in_each_cluster)
-            no_of_nodes_satisfy_min_tags = []
-            for node, attr in adj_g_sub_graph.nodes(data=True):
-                Log.info(attr)
-                if int(attr['facings']) >= int(min_tags_per_entity):
-                    no_of_nodes_satisfy_min_tags.append((node, attr))
+            elif direction == "VERTICAL":
+                # adjacent_shelf_nums - above and below shelves to check vertical
+                adjacent_shelf_nums = [x + 1 for x in set(entity_1_shelf_number)]
+                adjacent_shelf_nums.extend([x - 1 for x in set(entity_1_shelf_number)])
+                result = len(set.intersection(set(adjacent_shelf_nums), set(entity_2_shelf_number)))
+                if result > 0:
+                    result = 1
                 else:
-                    Log.info("Node {} - doesnt satisfy the minimum tags criteria".format(node))
+                    result = 0
+                    if self.is_debug:
+                        Log.info("Entity 1 and Entity 2 are linked but not vertically")
 
-            if len(no_of_nodes_satisfy_min_tags) == len(adj_g_sub_graph.nodes()):
-                result = 1
-                resultdf = pd.DataFrame(columns=self._results_df.columns,
-                                        data=[[adj_g_sub_graph, scene_fk, seq_params[AdditionalAttr.DIRECTION]]])
-                self._results_df = self._results_df.append(resultdf)
-            else:
-                result = 0
+            if result == 1:
+                df_result = pd.DataFrame(columns=self._results_df.columns,
+                                         data=[[adj_g_sub_graph, scene_fk, seq_params[AdditionalAttr.DIRECTION]]])
+                self._results_df = self._results_df.append(df_result)
 
         return result
 
@@ -258,7 +267,7 @@ class Sequence(BaseCalculation):
             node_direction = self._translate_direction(i, path)
             if direction_node_in_past:
                 if node_direction.issubset(direction_node_in_past) or direction_node_in_past.issubset(node_direction):
-                        return False
+                    return False
             else:
                 path_dict[curr_node] = node_direction
         self.nodes_repetition.update(path_dict)
@@ -314,22 +323,34 @@ class Sequence(BaseCalculation):
         :param graph_key: The relevant sequence entity.
         :return: Filtered adjacency graph.
         """
+        report_label = self.report_label.replace(" ", "")
+        before_file_name = "before_{}_{}.html".format(self.custom_entity_fk, report_label)
+        after_file_name = "after_{}_{}.html".format(self.custom_entity_fk, report_label)
         filtered_matches = self._filter_graph_data(scene_fk, population, sequence_params)
+
         if filtered_matches.empty:
             return 0
+
         masking_df = AdjacencyGraphBuilder._load_maskings(self.data_provider.project_name, scene_fk)
+
         allowed_product_filters = sequence_params[AdditionalAttr.ALLOWED_PRODUCTS_FILTERS]
         graph_attr = self._get_additional_attribute_for_graph(graph_key, allowed_product_filters)
+
         kwargs = {'minimal_overlap_ratio': sequence_params[AdditionalAttr.ADJACENCY_OVERLAP_RATIO],
                   }  # AdditionalAttr.USE_MASKING_ONLY: True
+
         adj_g = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_matches, masking_df, graph_attr, **kwargs)
-        # self.plot_adj_graph(adj_g, 1000, 1000, "lionjp", scene_fk,
-        #                     outputfname="before_{}_{}.html".format(self.report_label_fk),
-        #                     self.report_label.replace(" ", ""))
+
+        if self.is_debug:
+            self.plot_adj_graph(adj_g, self.project_name, scene_fk, before_file_name)
+
+        self.adjacency_graph = adj_g
+
         adj_g = self._filter_adjacency_graph(adj_g, graph_key, sequence_params)
-        # self.plot_adj_graph(adj_g, 1000, 1000, "lionjp", scene_fk,
-        #                     outputfname="after_{}_{}.html".format(self.report_label_fk,
-        #                                                           self.report_label.replace(" ", "")))
+
+        if self.is_debug:
+            self.plot_adj_graph(adj_g, self.project_name, scene_fk, after_file_name)
+
         return adj_g
 
     def _filter_adjacency_graph(self, adj_g, graph_key, sequence_params):
@@ -338,14 +359,9 @@ class Sequence(BaseCalculation):
         :param graph_key: The relevant sequence entity.
         :return: Filtered adjacency graph.
         """
-        use_degrees = False
-        direction = sequence_params[AdditionalAttr.DIRECTION]
-        include_stacking = sequence_params[AdditionalAttr.INCLUDE_STACKING]
         if graph_key != CalcConst.PRODUCT_FK or sequence_params[AdditionalAttr.REPEATING_OCCURRENCES]:
-            if sequence_params[AdditionalAttr.DIRECTION] in ['RIGHT', 'LEFT', 'UP', 'DOWN']:
-                adj_g = AdjacencyGraphBuilder.condense_graph_by_level(ColumnNames.GRAPH_KEY, adj_g)
-            use_degrees = True
-        adj_g = self._filter_graph_by_edge_direction(adj_g, direction, include_stacking, use_degrees)
+            adj_g = AdjacencyGraphBuilder.condense_graph_by_level(ColumnNames.GRAPH_KEY, adj_g)
+            self.condensed_graph = adj_g
         return adj_g
 
     def _filter_graph_by_edge_direction(self, adj_g, direction_to_filter, include_stacking, use_degrees):
@@ -570,20 +586,13 @@ class Sequence(BaseCalculation):
         return pd.DataFrame(columns=[ColumnNames.CLUSTER, ColumnNames.SCENE_FK, AdditionalAttr.DIRECTION])
 
     @staticmethod
-    def plot_adj_graph(adj_g, width, height, project, scene_ids, outputfname=""):
-        import pandas as pd
-        import numpy as np
-        from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
-        from plotly.subplots import make_subplots
-        from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
-        from Trax.Algo.Calculations.Core.AdjacencyGraph.Plots import GraphPlot, MaskingPlot
-        from Trax.Utils.Conf.Configuration import Config
-        from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-        from Trax.Utils.Conventions.Log import Severities
-        gf = GraphPlot.plot_networkx_graph(adj_g, overlay_image=True, scene_id=scene_ids, project_name=project)
+    def plot_adj_graph(adj_g, project, scene_fk, output_file_name="",  width=1000, height=1000):
+        from plotly.offline import plot
+        from Trax.Algo.Calculations.Core.AdjacencyGraph.Plots import GraphPlot
+        gf = GraphPlot.plot_networkx_graph(adj_g, overlay_image=True, scene_id=scene_fk, project_name=project)
         gf.update_layout(autosize=False, width=width, height=height)
-        outputfname = "/tmp/graphs/{}".format(outputfname)
-        if outputfname:
-            plot(gf, filename=outputfname)
+        output_file_name = "/tmp/graphs/{}".format(output_file_name)
+        if output_file_name:
+            plot(gf, filename=output_file_name)
         else:
             plot(gf)

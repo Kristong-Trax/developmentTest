@@ -13,7 +13,7 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.LIONJP.Data.Consts import Consts
 
 __author__ = 'satya'
-is_debug = True
+is_debug = False
 
 
 class LionJPSceneToolBox:
@@ -238,7 +238,7 @@ class LionJPSceneToolBox:
                 return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
             df_entities = df_entities.append(df_entity)
 
-        ## Adding include_other_ean_codes to entity groups if included
+        # Adding include_other_ean_codes to entity groups if included
         if not pd.isnull(adj_config['include_other_ean_codes']):
             include_others = tuple(["{}".format(other.strip()) for other in adj_config['include_other_ean_codes'].split(",")])
             include_others_pks = []
@@ -286,7 +286,9 @@ class LionJPSceneToolBox:
 
             df = df_custom_matches[(df_custom_matches['scene_fk'] == scene_fk)]
             minimum_tags_per_entity = self.get_minimum_facings(df, blocking_percentage)
-            population = {'entity': list(df_entities['entity'].unique())}
+            list_of_entities = list(df_entities['entity'].unique())
+            # list_of_entities.remove("other")
+            population = {'entity': list_of_entities}
             exclude_filter, allowed_products_filter = self.exclude_and_include_filter(adj_config)
 
         if adj_config['orientation'].lower() == "vertical":
@@ -329,7 +331,7 @@ class LionJPSceneToolBox:
             return
 
         for idx, adj_config in kpi_config.iterrows():
-            custom_entity_pk = self.get_custom_entity_fk(adj_config['report_label'])
+            custom_entity_fk = self.get_custom_entity_fk(adj_config['report_label'])
             scene_types = [x.strip() for x in adj_config['scene_type'].split(",")]
             df_scene_template = self.scif[['scene_fk', 'template_fk']][self.scif['template_name'].isin(scene_types)]
             df_scene_template = df_scene_template.drop_duplicates()
@@ -349,12 +351,16 @@ class LionJPSceneToolBox:
                     if sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY] == 0:
                         continue
 
-                    seq = Sequence(self.data_provider, custom_matches)
-                    sequence_res = seq.calculate_sequence(population, location,
-                                                          sequence_params, adj_config['report_label'],
-                                                          custom_entity_pk
-                                                          )
+                    seq = Sequence(self.data_provider,
+                                   custom_matches,
+                                   report_label=adj_config['report_label'],
+                                   custom_entity_fk=custom_entity_fk,
+                                   is_debug=is_debug)
+
+                    sequence_res = seq.calculate_sequence(population, location, sequence_params)
+
                     result_count = len(sequence_res)
+
                     result = 1 if result_count > 0 else 0
                     score = result
                     if result > 0:
@@ -364,7 +370,7 @@ class LionJPSceneToolBox:
                                                                                          result))
 
                     self.common.write_to_db_result(fk=kpi_level_2_fk,
-                                                   numerator_id=custom_entity_pk,
+                                                   numerator_id=custom_entity_fk,
                                                    denominator_id=template_fk,
                                                    context_id=self.store_id,
                                                    numerator_result=result_count,
