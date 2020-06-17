@@ -28,7 +28,7 @@ if __name__ == '__main__':
     project_name = 'pngjp-sand2'
     # RUN for scene level KPIs
     session_scene_map = OrderedDict([
-        ('8CB6DAAB-C194-4194-9604-0446286D0C08', ['236AB46C-652B-469A-9A68-50FE03B60C93'])
+        ('0FFF1A54-5759-4EA1-B260-4D604F7D7334', ['2B373278-8CF6-479F-9829-5B95A4D7930E'])
     ])
 
     for session, scenes in session_scene_map.iteritems():

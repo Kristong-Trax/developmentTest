@@ -41,21 +41,17 @@ class PNGJPSceneToolBox:
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.targets = self.load_external_targets()
-        self.match_display_in_scene = self.data_provider.match_display_in_scene
+        self.template_parser = PNGJPTemplateParser(self.data_provider, self.rds_conn)
 
-        # Newly added
+        self.targets = self.template_parser.get_targets()
+        self.custom_entity_data = self.template_parser.get_custom_entity()
+
+        self.match_display_in_scene = self.data_provider.match_display_in_scene
         self.current_scene_fk = self.scene_info.iloc[0].scene_fk
         self.store_banner_name = self.store_info.iloc[0].additional_attribute_20
         self.template_name = self.templates.iloc[0].template_name
-        self.custom_entity_data = self.get_relevant_custom_entity_data()
         self.match_product_data = self.match_product_in_scene.merge(self.products, on='product_fk', how='left')
         self.block = Block(self.data_provider, self.output)
-
-    def load_external_targets(self):
-        parser = PNGJPTemplateParser(self.data_provider, self.rds_conn)
-        targets = parser.get_targets()
-        return targets
 
     @staticmethod
     def ensure_as_list(template_fks):
@@ -73,28 +69,12 @@ class PNGJPSceneToolBox:
             Log.warning("Error: KPI {} not found in static.kpi_level_2 table.".format(kpi_name))
         return status
 
-    def get_relevant_custom_entity_data(self):
-        # TODO: Needs to fix this also
-        Log.info("Getting custom entity data for the present super brands and store banner...")
-
-        custom_entity_data = pd.DataFrame()
-
-        # for pks in self.targets['Block']['product_group_name_fks'].dropna().values:
-        #     pks
-        #
-        # query = """ select * from static.custom_entity where pk in {custom_entity_pks};"""
-        # custom_entity_data = pd.read_sql_query(query.format(
-        #     custom_entity_pks=tuple(np.concatenate((self.targets['Block']['product_group_name_fks'].dropna().unique().astype('int'),
-        #                                             self.targets['Golden Zone'].dropna().unique().astype('int'))))),
-        #     self.rds_conn.db)
-        return custom_entity_data
-
     def calculate_layout_compliance(self):
         current_scene_fk = self.scene_info.iloc[0].scene_fk
         Log.info('Calculate Layout Compliance for session: {sess} - scene: {scene}'
                  .format(sess=self.session_uid, scene=current_scene_fk))
 
-        if self.targets.empty:
+        if self.targets["Block"].empty and self.targets["Golden Zone"].empty:
             Log.warning('Unable to calculate PNGJP_LAYOUT_COMPLIANCE_KPIs: external targets are empty')
             return
 
@@ -103,10 +83,10 @@ class PNGJPSceneToolBox:
         except Exception as e:
             Log.error("Error : {}".format(e))
 
-        try:
-            self.calculate_pngjp_golden_zone_compliance()
-        except Exception as e:
-            Log.error("Error : {}".format(e))
+        # try:
+        #     self.calculate_pngjp_golden_zone_compliance()
+        # except Exception as e:
+        #     Log.error("Error : {}".format(e))
 
     def calculate_pngjp_block_compliance(self):
         if not self.check_if_the_kpis_is_available(PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE):
@@ -131,19 +111,26 @@ class PNGJPSceneToolBox:
             return False
         else:
             for idx, each_target in block_targets.iterrows():
-                # check for banner and template match in target
-                target_banner_name = self.custom_entity_data[
-                    self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
-                        target_banner_name != self.store_banner_name:
+                # check for template match in target
+                product_group_df = self.custom_entity_data[
+                    self.custom_entity_data['pk'].isin(each_target.product_group_name_fks)
+                ]
+                if product_group_df.empty:
+                    Log.warning("Product group name: {} not found in custom_entity".format(
+                        each_target['Product Group Name']
+                    ))
+                    continue
+                product_group_name = product_group_df.name.iloc[0]
+                product_group_fk = product_group_df.pk.iloc[0]
+                current_template_fk = self.templates.iloc[0].template_fk
+                category_fk = each_target.category_fks[0]
+
+                if current_template_fk not in self.ensure_as_list(each_target.template_fks):
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
-                    or banner of current store -> {store_b} != target banner -> {targ_b}
                     target for calculating {kpi}."""
                              .format(sess=self.session_uid,
                                      scene=self.current_scene_fk,
                                      kpi=kpi_details.iloc[0][KPI_TYPE_COL],
-                                     store_b=self.store_banner_name,
-                                     targ_b=target_banner_name,
                                      k=self.templates.iloc[0].template_fk,
                                      v=each_target.template_fks,
                                      ))
@@ -151,24 +138,18 @@ class PNGJPSceneToolBox:
                 else:
                     result = score = 0
                     total_facings_count = biggest_block_facings_count = 0
+                    # TODO: Ensure if its .8 or 80
                     block_threshold_perc = each_target.block_threshold_perc
-                    super_brand_pk = each_target.super_brand_pk
-                    store_banner_pk = each_target.store_banner_pk
-                    super_brand_custom_entity = self.custom_entity_data[
-                        self.custom_entity_data['pk'] == super_brand_pk]
-                    sub_category_pk = each_target.sub_category_fk
+
                     Log.info(
-                        "Calculating brand blocked for super brand: {super_b} [super_id] & sub category: {scat}".format(
-                            super_b=super_brand_custom_entity.name.iloc[0],
-                            super_id=super_brand_pk,
-                            scat=sub_category_pk,
+                        "Calculating blocking KPI for category: {cat} - filter {population_filter}".format(
+                            cat=each_target.category_fks,
+                            population_filter=each_target.population_filter
                         ))
-                    stacking_include = bool(int(each_target.stacking_include))
+                    stacking_include = each_target.stacking_include
 
                     # able to pass sub cat and super brand[?] // or get the prods and pass
-                    block_filters = {'sub_category_fk': [float(sub_category_pk)],
-                                     'Super Brand': [super_brand_custom_entity.name.iloc[0]]
-                                     }
+                    population_filters = each_target.population_filter
                     location_filters = {'scene_fk': [self.current_scene_fk]}
                     additional_filters = {
                         'minimum_facing_for_block': 1,
@@ -177,26 +158,24 @@ class PNGJPSceneToolBox:
                         'check_vertical_horizontal': True,
                     }
                     block_res = self.block.network_x_block_together(
-                        block_filters, location_filters, additional_filters
+                        population_filters, location_filters, additional_filters
                     )
                     block_res.dropna(subset=['total_facings'], inplace=True)
                     block_res = block_res.query('is_block==True')
                     if block_res.empty:
                         Log.info(
-                            "Fail: Cannot find brand blocked for super brand: {super_b} "
-                            "[super_id] & sub category: {scat}. Save as a Fail.".format(
-                                super_b=super_brand_custom_entity.name.iloc[0],
-                                super_id=super_brand_pk,
-                                scat=sub_category_pk,
+                            "Fail: Cannot find the block for the population filter: {population_filter} "
+                            "category: {cat}.".format(
+                                cat=category_fk,
+                                population_filter=each_target.population_filter
                             ))
                         continue
                     else:
                         Log.info(
-                            "Found brand blocked for super brand: {super_b} "
-                            "[super_id] & sub category: {scat}. Check and save.".format(
-                                super_b=super_brand_custom_entity.name.iloc[0],
-                                super_id=super_brand_pk,
-                                scat=sub_category_pk,
+                            "Found block for the population filter: {population_filter} "
+                            "category: {cat}. Check and save.".format(
+                                cat=category_fk,
+                                population_filter=each_target.population_filter
                             ))
                         biggest_cluster = block_res.sort_values(by='block_facings', ascending=False).head(1)
                         biggest_block_facings_count = float(biggest_cluster['block_facings'])
@@ -205,16 +184,24 @@ class PNGJPSceneToolBox:
                             result = round((biggest_block_facings_count / total_facings_count) * 100, 2)
                         if result >= block_threshold_perc:
                             score = 1
+                        try:
+                            g = biggest_cluster.cluster.iloc[0]
+                            shelf_spread_count_for_biggest_block = len(list(list(g.nodes("shelf_number"))[0][-1]))
+                        except Exception as e:
+                            Log.error("Error: {}".format(e))
+                            shelf_spread_count_for_biggest_block = 0
+
                     self.common.write_to_db_result(
                         fk=kpi_details.iloc[0].pk,
-                        numerator_id=store_banner_pk,
-                        denominator_id=super_brand_pk,
-                        context_id=sub_category_pk,
+                        numerator_id=product_group_fk,
+                        denominator_id=current_template_fk,
+                        context_id=category_fk,
                         numerator_result=biggest_block_facings_count,
                         denominator_result=total_facings_count,
                         target=block_threshold_perc,
                         result=result,
                         score=score,
+                        weight=shelf_spread_count_for_biggest_block,
                         by_scene=True,
                     )
 
@@ -232,7 +219,7 @@ class PNGJPSceneToolBox:
             sess=self.session_uid,
             scene=self.current_scene_fk,
         ))
-        position_targets = self.targets["Golden Zone"]
+        goldenzone_targets = self.targets["Golden Zone"]
 
         def _get_shelf_range(sh):
             """Input => string ~ '1_2_shelf
@@ -244,14 +231,14 @@ class PNGJPSceneToolBox:
             return xrange(*int_sh)
 
         # if no targets return
-        if position_targets.empty:
+        if goldenzone_targets.empty:
             Log.warning('There is no target policy for calculating {}'.format(
                 kpi_details.iloc[0][KPI_TYPE_COL]
             ))
             return False
         else:
             # target_shelf_config_keys => '1_5_shelf, 6_7_shelf, above_12_shelf etc'
-            for idx, each_target in position_targets.iterrows():
+            for idx, each_target in goldenzone_targets.iterrows():
                 result = score = 0
                 target_shelf_config_keys = each_target[each_target.keys().map(lambda x: x.endswith('_shelf'))]
                 store_banner_pk = each_target.store_banner_pk

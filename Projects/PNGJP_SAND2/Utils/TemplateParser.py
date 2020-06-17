@@ -6,16 +6,28 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 
 class PNGJPTemplateParser(object):
 
-    VALID_FILTER_TYPES = [
-        "brand",
-        "subcategory",
-        "ean_code"
-    ]
+    # product_fk, product_name, product_ean_code, product_type
+    # manufacturer_name, product_short_name
+    # category_fk, sub_category_fk
+    # category, sub_category, brand_name
+    # category_local_name, manufacturer_local_name, brand_local_name, sub_category_local_name
+    # product_english_name, brand_fk
+    # sub_brand, Super Brand, sub_brand_name
+    FILTER_TYPES_AND_COLUMNS_MAPPING = OrderedDict([
+        ("ean_code", "product_ean_code"),
+        ("brand", "brand_local_name"),
+        ("category", "category_local_name"),
+        ("size", "size"),
+        ("sub_packages_number", "number_of_sub_packages"),
+        ("superbrand", "Super Brand"),
+        ("subbrand", "sub_brand_name"),
+        ("subcategory", "sub_category_local_name")
+    ])
 
     def __init__(self, data_provider, rds_conn):
         self.data_provider = data_provider
@@ -24,14 +36,14 @@ class PNGJPTemplateParser(object):
             self.rds_conn = PSProjectConnector("pngjp-sand2", DbUsers.CalculationEng)
         else:
             self.rds_conn = rds_conn
-        self.filename = str(Path(__file__).parent.parent / "Data/TemplateLayoutKpis.xlsx")
+        self.filename = str(Path(__file__).parent.parent / "Data/TemplateBlockAndGoldenZoneKPI.xlsx")
         self.block_config = self.load_sheet("Block")
         self.golden_zone_config = self.load_sheet("Golden Zone")
         self.load_data_from_db()
         self.preprocess_all_sheets()
 
-    def load_sheet(self, sheetname):
-        df = pd.read_excel(self.filename, sheetname=sheetname)
+    def load_sheet(self, sheet_name):
+        df = pd.read_excel(self.filename, sheet_name=sheet_name)
         return df
 
     def load_data_from_db(self):
@@ -62,14 +74,15 @@ class PNGJPTemplateParser(object):
         fks = []
         for value in values:
             value = value.strip()
-            fks.append(lookup_dict.get(value))
+            if value:
+                fks.append(lookup_dict.get(value))
         return fks
 
     @staticmethod
-    def filter_population_fields(row, to_list=True):
+    def filter_population_fields(row, to_list=True, transform_columns_to_mapped_columns=True):
         population = defaultdict(list)
 
-        key_columns = ['Filter Type1', 'Filter Type2', 'Filter Type3','Filter Type4', 'Filter Type5']
+        key_columns = ['Filter Type1', 'Filter Type2', 'Filter Type3', 'Filter Type4', 'Filter Type5']
         value_columns = ['Filter Value1', 'Filter Value2', 'Filter Value3', 'Filter Value4', 'Filter Value5']
 
         for filter_type, filter_value in zip(key_columns, value_columns):
@@ -83,6 +96,11 @@ class PNGJPTemplateParser(object):
                     population[key].append(value)
 
         population = dict(population)
+        print(population)
+        if transform_columns_to_mapped_columns:
+            mappings = PNGJPTemplateParser.FILTER_TYPES_AND_COLUMNS_MAPPING
+            population = { mappings.get(k): v for k, v in population.items() if mappings.get(k)}
+        print (population)
         return population
 
     def load_templates_from_db(self):
@@ -118,9 +136,11 @@ class PNGJPTemplateParser(object):
             self.map_namelist_to_fks, args=(self.custom_entity_dict,)
         )
         self.block_config["block_threshold_perc"] = self.block_config["Block Threshold"].apply(
-            self.transform_percentage
-        )
-        self.block_config["population_filter"] = self.block_config.apply(self.filter_population_fields, axis=1)
+            self.transform_percentage) * 100
+
+        self.block_config["population_filter"] = self.block_config.apply(self.filter_population_fields, axis=1, args=(True, True))
+        self.block_config["stacking_include"] = self.block_config['Stacking ( Exclude = 0 / Include = 1)'].astype(bool)
+
 
     def preprocess_golden_zone_config(self):
         self.golden_zone_config["template_fks"] = self.golden_zone_config['SceneType'].apply(
@@ -134,7 +154,7 @@ class PNGJPTemplateParser(object):
         )
         self.golden_zone_config["target_perc"] = self.golden_zone_config["Target"].apply(
             self.transform_percentage
-        )
+        ) * 100
         self.golden_zone_config["1_5_shelf"] = self.golden_zone_config["[1-5] Shelf"].apply(self.str_to_int_list)
         self.golden_zone_config["6_7_shelf"] = self.golden_zone_config["[6,7] Shelf"].apply(self.str_to_int_list)
         self.golden_zone_config["8_9_shelf"] = self.golden_zone_config["[8,9] Shelf"].apply(self.str_to_int_list)
@@ -144,8 +164,10 @@ class PNGJPTemplateParser(object):
         self.golden_zone_config["above_12_shelf"] = self.golden_zone_config["Above 12"].apply(self.str_to_int_list)
 
         self.golden_zone_config["population_filter"] = self.golden_zone_config.apply(
-            self.filter_population_fields, axis=1
+            self.filter_population_fields, axis=1, args=(True, False)
         )
+        self.golden_zone_config["stacking_include"] = self.golden_zone_config[
+            'Stacking ( Exclude = 0 / Include = 1)'].astype(bool)
 
     def get_targets(self):
         return {
@@ -154,19 +176,22 @@ class PNGJPTemplateParser(object):
         }
 
     def get_custom_entity(self):
+        return self.custom_entity
+
+    def get_custom_entity(self):
         if hasattr(self, "custom_entity"):
             return self.custom_entity
         else:
             return pd.DataFrame()
 
 
-# if __name__ == "__main__":
-#     print("Testing template parser")
-#     LoggerInitializer.init('pngjp-sand2 Scene Calculations')
-#     Config.init()
-#     p = PNGJPTemplateParser(None, None)
-#     for k, v in p.get_targets().items():
-#         print(k)
-#         print(v)
-#     targets = p.get_targets()
-#     print()
+if __name__ == "__main__":
+    print("Testing template parser")
+    LoggerInitializer.init('pngjp-sand2 Scene Calculations')
+    Config.init()
+    p = PNGJPTemplateParser(None, None)
+    for k, v in p.get_targets().items():
+        print(k)
+        print(v)
+    targets = p.get_targets()
+    print()
