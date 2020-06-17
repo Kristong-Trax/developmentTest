@@ -161,6 +161,8 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(GENERAL_ASSORTMENTS_PATH, sheet_name=sheet)
 
     def main_calculation(self):
+        if self.store_info.loc[0, 'store_type'] in ('Fondas-Rsr', 'Puestos Fijos'):
+            return
         relevant_kpi_template = self.templates[KPIS]
         att2 = self.store_info['additional_attribute_2'].iloc[0]
         relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull()) |
@@ -758,8 +760,10 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                 passed_list.append(required_assortment)
             else:
                 failed_list.append(required_assortment)
-
-        result = float(assortment_passed) / len(constraints_df)
+        try:
+            result = float(assortment_passed) / len(constraints_df)
+        except ZeroDivisionError:
+            result = 0
         return result
 
     @staticmethod
@@ -821,7 +825,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
 
         relevant_columns_in_constraints_df = [item for item in constraints_df.columns if "assortment" in item]
         constraints_df = constraints_df[relevant_columns_in_constraints_df]
-        final_constraints = constraints_df.values[0]
+        final_constraints = constraints_df.values[0:1]
         return final_constraints
 
     def calculate_sos(self, row):

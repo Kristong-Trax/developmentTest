@@ -35,8 +35,6 @@ DENOMINATOR_ENTITY = 'Denominator Entity'
 NUMERATOR_PARAM_1 = 'numerator param 1'
 NUMERATOR_VALUE_1 = 'numerator value 1'
 
-
-
 SHEETS = [KPIS, SOS, SHARE_OF_EMPTY, SURVEY, POSM_AVAILABILITY, DISTRIBUTION, COMBO, SCORING]
 
 def log_runtime(description, log_start=False):
@@ -62,8 +60,7 @@ class ComidasToolBox(GlobalSessionToolBox):
         self.templates = {}
         self.parse_template()
         self.store_type = self.store_info['store_type'].iloc[0]
-        self.survey = Survey(self.data_provider, output=output, ps_data_provider=self.ps_data_provider,
-                             common=self.common)
+        self.survey = Survey(self.data_provider, output, ps_data_provider=self.ps_data_provider, common=self.common)
         self.att2 = self.store_info['additional_attribute_2'].iloc[0]
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
                                                 'denominator_id', 'denominator_result', 'result', 'score',
@@ -268,6 +265,15 @@ class ComidasToolBox(GlobalSessionToolBox):
             output.append(denominator_id)
         return output
 
+    def _get_parent_name_from_kpi_name(self, kpi_name):
+        template = self.templates[KPIS]
+        parent_kpi_name = \
+            template[template[KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')][PARENT_KPI].iloc[0]
+        if parent_kpi_name and pd.notna(parent_kpi_name):
+            return parent_kpi_name
+        else:
+            return None
+
     @staticmethod
     def sanitize_values(item):
         if pd.isna(item):
@@ -297,11 +303,3 @@ class ComidasToolBox(GlobalSessionToolBox):
         else:
             score = 0
         return score
-
-
-
-
-
-
-
-

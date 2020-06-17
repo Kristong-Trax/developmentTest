@@ -171,6 +171,8 @@ class ToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(GENERAL_ASSORTMENTS_PATH, sheet_name=sheet)
 
     def main_calculation(self):
+        if self.store_info.at[0, 'store_type'] in ('Fondas-Rsr', 'Puestos Fijos'):
+            return
         relevant_kpi_template = self.templates[KPIS]
         relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull()) |
                                                       (relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(
@@ -307,6 +309,7 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_bonus_and_penalties(self, row):
+        result = 0
         if row['availability'] == 'Y':
             facings_dict = self._filter_facing_targets(row)
             result = self.logic_for_result_availability_bonus_and_penalties(self.scif, facings_dict)
@@ -1612,7 +1615,7 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_columns_in_constraints_df = [item for item in constraints_df.columns if "assortment" in item]
         constraints_df = constraints_df[relevant_columns_in_constraints_df]
-        final_constraints = constraints_df.values[0]
+        final_constraints = constraints_df.values[0:1]
         return final_constraints
 
     @staticmethod
@@ -1624,8 +1627,10 @@ class ToolBox(GlobalSessionToolBox):
                 scif.product_short_name.isin(required_assortment)].facings.sum()
             if total_facings_for_this_sum >= facing_constraint:
                 assortment_passed = assortment_passed + 1
-
-        result = float(assortment_passed) / len(constraints_df)
+        try:
+            result = float(assortment_passed) / len(constraints_df)
+        except ZeroDivisionError:
+            result = 0
         return result
 
     @staticmethod

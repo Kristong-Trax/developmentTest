@@ -159,6 +159,8 @@ class NationalToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(GENERAL_ASSORTMENTS_PATH, sheet_name=sheet)
 
     def main_calculation(self):
+        if self.store_info.loc[0, 'store_type'] in ('Fondas-Rsr', 'Puestos Fijos'):
+            return
         relevant_kpi_template = self.templates[KPIS]
         relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull()) |
                                                       (relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(
@@ -178,7 +180,6 @@ class NationalToolBox(GlobalSessionToolBox):
         self._calculate_kpis_from_template(scoring_kpi_template)
 
         self.save_results_to_db()
-        return
 
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
@@ -780,7 +781,7 @@ class NationalToolBox(GlobalSessionToolBox):
 
         relevant_columns_in_constraints_df = [item for item in constraints_df.columns if "assortment" in item]
         constraints_df = constraints_df[relevant_columns_in_constraints_df]
-        final_constraints = constraints_df.values[0]
+        final_constraints = constraints_df.values[0:1]
         return final_constraints
 
     @staticmethod
@@ -798,7 +799,10 @@ class NationalToolBox(GlobalSessionToolBox):
                 scif.product_short_name.isin(required_assortment)].facings.sum()
             if total_facings_for_this_sum >= facing_constraint:
                 assortment_passed = assortment_passed + 1
-        result = float(assortment_passed) / len(constraints_df)
+        try:
+            result = float(assortment_passed) / len(constraints_df)
+        except ZeroDivisionError:
+            result = 0
         return result
 
     def calculate_sos(self, row):
