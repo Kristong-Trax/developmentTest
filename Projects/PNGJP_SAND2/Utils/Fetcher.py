@@ -51,3 +51,12 @@ class PNGJP_SAND2Queries(object):
                 where ssi.delete_time is null
                 and sc.session_uid = '{}';
         """.format(session_uid)
+
+    @staticmethod
+    def get_kpi_external_targets(visit_date):
+        return """SELECT ext.*, ot.operation_type, kpi.type as kpi_type
+                      FROM static.kpi_external_targets ext
+                      LEFT JOIN static.kpi_operation_type ot on ext.kpi_operation_type_fk=ot.pk
+                      LEFT JOIN static.kpi_level_2 kpi on ext.kpi_level_2_fk = kpi.pk
+                      WHERE (ext.start_date<='{}' and ext.end_date is null) or 
+                      (ext.start_date<='{}' and ext.end_date>='{}')""".format(visit_date, visit_date, visit_date)
