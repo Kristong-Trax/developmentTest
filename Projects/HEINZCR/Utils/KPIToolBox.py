@@ -1,6 +1,6 @@
 from datetime import datetime
 import json
-
+import ast
 import numpy as np
 import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -246,7 +246,7 @@ class HEINZCRToolBox:
                 except KeyError:
                     continue
             if not df_1.empty:
-                stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy)
+                stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy.encode('utf-8'))
                                                  & (
                                                          self.store_sos_policies[
                                                              'target_validity_start_date'] <= datetime.date(
@@ -361,7 +361,7 @@ class HEINZCRToolBox:
                 except KeyError:
                     continue
             if not df1.empty:
-                stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy)
+                stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy.encode('utf-8'))
                                                  & (
                                                          self.store_sos_policies[
                                                              'target_validity_start_date'] <= datetime.date(
