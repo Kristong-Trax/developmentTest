@@ -15,7 +15,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_SKUS_KPI)
         template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
                                                    Consts.NUMBER_OF_UNQIUE_SKUS_KPI]
-        fields_df = template[[Consts.FIELD, Consts.TARGET]]
+        fields_df = template[[Consts.FIELD, Consts.TARGET_MIN, Consts.TARGET_MAX]]
         if template.empty:
             categories = ['Core Salty']
         else:
@@ -37,7 +37,8 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         numerator = len(join_df[join_df['percentage'] >= 0.5])
         number_of_unique_skus = len(sku_results)
         # Adding 0.001 to prevent 0 sadot case
-        sadot = math.ceil((numerator + 0.001) / 5.0)
+        sadot = math.ceil(numerator / 5.0)
+        sadot = sadot if sadot != 0 else 1
         target, upper_target = self.get_target(fields_df, sadot)
         score = 1 if target <= number_of_unique_skus <= upper_target else 2
         if target == 0:
@@ -50,11 +51,11 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
     @staticmethod
     def get_target(fields_df, sadot):
         if sadot in fields_df[Consts.FIELD].values:
-            target = fields_df[fields_df['Field'] == sadot]['Target'].values[0]
-            upper_target = 100
+            target = fields_df[fields_df['Field'] == sadot][Consts.TARGET_MIN].values[0]
+            upper_target = fields_df[fields_df['Field'] == sadot][Consts.TARGET_MAX].values[0]
         elif sadot >= fields_df[Consts.FIELD].max():
-            target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()]['Target'].values[0]
-            upper_target = 100
+            target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()][Consts.TARGET_MIN].values[0]
+            upper_target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()][Consts.TARGET_MAX].values[0]
         else:
             target = 0
             upper_target = 100000

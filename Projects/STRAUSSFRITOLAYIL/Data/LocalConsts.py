@@ -54,3 +54,6 @@ class Consts(object):
     PASS = 4
     FAIL = 5
     NO_TARGET = 6
+
+    SUB_BRAND_NO_VALUE = 1
+    BRAND_MIX_NO_VALUE = 2

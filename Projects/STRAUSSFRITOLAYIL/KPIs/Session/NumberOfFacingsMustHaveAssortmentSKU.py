@@ -13,57 +13,47 @@ class NumberOfFacingsMustHaveAssortmentSKUKpi(UnifiedCalculationsScript):
         self.utils = StraussfritolayilUtil(None, data_provider)
 
     def calculate(self):
-        return
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_FACINGS_MUST_HAVE_KPI)
         template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
                                                    Consts.NUMBER_OF_FACINGS_MUST_HAVE_KPI]
-        fields_df = template[[Consts.EAN_CODE, Consts.FIELD, Consts.TARGET]]
+        template_categories = set(template[Consts.CATEGORY])
+        fields_df = template[[Consts.EAN_CODE, Consts.FIELD, Consts.TARGET_MAX]]
         matches = self.utils.match_product_in_scene_wo_hangers.copy()
         matches['facings'] = 1
         store_df = matches.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
                                    ['bay_number', 'shelf_number', 'facings']]
-        assortment = self.tarnsform_kpi_external_targets_to_assortment(template)
-        products = list(itertools.chain.from_iterable(assortment[Consts.REPLACMENT_EAN_CODES].values.tolist()))
-        categories = set(self.utils.all_products[
-                             self.utils.all_products['product_ean_code'].isin(products)]['category_fk'])
+        categories = set(self.utils.all_products[self.utils.all_products[
+            'category'].isin(template_categories)]['category_fk'])
         # not_existing_products_df = assortment[assortment['in_store_wo_hangers'] == 0]
-        sadot_dict = {}
-        for category_fk in categories:
-            df = matches[(matches['category_fk'] == category_fk) & (matches['manufacturer_fk'] ==
-                                                                    self.utils.own_manuf_fk)]
-            category_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
-                ['bay_number', 'shelf_number', 'facings']]
-            category_df.columns = ['bay_number', 'shelf_number', 'facings category']
-            join_df = store_df.merge(category_df, on=['bay_number', 'shelf_number'], how="left").fillna(0)
-            join_df['percentage'] = join_df['facings category'] / join_df['facings']
-            # number of shelves with more than 50% strauss products
-            number_of_shelves = len(join_df[join_df['percentage'] >= 0.5])
-            # Adding 0.001 to prevent 0 sadot case
-            sadot = math.ceil((number_of_shelves + 0.001) / 5.0)
-            sadot_dict[category_fk] = sadot
-
-
-        # for i, sku_row in assortment.iterrows():
-        #     product_fk = sku_row['product_fk']
-        #     in_store = sku_row['in_store_wo_hangers']
-        #     facings = sku_row['facings_all_products']
-        #     category_fk = sku_row['category_fk']
-        #     sadot = sadot_dict['category_fk']
-        #     if sadot not in sadot_dict:
-        #         target = -1
-        #     else:
-        #         sadot
-        #     result = 2 if (in_store == 1) else 1
-        #     self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result,
-        #                             denominator_id=assortment_fk, score=facings)
+        df = matches[(matches['category_fk'].isin(categories)) & (matches['manufacturer_fk'] ==
+                                                                  self.utils.own_manuf_fk)]
+        category_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
+            ['bay_number', 'shelf_number', 'facings']]
+        category_df.columns = ['bay_number', 'shelf_number', 'facings category']
+        join_df = store_df.merge(category_df, on=['bay_number', 'shelf_number'], how="left").fillna(0)
+        join_df['percentage'] = join_df['facings category'] / join_df['facings']
+        # number of shelves with more than 50% strauss products
+        number_of_shelves = len(join_df[join_df['percentage'] >= 0.5])
+        sadot = math.ceil(number_of_shelves / 5.0)
+        sadot = sadot if sadot != 0 else 1
+        sadot = sadot if sadot < fields_df[Consts.FIELD].max() else fields_df[Consts.FIELD].max()
+        template = template[template[Consts.FIELD] == sadot]
+        assortment = self.tarnsform_kpi_external_targets_to_assortment(template)
+        for i, sku_row in assortment.iterrows():
+            product_fk = sku_row['product_fk']
+            facings = sku_row['facings_all_products_wo_hangers']
+            target = sku_row[Consts.TARGET_MAX]
+            result = Consts.PASS if facings > target else Consts.FAIL
+            self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result, weight=sadot, target=target,
+                                    denominator_id=self.utils.store_id, score=facings)
 
     def tarnsform_kpi_external_targets_to_assortment(self, template):
-        assortment = template[['kpi_fk', 'EAN Code', 'Field', 'Target']]
+        assortment = template[['kpi_fk', Consts.EAN_CODE, Consts.FIELD, Consts.TARGET_MAX]]
         assortment.rename(columns={'EAN Code': Consts.REPLACMENT_EAN_CODES}, inplace=True)
         assortment['facings'] = assortment['facings_wo_hangers'] = 0
         assortment['in_store'] = assortment['in_store_wo_hangers'] = 0
-        assortment[Consts.REPLACMENT_EAN_CODES] = pd.DataFrame(assortment[Consts.REPLACMENT_EAN_CODES].str.split(','),
-                                                               columns=[Consts.REPLACMENT_EAN_CODES])
+        assortment[Consts.REPLACMENT_EAN_CODES] = assortment[Consts.REPLACMENT_EAN_CODES].map(
+            lambda row: [row] if type(row) != list else row)
         assortment[Consts.REPLACMENT_EAN_CODES] = assortment[Consts.REPLACMENT_EAN_CODES].apply(
             lambda row: [x.strip() for x in row] if row else None)
         assortment = self.utils.handle_replacment_products_row(assortment)
