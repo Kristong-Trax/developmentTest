@@ -193,7 +193,6 @@ class PEPSICOUKCommonToolBox:
             matches = matches.append(shelf_matches)
             matches = matches.append(bay_matches)
             matches.reset_index(drop=True, inplace=True)
-            # maybe remove extra columns from scif and matches
         return scif, matches
 
     def calculate_displays_separated_by_bays(self, scif, matches, max_display_id):
