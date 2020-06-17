@@ -32,11 +32,12 @@ class ToolBox(GlobalSessionToolBox):
         self.result_values = self.ps_data.get_result_values()
 
     def main_calculation(self):
-        sos_res_secondary = self.sos_calculation_secondary()
-        self.common.save_json_to_new_tables(sos_res_secondary)
-        sos_res_primary = self.sos_calculation_primary()
-        self.common.save_json_to_new_tables(sos_res_primary)
-        self.common.commit_results_data()
+        # sos_res_secondary = self.sos_calculation_secondary()
+        # self.common.save_json_to_new_tables(sos_res_secondary)
+        # sos_res_primary = self.sos_calculation_primary()
+        # self.common.save_json_to_new_tables(sos_res_primary)
+        # self.common.commit_results_data()
+        self.assortment_calculation()
 
     def sos_calculation_secondary(self):
         sos_results = []
@@ -173,33 +174,50 @@ class ToolBox(GlobalSessionToolBox):
 
     def assortment_calculation(self):
 
-        sku_result = self.assortment.calculate_lvl3_assortment(False)
+        lvl3_result = self.assortment.calculate_lvl3_assortment(False) #todo ask if iclude stacking
+        sku_results = self.distribution_sku_level(lvl3_result)
 
-        category_result = self.calculate_lvl2_assortment(sku_result, Consts.LVL2_CATEGORY_HEADERS)
+        cat_df = self.all_products[['product_fk', 'category_fk']]
+        lvl3_with_cat = lvl3_result.merge(cat_df, on='product_fk', how='left')
+        lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
 
-        group_result= self.calculate_lvl2_assortment(sku_result, Consts.LVL2_CATEGORY_HEADERS)
+        group_result = self.calculate_lvl2_assortment(lvl3_with_cat, Consts.LVL2_GROUP_HEADERS)
+        group_result = self.group_level
+        category_result = self.calculate_lvl2_assortment(group_result, Consts.LVL2_CATEGORY_HEADERS)
         #
         # store_result =  self.assortment.calculate_lvl1_assortment()
-
 
     def distribution_sku_level(self, lvl_3_result):
         """ This function receive df = lvl_3_result assortment with data regarding the assortment products
             This function turn the sku_assortment_results to be in a shape of db result.
             return distribution_db_results df
         """
-        lvl_3_result.rename(columns={'product_fk': 'numerator_id', 'assortment_group_fk': 'denominator_id',
-                                     'in_store': 'result', 'kpi_fk_lvl3': 'kpi_level_2_fk'}, inplace=True)
-        lvl_3_result.loc[:, 'result'] = lvl_3_result.apply(lambda row: self.kpi_result_value(row.result), axis=1)
-        lvl_3_result = lvl_3_result.assign(numerator_result=lvl_3_result['result'],
-                                           denominator_result=lvl_3_result['result'],
-                                           score=lvl_3_result['result'])
-        lvl_3_result = self.filter_df_by_col(lvl_3_result, Consts.SKU_LEVEL)
+        sku_results = lvl_3_result.rename(columns={'product_fk': 'numerator_id', 'assortment_group_fk': 'denominator_id',
+                                     'in_store': 'result', 'kpi_fk_lvl3': 'kpi_level_2_fk', 'facings':
+                                         'numerator_result'}, inplace=False)
+        sku_results.loc[:, 'result'] = sku_results.apply(lambda row: self.kpi_result_value(row.result), axis=1)
+        sku_results = sku_results.assign(denominator_result=1,
+                                           score=sku_results['result'])
+        sku_results = self.filter_df_by_col(sku_results, Consts.SKU_LEVEL)
         Log.info('Distribution sku level is done ')
-        return lvl_3_result
+        return sku_results
+
+    def group_level(self, lvl_2_result):
+        """ This function receive df = lvl_3_result assortment with data regarding the assortment products
+            This function turn the sku_assortment_results to be in a shape of db result.
+            return distribution_db_results df
+        """
+        group_results = lvl_2_result.rename(columns={'assortment_fk': 'numerator_id', 'category_fk': 'denominator_id',
+                                     'in_store': 'result', 'total': 'denominator_result', 'passes': 'numerator_result',
+                                                     'kpi_level_2_fk': 'kpi_fk'}, inplace=False)
+        group_results.loc[:, 'result'] = group_results.apply(lambda row: self.kpi_result_value(row.result), axis=1)
+        group_results = group_results.assign(score=group_results['result'])
+        group_results = self.filter_df_by_col(group_results, Consts.GROUPS_LEVEL)
+        Log.info('Group level is done ')
+        return group_results
 
     def filter_df_by_col(self, df, level):
         """
-
         :param df: df results lvl2 / lvl3 assortment results
         :param level: sku /  group level
         :return:filtered df
@@ -217,7 +235,7 @@ class ToolBox(GlobalSessionToolBox):
         (kpi result value match to mobile report signs) , according to the kpi result.
         :return pk of kpi_result_value
          """
-        value = 'NO' if value == 0 else 'YES'
+        value = 'No' if value == 0 else 'Yes'
         value_info = self.result_values[self.result_values['value'] == value]
         if value_info.empty:
             return
@@ -232,15 +250,11 @@ class ToolBox(GlobalSessionToolBox):
         Indicates for each assortment group how many products were in the store (passes) out of the total\ target
         (total\ target).
         """
-        cat_df = self.all_products[['product_fk', 'category_fk']]
-        lvl3_with_cat = lvl3_assortment.merge(cat_df, on='product_fk', how='left')
-        lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
-
         if lvl3_with_cat.empty:
             return pd.DataFrame(columns=group_by_cols)
 
-        lvl3_res = lvl3_assortment.copy()
-        lvl3_res = lvl3_res.fillna(Consts.EMPTY_VAL)
-        lvl2_res = lvl3_res.groupby(group_by_cols)['in_store'].agg([('total', 'count'), ('passes', 'sum')]).reset_index()
+        lvl3_with_cat = lvl3_with_cat.copy()
+        lvl3_with_cat = lvl3_with_cat.fillna(Consts.EMPTY_VAL)
+        lvl2_res = lvl3_with_cat.groupby(group_by_cols)['in_store'].agg([('total', 'count'), ('passes', 'sum')]).reset_index()
         return lvl2_res
 
