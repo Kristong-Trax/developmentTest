@@ -33,8 +33,13 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
                       "".format(self.data_provider.visit_date.isoformat()))
             return
 
-        else:
+        elif self.data_provider.visit_date.isoformat() < '2020-06-14':
             kpi_file_name = '2020/MARS KPIs.xlsx'
+            kpi_range_targets_sheet_names = [4317, 4650, 4254]
+            kpi_channels = [kpi_file_name, 'channels', 'channels']
+
+        else:
+            kpi_file_name = '2020_06_14/MARS KPIs.xlsx'
             kpi_range_targets_sheet_names = [4317, 4650, 4254]
             kpi_channels = [kpi_file_name, 'channels', 'channels']
 
@@ -65,7 +70,10 @@ class MARSRU_PRODCalculations(BaseCalculationsScript):
 
         if not kpis_sheet_name:
             Log.warning("Error: Store channel is not defined for Store ID [{}] with Store type [{}]"
-                        "".format(self.data_provider.store_fk, self.data_provider.store_type.encode('utf-8')))
+                        "".format(self.data_provider.store_fk,
+                                  (self.data_provider.store_type
+                                   if self.data_provider.store_type
+                                   else '').encode('utf-8')))
             return
 
         jg.create_template_json(

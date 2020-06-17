@@ -6,16 +6,16 @@ from Projects.CCRU.Calculations import CCRUCalculations
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('CCRU calculations')
+    LoggerInitializer.init('KEngine')
     Config.init()
     project_name = 'ccru'
     data_provider = KEngineDataProvider(project_name)
     session_uids = \
         [
 
-            'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F',
-            '3b8a8039-2c79-436d-b42f-c72f4ce3b183'
-
+            '4694DDA6-2316-4B77-938C-D42BF975BCDF'
+            # 'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F',
+            # '3b8a8039-2c79-436d-b42f-c72f4ce3b183'
 
         ]
     for session in session_uids:
