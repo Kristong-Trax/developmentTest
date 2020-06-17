@@ -43,7 +43,7 @@ class PNGJPSceneToolBox:
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.template_parser = PNGJPTemplateParser(self.data_provider, self.rds_conn)
 
-        self.targets = self.template_parser.get_targets()
+        self.targets_from_template = self.template_parser.get_targets()
         self.custom_entity_data = self.template_parser.get_custom_entity()
 
         self.match_display_in_scene = self.data_provider.match_display_in_scene
@@ -74,7 +74,7 @@ class PNGJPSceneToolBox:
         Log.info('Calculate Layout Compliance for session: {sess} - scene: {scene}'
                  .format(sess=self.session_uid, scene=current_scene_fk))
 
-        if self.targets["Block"].empty and self.targets["Golden Zone"].empty:
+        if self.targets_from_template["Block"].empty and self.targets_from_template["Golden Zone"].empty:
             Log.warning('Unable to calculate PNGJP_LAYOUT_COMPLIANCE_KPIs: external targets are empty')
             return
 
@@ -102,7 +102,7 @@ class PNGJPSceneToolBox:
             sess=self.session_uid,
             scene=self.current_scene_fk,
         ))
-        block_targets = self.targets["Block"]
+        block_targets = self.targets_from_template["Block"]
         # if no targets return
         if block_targets.empty:
             Log.warning('There is no target policy in the template for calculating {}'.format(
@@ -219,7 +219,7 @@ class PNGJPSceneToolBox:
             sess=self.session_uid,
             scene=self.current_scene_fk,
         ))
-        goldenzone_targets = self.targets["Golden Zone"]
+        goldenzone_targets = self.targets_from_template["Golden Zone"]
 
         def _get_shelf_range(sh):
             """Input => string ~ '1_2_shelf
