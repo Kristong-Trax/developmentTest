@@ -91,7 +91,7 @@ class PNGJPTemplateParser(object):
                 value = row[filter_value]
                 if to_list:
                     value = u"{}".format(value).strip()
-                    population[key].extend([u"{}".format(v) for v in value.split(",")])
+                    population[key].extend([u"{}".format(v) for v in value.split(",") if v])
                 else:
                     population[key].append(value)
 
@@ -164,7 +164,7 @@ class PNGJPTemplateParser(object):
         self.golden_zone_config["above_12_shelf"] = self.golden_zone_config["Above 12"].apply(self.str_to_int_list)
 
         self.golden_zone_config["population_filter"] = self.golden_zone_config.apply(
-            self.filter_population_fields, axis=1, args=(True, False)
+            self.filter_population_fields, axis=1, args=(True, True)
         )
         self.golden_zone_config["stacking_include"] = self.golden_zone_config[
             'Stacking ( Exclude = 0 / Include = 1)'].astype(bool)

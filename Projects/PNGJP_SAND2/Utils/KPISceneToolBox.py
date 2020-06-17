@@ -61,7 +61,7 @@ class PNGJPSceneToolBox:
             ext_target_template_fks = list([template_fks])
         return ext_target_template_fks
 
-    def check_if_the_kpis_is_available(self, kpi_name):
+    def check_if_the_kpi_is_available(self, kpi_name):
         status = True
         res_df = self.kpi_static_data[self.kpi_static_data[KPI_TYPE_COL] == kpi_name]
         if res_df.empty:
@@ -83,13 +83,13 @@ class PNGJPSceneToolBox:
         except Exception as e:
             Log.error("Error : {}".format(e))
 
-        # try:
-        #     self.calculate_pngjp_golden_zone_compliance()
-        # except Exception as e:
-        #     Log.error("Error : {}".format(e))
+        try:
+            self.calculate_pngjp_golden_zone_compliance()
+        except Exception as e:
+            Log.error("Error : {}".format(e))
 
     def calculate_pngjp_block_compliance(self):
-        if not self.check_if_the_kpis_is_available(PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE):
+        if not self.check_if_the_kpi_is_available(PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE):
             Log.warning('Unable to calculate PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE: KPIs are not in kpi_level_2')
             return
 
@@ -206,7 +206,7 @@ class PNGJPSceneToolBox:
                     )
 
     def calculate_pngjp_golden_zone_compliance(self):
-        if not self.check_if_the_kpis_is_available(PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE):
+        if not self.check_if_the_kpi_is_available(PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE):
             Log.warning('Unable to calculate PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE: KPIs are not in kpi_level_2')
             return
 
@@ -239,39 +239,54 @@ class PNGJPSceneToolBox:
         else:
             # target_shelf_config_keys => '1_5_shelf, 6_7_shelf, above_12_shelf etc'
             for idx, each_target in goldenzone_targets.iterrows():
-                result = score = 0
-                target_shelf_config_keys = each_target[each_target.keys().map(lambda x: x.endswith('_shelf'))]
-                store_banner_pk = each_target.store_banner_pk
-                sub_category_pk = each_target.sub_category_fk
-                brand_pk = each_target.brand_pk
-                stacking_include = bool(int(each_target.stacking_include))
-                # numerator - Cumulative no of Facings "of the brand and sub category" available at desired shelf
-                numerator = 0  # number of facings available in desired shelf
-                # check for banner and template match in target
-                target_banner_name = self.custom_entity_data[
-                    self.custom_entity_data['pk'] == each_target.store_banner_pk].name.iloc[0]
-                if self.templates.iloc[0].template_fk not in self.ensure_as_list(each_target.template_fks) or \
-                        target_banner_name != self.store_banner_name:
+
+                product_group_df = self.custom_entity_data[
+                    self.custom_entity_data['pk'].isin(each_target.product_group_name_fks)
+                ]
+                if product_group_df.empty:
+                    Log.warning("Product group name: {} not found in custom_entity".format(
+                        each_target['Product Group Name']
+                    ))
+                    continue
+                product_group_name = product_group_df.name.iloc[0]
+                product_group_fk = product_group_df.pk.iloc[0]
+                current_template_fk = self.templates.iloc[0].template_fk
+                category_fk = each_target.category_fks[0]
+
+                if current_template_fk not in self.ensure_as_list(each_target.template_fks):
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
-                                                or banner of current store -> {store_b} != target banner -> {targ_b}
-                                             target for calculating {kpi}."""
+                                    target for calculating {kpi}."""
                              .format(sess=self.session_uid,
                                      scene=self.current_scene_fk,
                                      kpi=kpi_details.iloc[0][KPI_TYPE_COL],
-                                     store_b=self.store_banner_name,
-                                     targ_b=target_banner_name,
                                      k=self.templates.iloc[0].template_fk,
                                      v=each_target.template_fks,
                                      ))
                     continue
+
+                result = score = 0
+                target_shelf_config_keys = each_target[each_target.keys().map(lambda x: x.endswith('_shelf'))]
+                population_filter = each_target.population_filter
+                stacking_include = each_target.stacking_include
+                # numerator - Cumulative no of Facings "of the brand and sub category" available at desired shelf
+                numerator = 0  # number of facings available in desired shelf
+
                 stack_filtered_mpis = self.match_product_data
                 if not stacking_include:
                     # consider only stacking layer 1 products
                     stack_filtered_mpis = self.match_product_data[self.match_product_data['stacking_layer'] == 1]
+
+
+                # Apply filters based on population_filter
+                boolean_masks = []
+                for column_name, values in population_filter.items():
+                    boolean_masks.append(
+                        stack_filtered_mpis[column_name].isin(values)
+                    )
+                population_filter_final_mask = reduce(lambda x, y: x & y, boolean_masks)
+                denominator = len(stack_filtered_mpis[population_filter_final_mask])
                 # denominator - total number of facings "of the brand and sub category" available in whole scene
-                denominator = len(stack_filtered_mpis[
-                                      (stack_filtered_mpis['brand_fk'] == brand_pk) &
-                                      (stack_filtered_mpis['sub_category_fk'] == sub_category_pk)])
+
                 if denominator:
                     for bay_number, grouped_bay_data in stack_filtered_mpis.groupby('bay_number'):
                         Log.info("Running {kpi} for bay {bay}".format(
@@ -299,6 +314,7 @@ class PNGJPSceneToolBox:
                                 scene=self.current_scene_fk,
                                 kpi=kpi_details.iloc[0][KPI_TYPE_COL]
                             ))
+                            # TODO: Think about it ? return or continue?
                             return False
 
                         # find the brand products in the shelf_config_key
@@ -311,8 +327,7 @@ class PNGJPSceneToolBox:
                         per_bay_numerator = len(
                             grouped_bay_data[
                                 (grouped_bay_data['shelf_number'].isin(interested_shelves)) &
-                                (grouped_bay_data['brand_fk'] == brand_pk) &
-                                (grouped_bay_data['sub_category_fk'] == sub_category_pk)
+                                (population_filter_final_mask)
                                 ]
                         )
                         numerator = numerator + per_bay_numerator
@@ -321,18 +336,20 @@ class PNGJPSceneToolBox:
                     if result >= each_target.target_perc:
                         score = 1
                 else:
-                    Log.info("{kpi}: No products with sub cat: {scat} brand: {brand} found. Save zero.".format(
-                        kpi=kpi_details.iloc[0][KPI_TYPE_COL],
-                        scat=sub_category_pk,
-                        brand=brand_pk,
-                    ))
+                    Log.info(
+                        "{kpi}: Fail: Cannot find any products for the population filter: {population_filter} "
+                        "category: {cat}.".format(
+                            kpi=kpi_details.iloc[0][KPI_TYPE_COL],
+                            cat=category_fk,
+                            population_filter=each_target.population_filter
+                        ))
                     continue
 
                 self.common.write_to_db_result(
                     fk=kpi_details.iloc[0].pk,
-                    numerator_id=store_banner_pk,
-                    denominator_id=brand_pk,
-                    context_id=sub_category_pk,
+                    numerator_id=product_group_fk,
+                    denominator_id=current_template_fk,
+                    context_id=category_fk,
                     numerator_result=numerator,
                     denominator_result=denominator,
                     result=result,
