@@ -271,6 +271,14 @@ class PNGJPSceneToolBox:
                                      ))
                     continue
 
+                if not each_target.population_filter:
+                    Log.warning(
+                        "Population filter is empty for category: {cat} - filter {population_filter}".format(
+                            cat=each_target.category_fks,
+                            population_filter=each_target.population_filter
+                        ))
+                    continue
+
                 result = score = 0
                 target_shelf_config_keys = each_target[each_target.keys().map(lambda x: x.endswith('_shelf'))]
                 population_filter = each_target.population_filter
