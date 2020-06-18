@@ -103,14 +103,21 @@ class CaseCountCalculator(GlobalSessionToolBox):
         data and the tagging data."""
         closest_tag_to_display_df = self._calculate_closest_product_to_display()
         closest_tag_to_display_df = self._remove_items_outside_maximum_distance(closest_tag_to_display_df)
-        closest_tag_to_display_df = self._remove_extra_tags_from_case_tags(closest_tag_to_display_df)
         self._add_displays_the_closet_product_fk(closest_tag_to_display_df)
         self._add_matches_display_data(closest_tag_to_display_df)
+        self._remove_extra_tags_from_case_tags()
 
-    def _remove_extra_tags_from_case_tags(self, closest_tag_to_display_df):
+    def _remove_extra_tags_from_case_tags(self):
         """This method ensures that if a display is associated with a 'case' tag that no other SKU tags can be
         paired to the same display"""
-        return closest_tag_to_display_df
+        case_product_fks = \
+            self.scif[self.scif[Sc.SKU_TYPE].isin(['case', 'Case', 'CASE'])][Sc.PRODUCT_FK].unique().tolist()
+        display_fks_with_cases = self.matches[(self.matches[Consts.DISPLAY_IN_SCENE_FK].notna()) &
+                                              (self.matches[Sc.PRODUCT_FK].isin(case_product_fks))][
+            Consts.DISPLAY_IN_SCENE_FK].unique().tolist()
+        self.matches.loc[((self.matches[Consts.DISPLAY_IN_SCENE_FK].isin(display_fks_with_cases)) &
+                         (~self.matches[Sc.PRODUCT_FK].isin(case_product_fks))), Consts.DISPLAY_IN_SCENE_FK] = pd.np.nan
+        return
 
     @staticmethod
     def _remove_items_outside_maximum_distance(closest_tag_to_display_df):
