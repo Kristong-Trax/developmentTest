@@ -89,9 +89,15 @@ class PNGJPTemplateParser(object):
             key = row[filter_type]
             if not pd.isnull(key):
                 value = row[filter_value]
+                if pd.isnull(value):
+                    continue
                 if to_list:
-                    value = u"{}".format(value).strip()
-                    population[key].extend([u"{}".format(v) for v in value.split(",") if v])
+                    if isinstance(value, (float,int)):
+                        # To handle, if the filter values are numbers
+                        value = u"{:.0f}".format(value)
+                    else:
+                        value = unicode(value).strip()
+                    population[key].extend([unicode(v) for v in value.split(",") if v])
                 else:
                     population[key].append(value)
 

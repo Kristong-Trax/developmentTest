@@ -137,7 +137,6 @@ class PNGJPSceneToolBox:
                 else:
                     result = score = 0
                     total_facings_count = biggest_block_facings_count = 0
-                    # TODO: Ensure if its .8 or 80
                     block_threshold_perc = each_target.block_threshold_perc
 
                     Log.info(
@@ -145,6 +144,15 @@ class PNGJPSceneToolBox:
                             cat=each_target.category_fks,
                             population_filter=each_target.population_filter
                         ))
+
+                    if not each_target.population_filter:
+                        Log.warning(
+                            "Population filter is empty for category: {cat} - filter {population_filter}".format(
+                                cat=each_target.category_fks,
+                                population_filter=each_target.population_filter
+                            ))
+                        continue
+
                     stacking_include = each_target.stacking_include
 
                     # able to pass sub cat and super brand[?] // or get the prods and pass
