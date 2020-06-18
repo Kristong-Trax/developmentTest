@@ -1,7 +1,6 @@
 from Projects.STRAUSSFRITOLAYIL.KPIs.Utils import StraussfritolayilUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
-from Trax.Utils.Logging.Logger import Log
 
 
 class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):

@@ -2,11 +2,9 @@ from Projects.STRAUSSFRITOLAYIL.KPIs.Utils import StraussfritolayilUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
 import math
-import pandas as pd
-import itertools
+
 
 class NumberOfFacingsMustHaveAssortmentSKUKpi(UnifiedCalculationsScript):
-
     def __init__(self, data_provider, config_params=None, **kwargs):
         super(NumberOfFacingsMustHaveAssortmentSKUKpi, self).__init__(data_provider, config_params=config_params,
                                                                       **kwargs)
@@ -48,7 +46,7 @@ class NumberOfFacingsMustHaveAssortmentSKUKpi(UnifiedCalculationsScript):
                                     denominator_id=self.utils.store_id, score=facings)
 
     def tarnsform_kpi_external_targets_to_assortment(self, template):
-        assortment = template[['kpi_fk', Consts.EAN_CODE, Consts.FIELD, Consts.TARGET_MAX]]
+        assortment = template[['kpi_fk', Consts.EAN_CODE, Consts.FIELD, Consts.TARGET_MAX]].copy()
         assortment.rename(columns={'EAN Code': Consts.REPLACMENT_EAN_CODES}, inplace=True)
         assortment['facings'] = assortment['facings_wo_hangers'] = 0
         assortment['in_store'] = assortment['in_store_wo_hangers'] = 0
