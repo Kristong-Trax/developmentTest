@@ -175,17 +175,25 @@ class ToolBox(GlobalSessionToolBox):
     def assortment_calculation(self):
 
         lvl3_result = self.assortment.calculate_lvl3_assortment(False) #todo ask if iclude stacking
-        sku_results = self.distribution_sku_level(lvl3_result)
 
         cat_df = self.all_products[['product_fk', 'category_fk']]
         lvl3_with_cat = lvl3_result.merge(cat_df, on='product_fk', how='left')
         lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
+        sku_results, oos_sku_res = self.distribution_sku_level(lvl3_with_cat)
 
-        group_result = self.calculate_lvl2_assortment(lvl3_with_cat, Consts.LVL2_GROUP_HEADERS)
-        group_result = self.group_level
-        category_result = self.calculate_lvl2_assortment(group_result, Consts.LVL2_CATEGORY_HEADERS)
-        #
-        # store_result =  self.assortment.calculate_lvl1_assortment()
+        group_result, oos_group_res = self.calculate_lvl2_assortment(lvl3_with_cat, Consts.LVL2_GROUP_HEADERS)
+        self.assign_parent_child_identifiers(group_result, parent_identifier={'col': ['category_fk']}, result_identifier={'col': ['assortment_group_fk','category_fk'], 'val': 'DIST'})
+        group_result = self.group_level(group_result, Consts.DIST_GROUP_LVL)
+
+        self.assign_parent_child_identifiers(group_result, parent_identifier={'val': 'OOS'}, result_identifier={'col': ['assortment_group_fk'], 'val': 'OOS'})
+        oos_group_res = self.group_level(oos_group_res, Consts.OOS_GROUP_LVL)
+        # oos_group_res[:, 'kpi_fk'] = self.common.get_kpi_fk_by_kpi_type(Consts.OOS_GROUP_LVL)
+
+        category_result = self.calculate_category_result(group_result)
+
+        store_result = self.calculate_store_assortment(category_result, Consts.DIST_STORE_LVL)
+        oos_store_result = self.calculate_store_assortment(oos_group_res, Consts.OOS_STORE_LVL)
+        self.assign_parent_child_identifiers(oos_store_result, result_identifier={'val': 'OOS'})
 
     def distribution_sku_level(self, lvl_3_result):
         """ This function receive df = lvl_3_result assortment with data regarding the assortment products
@@ -193,25 +201,36 @@ class ToolBox(GlobalSessionToolBox):
             return distribution_db_results df
         """
         sku_results = lvl_3_result.rename(columns={'product_fk': 'numerator_id', 'assortment_group_fk': 'denominator_id',
-                                     'in_store': 'result', 'kpi_fk_lvl3': 'kpi_level_2_fk', 'facings':
+                                     'in_store': 'result', 'kpi_fk_lvl3': 'kpi_fk', 'facings':
                                          'numerator_result'}, inplace=False)
         sku_results.loc[:, 'result'] = sku_results.apply(lambda row: self.kpi_result_value(row.result), axis=1)
         sku_results = sku_results.assign(denominator_result=1,
                                            score=sku_results['result'])
-        sku_results = self.filter_df_by_col(sku_results, Consts.SKU_LEVEL)
-        Log.info('Distribution sku level is done ')
-        return sku_results
+        sku_results.loc[:, 'should_enter'] = True
+        sku_results['kpi_fk'] = self.common.get_kpi_fk_by_kpi_type(Consts.DIST_SKU_LVL)
+        self.assign_parent_child_identifiers(sku_results, {'col': ['denominator_id', 'category_fk'], 'val': 'DIST'})
 
-    def group_level(self, lvl_2_result):
+        oos_res = sku_results[sku_results['result'] == self.kpi_result_value('0')]
+        oos_res['kpi_fk'] = self.common.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LVL)
+        self.assign_parent_child_identifiers(oos_res, {'col': ['denominator_id'], 'val': 'OOS'})
+
+        sku_results = self.filter_df_by_col(sku_results, Consts.SKU_LEVEL)
+        oos_res = self.filter_df_by_col(oos_res, Consts.SKU_LEVEL)
+
+        Log.info('Distribution sku level is done ')
+        return sku_results, oos_res
+
+    def group_level(self, lvl_2_result,kpi_name):
         """ This function receive df = lvl_3_result assortment with data regarding the assortment products
             This function turn the sku_assortment_results to be in a shape of db result.
             return distribution_db_results df
         """
         group_results = lvl_2_result.rename(columns={'assortment_fk': 'numerator_id', 'category_fk': 'denominator_id',
-                                     'in_store': 'result', 'total': 'denominator_result', 'passes': 'numerator_result',
+                                      'total': 'denominator_result', 'passes': 'numerator_result',
                                                      'kpi_level_2_fk': 'kpi_fk'}, inplace=False)
-        group_results.loc[:, 'result'] = group_results.apply(lambda row: self.kpi_result_value(row.result), axis=1)
+        group_results.loc[:, 'result'] = group_results['passes']/group_results['total']
         group_results = group_results.assign(score=group_results['result'])
+        group_results[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         group_results = self.filter_df_by_col(group_results, Consts.GROUPS_LEVEL)
         Log.info('Group level is done ')
         return group_results
@@ -250,11 +269,41 @@ class ToolBox(GlobalSessionToolBox):
         Indicates for each assortment group how many products were in the store (passes) out of the total\ target
         (total\ target).
         """
-        if lvl3_with_cat.empty:
+        if lvl3_assortment.empty:
             return pd.DataFrame(columns=group_by_cols)
 
-        lvl3_with_cat = lvl3_with_cat.copy()
+        lvl3_with_cat = lvl3_assortment.copy()
         lvl3_with_cat = lvl3_with_cat.fillna(Consts.EMPTY_VAL)
         lvl2_res = lvl3_with_cat.groupby(group_by_cols)['in_store'].agg([('total', 'count'), ('passes', 'sum')]).reset_index()
-        return lvl2_res
+        oos_res = lvl2_res.copy()
+        oos_res['passes'] = oos_res['total'] - oos_res['passes']
+        lvl2_res.loc[:, 'should_enter']=True
+        oos_res.loc[:, 'should_enter']=True
+        return lvl2_res, oos_res
 
+    def calculate_category_result(self, group_result):
+
+        category_result = group_result.groupby(['category_fk'])['passes', 'total'].agg({'passes': 'sum', 'total': 'sum'}).reset_index()
+        category_result.loc[:, 'result'] = category_result['passes']/category_result['total']
+        category_result[:, 'denominator_id'] = self.manufacturer_fk
+        category_result[:, 'kpi_fk'] = self.common.get_kpi_fk_by_kpi_type(Consts.DIST_CAT_LVL)
+        category_result = category_result.assign(score=category_result['result'])
+        self.assign_parent_child_identifiers(group_result,result_identifier={'col': ['category_fk']}, parent_identifier={'val': 'DIST'})
+        category_result = category_result.rename(columns={'category_fk': 'numerator_id',
+                                                    'total': 'denominator_result', 'passes': 'numerator_result'},
+                                           inplace=False)
+        return category_result
+
+    def calculate_store_assortment(self, category_result, kpi_name):
+
+        store_assortment = category_result.groupby(['kpi_level_2_fk'])['passes', 'total'].agg({'passes': 'sum', 'total': 'sum'}).reset_index()
+
+        store_assortment.loc[:, 'result'] = store_assortment['passes'] / category_result['total']
+        store_assortment[:, 'denominator_id'] = self.store_id
+        store_assortment[:, 'numerator_id'] = self.manufacturer_fk
+        store_assortment[:, 'kpi_level_2_fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        store_assortment[:, 'should_enter'] = False
+        kpi_identifier = 'DIST' if kpi_name == Consts.DIST_STORE_LVL else 'OOS'
+        self.assign_parent_child_identifiers(store_assortment,parent_identifier={'val': kpi_identifier})
+
+        return store_assortment
