@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'psapac-sand3'
     data_provider = KEngineDataProvider(project_name)
-    session = '6adb054b-0b49-45dd-9a6a-12e919252f82'
+    session = '9062B84C-8C3B-40FC-87F1-CF905D5EF14A'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()

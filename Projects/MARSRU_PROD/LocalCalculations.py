@@ -6,12 +6,13 @@ from Projects.MARSRU_PROD.Calculations import MARSRU_PRODCalculations
 
 if __name__ == '__main__':
     Config.init()
-    LoggerInitializer.init('MARSRU local calculations')
+    LoggerInitializer.init('KEngine')
     project_name = 'marsru-prod'
     session_uids = [
 
-        '470aac6c-1e9b-461f-924a-a562e5c42ff7',
-
+        # 'ffee5551-647f-4552-b296-d5aafb96f842',
+        # 'ff9701b2-38b0-4798-8b2b-5578975f8818'
+        'aada3bb0-bd76-4b7c-aaa0-0be2a0c4aa7c'
     ]
     data_provider = KEngineDataProvider(project_name)
     output = Output()

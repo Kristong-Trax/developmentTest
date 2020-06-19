@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import os
 from datetime import datetime
+import re
 
 from Projects.CCNAYARMX.Data.LocalConsts import Consts
 
@@ -112,7 +113,7 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                              'CCNayarTemplate2020v1.1.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_v10.xlsx')
+                                         'CCNayar_POS_Options_v11.xlsx')
 
 ASSORTMENT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                         'TemplateAssortmentCCNAYARMX_V4.xlsx')
@@ -120,7 +121,6 @@ PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__fil
                                           'CCNayar_Portafolios_y_Precios.xlsx')
 GENERAL_ASSORTMENTS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                         'CCNayar_Assortment_Templates_V4.xlsx')
-
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -308,6 +308,7 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_bonus_and_penalties(self, row):
+        result = 0
         if row['availability'] == 'Y':
             facings_dict = self._filter_facing_targets(row)
             result = self.logic_for_result_availability_bonus_and_penalties(self.scif, facings_dict)
@@ -671,6 +672,9 @@ class ToolBox(GlobalSessionToolBox):
 
             # calculate the 'empaques' data
             assortment_groups = self._get_groups(platform_row.dropna(), 'Assortment')
+            if pd.notna(targets_and_constraints['excluding_invasion'].values[0]):
+                removal_of_assortment_index = map(int, re.findall('\d',targets_and_constraints['excluding_invasion'].values[0]))[0] - 1
+                assortment_groups.pop(removal_of_assortment_index)
             mandatory_skus_found = 1  # True
             for assortment in assortment_groups:
                 if not any(product in product_names_in_scene for product in assortment):
@@ -686,6 +690,7 @@ class ToolBox(GlobalSessionToolBox):
                 if assortment_1_facings >= assortment_2_facings:
                     mandatory_skus_found = 0
 
+            assortment_groups = self._get_groups(platform_row.dropna(), 'Assortment')
             # calculate the 'botellas' data
             total_facings = scene_scif[scene_scif['product_short_name'].isin(
                 [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
@@ -695,6 +700,7 @@ class ToolBox(GlobalSessionToolBox):
                 minimum_facings_met = 0  # False
 
             # calculate the coke purity (coke SOS) of this scene
+            # Terrible logic. Need to change later
             coke_purity_assortment = np.delete(assortment_groups, -1) if pd.notna(
                 targets_and_constraints.excluding_invasion.values[0]) else assortment_groups
             coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif, coke_purity_assortment)
@@ -1613,7 +1619,7 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_columns_in_constraints_df = [item for item in constraints_df.columns if "assortment" in item]
         constraints_df = constraints_df[relevant_columns_in_constraints_df]
-        final_constraints = constraints_df.values[0]
+        final_constraints = constraints_df.values[0:1]
         return final_constraints
 
     @staticmethod
@@ -1625,8 +1631,10 @@ class ToolBox(GlobalSessionToolBox):
                 scif.product_short_name.isin(required_assortment)].facings.sum()
             if total_facings_for_this_sum >= facing_constraint:
                 assortment_passed = assortment_passed + 1
-
-        result = float(assortment_passed) / len(constraints_df)
+        try:
+            result = float(assortment_passed) / len(constraints_df)
+        except ZeroDivisionError:
+            result = 0
         return result
 
     @staticmethod
