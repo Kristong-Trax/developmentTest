@@ -250,6 +250,12 @@ class LionJPSceneToolBox:
                 for others_product_fk in include_others_pks:
                     row = {"entity": "other", "product_fk": others_product_fk}
                     df_entities = df_entities.append(row, ignore_index=True)
+                    # emtpy
+                    row_general_empty = {"entity": "empty", "product_fk": 0}
+                    df_entities = df_entities.append(row_general_empty, ignore_index=True)
+                    row_empty = {"entity": "empty", "product_fk": 1478}
+                    df_entities = df_entities.append(row_empty, ignore_index=True)
+
                     # for entity in entities:
                     #     row = {"product_fk": others_product_fk, "entity": "other"}
                     #     df_entities = df_entities.append(row,  ignore_index=True)
