@@ -93,6 +93,7 @@ class SceneGPUSToolBox:
                 adj_mpis = mpis[(mpis['scene_match_fk'].isin(adjacent_items))]
                 adj_mpis['num_brand_fk'] = self.brands[brand]
                 adj_mpis['num_category_fk'] = self.get_brand_category(brand)
+                adj_mpis = adj_mpis[adj_mpis['category_fk'] != adj_mpis['num_category_fk']]
                 data[brand][edge_dir] = adj_mpis
         return data
 
