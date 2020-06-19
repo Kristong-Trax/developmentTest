@@ -102,11 +102,35 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method prepares the data for the case count calculation. Connection between the display
         data and the tagging data."""
         closest_tag_to_display_df = self._calculate_closest_product_to_display()
-        # we need to limit each display to only being associated with up to 4 tags
-        closest_tag_to_display_df.sort_values(by=['display_in_scene_fk', 'minimum_distance'], inplace=True)
-        closest_tag_to_display_df = closest_tag_to_display_df.groupby('display_in_scene_fk').head(4)
+        closest_tag_to_display_df = self._remove_items_outside_maximum_distance(closest_tag_to_display_df)
         self._add_displays_the_closet_product_fk(closest_tag_to_display_df)
         self._add_matches_display_data(closest_tag_to_display_df)
+        self._remove_extra_tags_from_case_tags()
+
+    def _remove_extra_tags_from_case_tags(self):
+        """This method ensures that if a display is associated with a 'case' tag that no other SKU tags can be
+        paired to the same display"""
+        case_product_fks = \
+            self.scif[self.scif[Sc.SKU_TYPE].isin(['case', 'Case', 'CASE'])][Sc.PRODUCT_FK].unique().tolist()
+        display_fks_with_cases = self.matches[(self.matches[Consts.DISPLAY_IN_SCENE_FK].notna()) &
+                                              (self.matches[Sc.PRODUCT_FK].isin(case_product_fks))][
+            Consts.DISPLAY_IN_SCENE_FK].unique().tolist()
+        self.matches.loc[((self.matches[Consts.DISPLAY_IN_SCENE_FK].isin(display_fks_with_cases)) &
+                         (~self.matches[Sc.PRODUCT_FK].isin(case_product_fks))), Consts.DISPLAY_IN_SCENE_FK] = pd.np.nan
+        return
+
+    @staticmethod
+    def _remove_items_outside_maximum_distance(closest_tag_to_display_df):
+        """This method removes SKU tags that are too far away from the display tag and limits the number
+        of possible tags"""
+        max_number_of_tags = 4
+        max_distance_from_display_tag = 20000
+        closest_tag_to_display_df.sort_values(by=['display_in_scene_fk', 'minimum_distance'], inplace=True)
+        closest_tag_to_display_df = \
+            closest_tag_to_display_df[closest_tag_to_display_df['minimum_distance'] < max_distance_from_display_tag]
+        # we need to limit each display to only being associated with up to 4 tags
+        closest_tag_to_display_df = closest_tag_to_display_df.groupby('display_in_scene_fk').head(max_number_of_tags)
+        return closest_tag_to_display_df
 
     def _calculate_closest_product_to_display(self):
         """This method calculates the closest tag for each display and returns a DataFrame with the results"""

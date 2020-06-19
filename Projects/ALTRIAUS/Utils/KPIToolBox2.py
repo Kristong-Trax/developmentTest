@@ -87,6 +87,7 @@ class ALTRIAUSToolBox:
         self.survey_dot_com_collected_this_session = self._get_survey_dot_com_collected_value()
         self._add_smart_attributes_to_mpis()
         self.scene_graphs = {}
+        self.excessive_flipsigns = False
 
     def _add_smart_attributes_to_mpis(self):
         smart_attribute_data = \
@@ -106,6 +107,8 @@ class ALTRIAUSToolBox:
         self.calculate_register_type()
         self.calculate_age_verification()
         self.calculate_facings_by_scene_type()
+
+        self.calculate_session_flags()
 
         return
 
@@ -174,6 +177,7 @@ class ALTRIAUSToolBox:
         for i, pair in enumerate(sorted(flip_signs_by_x_coord.items())):
             position_fk = self.get_custom_entity_pk(str(i+1))
             if position_fk == 0 or position_fk > 8:
+                self.excessive_flipsigns = True
                 Log.warning('More than 8 flip-sign positions found for a block')
             product_fk = pair[1]['product_fk'].value
             width = pair[1]['calculated_width_ft'].value
@@ -506,6 +510,11 @@ class ALTRIAUSToolBox:
                 self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
                                                   result=result)
         return
+
+    def calculate_session_flags(self):
+        if self.excessive_flipsigns:
+            kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Excessive Flip Signs Detected')
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=49, denominator_id=self.store_id, result=1)
 
     def mark_tags_in_explorer(self, probe_match_fk_list, mpipsr_name):
         if not probe_match_fk_list:

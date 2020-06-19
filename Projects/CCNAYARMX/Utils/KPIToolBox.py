@@ -308,6 +308,7 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_bonus_and_penalties(self, row):
+        result = 0
         if row['availability'] == 'Y':
             facings_dict = self._filter_facing_targets(row)
             result = self.logic_for_result_availability_bonus_and_penalties(self.scif, facings_dict)
