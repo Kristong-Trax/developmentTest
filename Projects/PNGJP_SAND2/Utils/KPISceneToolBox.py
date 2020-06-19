@@ -119,10 +119,8 @@ class PNGJPSceneToolBox:
                         each_target['Product Group Name']
                     ))
                     continue
-                product_group_name = product_group_df.name.iloc[0]
                 product_group_fk = product_group_df.pk.iloc[0]
                 current_template_fk = self.templates.iloc[0].template_fk
-                category_fk = each_target.category_fks[0]
 
                 if current_template_fk not in self.ensure_as_list(each_target.template_fks):
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
@@ -140,15 +138,13 @@ class PNGJPSceneToolBox:
                     block_threshold_perc = each_target.block_threshold_perc
 
                     Log.info(
-                        "Calculating blocking KPI for category: {cat} - filter {population_filter}".format(
-                            cat=each_target.category_fks,
+                        "Calculating blocking KPI for - filter {population_filter}".format(
                             population_filter=each_target.population_filter
                         ))
 
                     if not each_target.population_filter:
                         Log.warning(
-                            "Population filter is empty for category: {cat} - filter {population_filter}".format(
-                                cat=each_target.category_fks,
+                            "Population filter is empty for - filter {population_filter}".format(
                                 population_filter=each_target.population_filter
                             ))
                         continue
@@ -171,17 +167,14 @@ class PNGJPSceneToolBox:
                     block_res = block_res.query('is_block==True')
                     if block_res.empty:
                         Log.info(
-                            "Fail: Cannot find the block for the population filter: {population_filter} "
-                            "category: {cat}.".format(
-                                cat=category_fk,
+                            "Fail: Cannot find the block for the population filter: {population_filter} ".format(
                                 population_filter=each_target.population_filter
                             ))
                         continue
                     else:
                         Log.info(
                             "Found block for the population filter: {population_filter} "
-                            "category: {cat}. Check and save.".format(
-                                cat=category_fk,
+                            "Check and save.".format(
                                 population_filter=each_target.population_filter
                             ))
                         biggest_cluster = block_res.sort_values(by='block_facings', ascending=False).head(1)
@@ -193,6 +186,7 @@ class PNGJPSceneToolBox:
                             score = 1
                         try:
                             g = biggest_cluster.cluster.iloc[0]
+                            # TODO: fix if its max or len
                             shelf_spread_count_for_biggest_block = len(list(list(g.nodes("shelf_number"))[0][-1]))
                         except Exception as e:
                             Log.error("Error: {}".format(e))
@@ -202,7 +196,6 @@ class PNGJPSceneToolBox:
                         fk=kpi_details.iloc[0].pk,
                         numerator_id=product_group_fk,
                         denominator_id=current_template_fk,
-                        context_id=category_fk,
                         numerator_result=biggest_block_facings_count,
                         denominator_result=total_facings_count,
                         target=block_threshold_perc,
@@ -255,10 +248,9 @@ class PNGJPSceneToolBox:
                         each_target['Product Group Name']
                     ))
                     continue
-                product_group_name = product_group_df.name.iloc[0]
+
                 product_group_fk = product_group_df.pk.iloc[0]
                 current_template_fk = self.templates.iloc[0].template_fk
-                category_fk = each_target.category_fks[0]
 
                 if current_template_fk not in self.ensure_as_list(each_target.template_fks):
                     Log.info("""Session: {sess}; Scene:{scene}. Scene Type not matching [{k} not in {v}] 
@@ -273,8 +265,7 @@ class PNGJPSceneToolBox:
 
                 if not each_target.population_filter:
                     Log.warning(
-                        "Population filter is empty for category: {cat} - filter {population_filter}".format(
-                            cat=each_target.category_fks,
+                        "Population filter is empty for filter {population_filter}".format(
                             population_filter=each_target.population_filter
                         ))
                     continue
@@ -283,7 +274,6 @@ class PNGJPSceneToolBox:
                 target_shelf_config_keys = each_target[each_target.keys().map(lambda x: x.endswith('_shelf'))]
                 population_filter = each_target.population_filter
                 stacking_include = each_target.stacking_include
-                # numerator - Cumulative no of Facings "of the brand and sub category" available at desired shelf
                 numerator = 0  # number of facings available in desired shelf
 
                 stack_filtered_mpis = self.match_product_data
@@ -300,8 +290,9 @@ class PNGJPSceneToolBox:
                     )
                 population_filter_final_mask = reduce(lambda x, y: x & y, boolean_masks)
                 denominator = len(stack_filtered_mpis[population_filter_final_mask])
-                # denominator - total number of facings "of the brand and sub category" available in whole scene
+                total_no_of_skus_in_scene = len(stack_filtered_mpis)
 
+                # denominator - total number of facings "by the population filter" available in whole scene
                 if denominator:
                     for bay_number, grouped_bay_data in stack_filtered_mpis.groupby('bay_number'):
                         Log.info("Running {kpi} for bay {bay}".format(
@@ -330,7 +321,8 @@ class PNGJPSceneToolBox:
                                 kpi=kpi_details.iloc[0][KPI_TYPE_COL]
                             ))
                             # TODO: Think about it ? return or continue?
-                            return False
+                            # return False
+                            continue
 
                         # find the brand products in the shelf_config_key
                         interested_shelves = each_target[shelf_config_key]
@@ -352,10 +344,8 @@ class PNGJPSceneToolBox:
                         score = 1
                 else:
                     Log.info(
-                        "{kpi}: Fail: Cannot find any products for the population filter: {population_filter} "
-                        "category: {cat}.".format(
+                        "{kpi}: Fail: Cannot find any products for the population filter: {population_filter} ".format(
                             kpi=kpi_details.iloc[0][KPI_TYPE_COL],
-                            cat=category_fk,
                             population_filter=each_target.population_filter
                         ))
                     continue
@@ -364,11 +354,11 @@ class PNGJPSceneToolBox:
                     fk=kpi_details.iloc[0].pk,
                     numerator_id=product_group_fk,
                     denominator_id=current_template_fk,
-                    context_id=category_fk,
                     numerator_result=numerator,
                     denominator_result=denominator,
                     result=result,
                     score=score,
+                    weight=total_no_of_skus_in_scene,
                     target=each_target.target_perc,
                     by_scene=True,
                 )

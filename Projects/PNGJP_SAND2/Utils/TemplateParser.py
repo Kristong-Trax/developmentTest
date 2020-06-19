@@ -31,11 +31,7 @@ class PNGJPTemplateParser(object):
 
     def __init__(self, data_provider, rds_conn):
         self.data_provider = data_provider
-        if rds_conn is None:
-            # self.rds_conn = PSProjectConnector(self.data_provider.project_name, DbUsers.CalculationEng)
-            self.rds_conn = PSProjectConnector("pngjp-sand2", DbUsers.CalculationEng)
-        else:
-            self.rds_conn = rds_conn
+        self.rds_conn = rds_conn
         self.filename = str(Path(__file__).parent.parent / "Data/TemplateBlockAndGoldenZoneKPI.xlsx")
         self.block_config = self.load_sheet("Block")
         self.golden_zone_config = self.load_sheet("Golden Zone")
@@ -48,7 +44,7 @@ class PNGJPTemplateParser(object):
 
     def load_data_from_db(self):
         self.load_templates_from_db()
-        self.load_category_from_db()
+        # self.load_category_from_db()
         self.load_custom_entity_from_db()
 
     def preprocess_all_sheets(self):
@@ -135,16 +131,18 @@ class PNGJPTemplateParser(object):
         self.block_config["template_fks"] = self.block_config['SceneType'].apply(
             self.map_namelist_to_fks, args=(self.template_dict,)
         )
-        self.block_config["category_fks"] = self.block_config['Category'].apply(
-            self.map_namelist_to_fks, args=(self.category_dict,)
-        )
+        # self.block_config["category_fks"] = self.block_config['Category'].apply(
+        #     self.map_namelist_to_fks, args=(self.category_dict,)
+        # )
         self.block_config["product_group_name_fks"] = self.block_config['Product Group Name'].apply(
             self.map_namelist_to_fks, args=(self.custom_entity_dict,)
         )
         self.block_config["block_threshold_perc"] = self.block_config["Block Threshold"].apply(
             self.transform_percentage) * 100
 
-        self.block_config["population_filter"] = self.block_config.apply(self.filter_population_fields, axis=1, args=(True, True))
+        self.block_config["population_filter"] = self.block_config.apply(
+            self.filter_population_fields, axis=1, args=(True, True)
+        )
         self.block_config["stacking_include"] = self.block_config['Stacking ( Exclude = 0 / Include = 1)'].astype(bool)
 
 
@@ -152,9 +150,9 @@ class PNGJPTemplateParser(object):
         self.golden_zone_config["template_fks"] = self.golden_zone_config['SceneType'].apply(
             self.map_namelist_to_fks, args=(self.template_dict,)
         )
-        self.golden_zone_config["category_fks"] = self.golden_zone_config['Category'].apply(
-            self.map_namelist_to_fks, args=(self.category_dict,)
-        )
+        # self.golden_zone_config["category_fks"] = self.golden_zone_config['Category'].apply(
+        #     self.map_namelist_to_fks, args=(self.category_dict,)
+        # )
         self.golden_zone_config["product_group_name_fks"] = self.golden_zone_config['Product Group Name'].apply(
             self.map_namelist_to_fks, args=(self.custom_entity_dict,)
         )
@@ -184,18 +182,13 @@ class PNGJPTemplateParser(object):
     def get_custom_entity(self):
         return self.custom_entity
 
-    def get_custom_entity(self):
-        if hasattr(self, "custom_entity"):
-            return self.custom_entity
-        else:
-            return pd.DataFrame()
-
 
 if __name__ == "__main__":
     print("Testing template parser")
     LoggerInitializer.init('pngjp-sand2 Scene Calculations')
     Config.init()
-    p = PNGJPTemplateParser(None, None)
+    rds_conn = PSProjectConnector("pngjp-sand2", DbUsers.CalculationEng)
+    p = PNGJPTemplateParser(data_provider=None, rds_conn=rds_conn)
     for k, v in p.get_targets().items():
         print(k)
         print(v)
