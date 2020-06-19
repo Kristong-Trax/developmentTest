@@ -43,6 +43,7 @@ if __name__ == '__main__':
     ]
 
     for session in sessions:
+        print("======================================== {} ========================================".format(session))
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
 
