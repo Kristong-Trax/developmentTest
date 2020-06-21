@@ -25,10 +25,9 @@ if __name__ == '__main__':
     project_name = 'gpus'
 
     sessions = [
-
-        # session_uid
-        # '08465b37-6157-49f2-9ffd-852c8a00553b',
-
+        '935d3484-f9a9-4b03-bce3-fd3013b4a3a0',
+        'c2e92d0b-ae83-45a9-8a06-57dded7dfce3',
+        '08465b37-6157-49f2-9ffd-852c8a00553b',
         '5c4499dc-6f4c-40ef-bf3d-b02c07901e23',
         '0ef472a4-ffd8-47f3-8f6f-f8dd45c5c828',
         '3a5d3658-80c3-4975-8181-1c5d17736179',
@@ -38,28 +37,29 @@ if __name__ == '__main__':
         '7c8dcf9b-a8f7-48a7-aedd-ff7fe736d237',
         '541e9f98-5f0b-4294-9c43-e3d7865d5199',
         'e88ec29b-19bd-417c-af66-75d333b789a6',
-
         'ff3f79ef-6d5e-4ea8-9a87-87ea60cbf629',
         'd78f0285-b4e2-4a75-831f-f7b4a81b6eef',
         '040aac07-013b-4d6b-a408-a6348faf317d'
-
     ]
 
     for session in sessions:
+        print("======================================== {} ========================================".format(session))
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
 
         scif = data_provider['scene_item_facts']
         scenes = scif['scene_id'].unique().tolist()
 
-        # for scene in scenes:
-        #     data_provider = KEngineDataProvider(project_name)
-        #     data_provider.load_scene_data(session, scene)
-        #     output = VanillaOutput()
-        #     SceneVanillaCalculations(data_provider, output).run_project_calculations()
-        #     save_scene_item_facts_to_data_provider(data_provider, output)
-        #     SceneCalculations(data_provider).calculate_kpis()
+        for scene in scenes:
+            data_provider = KEngineDataProvider(project_name)
+            data_provider.load_scene_data(session, scene)
+            output = VanillaOutput()
+            SceneVanillaCalculations(data_provider, output).run_project_calculations()
+            save_scene_item_facts_to_data_provider(data_provider, output)
+            SceneCalculations(data_provider).calculate_kpis()
+
+        data_provider = KEngineDataProvider(project_name)
+        data_provider.load_session_data(session)
 
         output = Output()
         Calculations(data_provider, output).run_project_calculations()
-
