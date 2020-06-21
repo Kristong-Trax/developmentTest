@@ -7,6 +7,7 @@ from Trax.Algo.Calculations.Core.KPI.UnifiedKpiSingleton import UnifiedKPISingle
 from Projects.PNGJP_SAND2.Utils.KPIToolBox import PNGJP_SAND2ToolBox
 from Projects.PNGJP_SAND2.Utils.KpiQualitative import PNGJP_SAND2KpiQualitative_ToolBox
 from Projects.PNGJP_SAND2.Utils.KPIToolBox import log_runtime
+from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Algo.Calculations.Core.DataProvider import Data
@@ -41,7 +42,8 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.all_templates = self.data_provider[Data.ALL_TEMPLATES]
         self.match_product_in_scene['count'] = 1
-        self.matches_product = self.match_product_in_scene.merge(self.all_products, on=ProductsConsts.PRODUCT_FK,
+        self.matches_product = self.match_product_in_scene.merge(self.scif, on=[ScifConsts.PRODUCT_FK,
+                                                                                ScifConsts.SCENE_FK],
                                                                  how='left')
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.match_display_in_scene = self.get_match_display_in_scene()
@@ -109,8 +111,9 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
 
     def filter_matches_for_scene_kpis(self, params):
         matches = self.matches_product.copy()
-
-        return matches
+        filters = self.get_scene_kpi_filters(params)
+        filtered_matches = filter_df(filters, matches)
+        return filtered_matches
 
     def get_target_by_kpi_type(self, kpi_type):
         ext_target = self.all_targets_unpacked[self.all_targets_unpacked['type'] == kpi_type]
@@ -118,10 +121,8 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
 
     def get_scene_kpi_filters(self, param_row, exclude_filters=None):
         filters = {}
-        location_filters = {self.LOCATION: {ScifConsts.TEMPLATE_NAME: param_row[ScifConsts.TEMPLATE_NAME]}}
-        location_filters.update(location_filters)
-        if location_filters:
-            filters.update({self.LOCATION: location_filters})
+        location_filters = {ScifConsts.TEMPLATE_NAME: param_row[ScifConsts.TEMPLATE_NAME]}
+        filters.update({self.LOCATION: location_filters})
 
         population_filters = {self.POPULATION: {}}
         include_filters = {ProductsConsts.PRODUCT_TYPE: ['SKU']}
@@ -137,7 +138,7 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
             population_filters[self.POPULATION].update({self.EXCLUDE: exclude_filters})
 
         filters.update(population_filters)
-        return filter
+        return filters
 
     # filters = {'location': {'scene_fk': [27898, 27896, 27894, 27859, 27892, 27854]},
     #            'population': {'exclude': {'template_name': 'Checkout Chocolate'},

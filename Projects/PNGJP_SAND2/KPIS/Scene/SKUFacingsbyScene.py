@@ -8,17 +8,17 @@ class SKUFacingsbySceneKpi(UnifiedCalculationsScript):
     def __init__(self, data_provider, config_params=None, **kwargs):
         super(SKUFacingsbySceneKpi, self).__init__(data_provider, config_params=config_params, **kwargs)
         self.util = PNGJP_SAND2Util(None, data_provider)
-        self.kpi_name = self._config_params['kpi_type']
+        # self.kpi_name = self._config_params['kpi_type']
 
     def kpi_type(self):
         pass
 
     def calculate(self):
         if not self.util.scif.empty:
-            ext_targets = self.util.get_target_by_kpi_type(self.kpi_name)
+            ext_targets = self.util.get_target_by_kpi_type('PGJAPAN_SKU_FACINGS_BY_SCENE')
             if not ext_targets.empty:
                 template_fk = self.util.scif[ScifConsts.TEMPLATE_FK].values[0]
-                kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
+                kpi_fk = self.util.common.get_kpi_fk_by_kpi_type('PGJAPAN_SKU_FACINGS_BY_SCENE')
                 target_prameters = ext_targets.iloc[0]
                 matches = self.util.filter_matches_for_scene_kpis(target_prameters)
                 matches = matches[~(matches[MatchesConsts.BAY_NUMBER] == -1)]
