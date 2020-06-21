@@ -22,14 +22,14 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         sku_results = self.dependencies_data
         df = self.utils.match_product_in_scene_wo_hangers.copy()
         df['facings'] = 1
-        store_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
-            ['bay_number', 'shelf_number', 'facings']]
+        store_df = df.groupby(['scene_fk', 'bay_number', 'shelf_number']).sum().reset_index()[
+            ['scene_fk', 'bay_number', 'shelf_number', 'facings']]
         # filter only specific categories
         df = df[(df['category'].isin(categories)) & (df['manufacturer_fk'] == self.utils.own_manuf_fk)]
-        category_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
-            ['bay_number', 'shelf_number', 'facings']]
-        category_df.columns = ['bay_number', 'shelf_number', 'facings category']
-        join_df = store_df.merge(category_df, on=['bay_number', 'shelf_number'], how="left").fillna(0)
+        category_df = df.groupby(['scene_fk', 'bay_number', 'shelf_number']).sum().reset_index()[
+            ['scene_fk', 'bay_number', 'shelf_number', 'facings']]
+        category_df.columns = ['scene_fk', 'bay_number', 'shelf_number', 'facings category']
+        join_df = store_df.merge(category_df, on=['scene_fk', 'bay_number', 'shelf_number'], how="left").fillna(0)
         join_df['percentage'] = join_df['facings category'] / join_df['facings']
         # number of shelves with more than 50% strauss products
         denominator = len(join_df)

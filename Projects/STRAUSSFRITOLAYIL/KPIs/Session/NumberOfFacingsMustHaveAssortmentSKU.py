@@ -18,17 +18,17 @@ class NumberOfFacingsMustHaveAssortmentSKUKpi(UnifiedCalculationsScript):
         fields_df = template[[Consts.EAN_CODE, Consts.FIELD, Consts.TARGET_MAX]]
         matches = self.utils.match_product_in_scene_wo_hangers.copy()
         matches['facings'] = 1
-        store_df = matches.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
-                                   ['bay_number', 'shelf_number', 'facings']]
+        store_df = matches.groupby(['scene_fk', 'bay_number', 'shelf_number']).sum().reset_index()[
+                                   ['scene_fk', 'bay_number', 'shelf_number', 'facings']]
         categories = set(self.utils.all_products[self.utils.all_products[
             'category'].isin(template_categories)]['category_fk'])
         # not_existing_products_df = assortment[assortment['in_store_wo_hangers'] == 0]
         df = matches[(matches['category_fk'].isin(categories)) & (matches['manufacturer_fk'] ==
                                                                   self.utils.own_manuf_fk)]
-        category_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
-            ['bay_number', 'shelf_number', 'facings']]
-        category_df.columns = ['bay_number', 'shelf_number', 'facings category']
-        join_df = store_df.merge(category_df, on=['bay_number', 'shelf_number'], how="left").fillna(0)
+        category_df = df.groupby(['scene_fk', 'bay_number', 'shelf_number']).sum().reset_index()[
+            ['scene_fk', 'bay_number', 'shelf_number', 'facings']]
+        category_df.columns = ['scene_fk', 'bay_number', 'shelf_number', 'facings category']
+        join_df = store_df.merge(category_df, on=['scene_fk', 'bay_number', 'shelf_number'], how="left").fillna(0)
         join_df['percentage'] = join_df['facings category'] / join_df['facings']
         # number of shelves with more than 50% strauss products
         number_of_shelves = len(join_df[join_df['percentage'] >= 0.5])
