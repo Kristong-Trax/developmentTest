@@ -143,7 +143,12 @@ class PNGJPTemplateParser(object):
         self.block_config["population_filter"] = self.block_config.apply(
             self.filter_population_fields, axis=1, args=(True, True)
         )
-        self.block_config["stacking_include"] = self.block_config['Stacking ( Exclude = 0 / Include = 1)'].astype(bool)
+        self.block_config["include_stacking"] = self.block_config[
+            'Stacking ( Exclude = 0 / Include = 1)'].fillna(False).astype(bool)
+        self.block_config["include_empty"] = self.block_config[
+            'Include Empty ( Exclude = 0 / Include = 1)'].fillna(False).astype(bool)
+        self.block_config["include_other"] = self.block_config[
+            'Include Other ( Exclude = 0 / Include = 1)'].fillna(False).astype(bool)
 
 
     def preprocess_golden_zone_config(self):
@@ -170,8 +175,8 @@ class PNGJPTemplateParser(object):
         self.golden_zone_config["population_filter"] = self.golden_zone_config.apply(
             self.filter_population_fields, axis=1, args=(True, True)
         )
-        self.golden_zone_config["stacking_include"] = self.golden_zone_config[
-            'Stacking ( Exclude = 0 / Include = 1)'].astype(bool)
+        self.golden_zone_config["include_stacking"] = self.golden_zone_config[
+            'Stacking ( Exclude = 0 / Include = 1)'].fillna(False).astype(bool)
 
     def get_targets(self):
         return {

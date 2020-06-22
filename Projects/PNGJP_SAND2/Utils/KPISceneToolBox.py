@@ -8,6 +8,7 @@ from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from Trax.Utils.Logging.Logger import Log
 from Projects.PNGJP_SAND2.Utils.TemplateParser import PNGJPTemplateParser
+from collections import defaultdict
 
 __author__ = 'prasanna'
 
@@ -149,16 +150,43 @@ class PNGJPSceneToolBox:
                             ))
                         continue
 
-                    stacking_include = each_target.stacking_include
+                    include_stacking = each_target.include_stacking
+                    include_empty = each_target.include_empty
+                    include_other = each_target.include_other
 
                     # able to pass sub cat and super brand[?] // or get the prods and pass
                     population_filters = each_target.population_filter
+
+                    boolean_masks = []
+                    for column_name, values in population_filters.items():
+                        boolean_masks.append(
+                            self.match_product_data[column_name].isin(values)
+                        )
+                    population_filter_final_mask = reduce(lambda x, y: x & y, boolean_masks)
+                    if self.match_product_data[population_filter_final_mask].empty:
+                        Log.info(
+                            "{kpi}: Fail: Cannot find any products for the population filter: {population_filter} "
+                                .format(
+                                kpi=kpi_details.iloc[0][KPI_TYPE_COL],
+                                population_filter=each_target.population_filter
+                            ))
+                        continue
+
                     location_filters = {'scene_fk': [self.current_scene_fk]}
+
+                    allowed_products = defaultdict(list)
+                    if include_empty:
+                        allowed_products['product_type'].append('Empty')
+                    if include_other:
+                        allowed_products['product_type'].append("Other")
+                    allowed_products = dict(allowed_products)
+
                     additional_filters = {
                         'minimum_facing_for_block': 1,
                         'minimum_block_ratio': 0,
-                        'include_stacking': stacking_include,
+                        'include_stacking': include_stacking,
                         'check_vertical_horizontal': True,
+                        'allowed_products_filters': allowed_products
                     }
                     block_res = self.block.network_x_block_together(
                         population_filters, location_filters, additional_filters
@@ -273,14 +301,13 @@ class PNGJPSceneToolBox:
                 result = score = 0
                 target_shelf_config_keys = each_target[each_target.keys().map(lambda x: x.endswith('_shelf'))]
                 population_filter = each_target.population_filter
-                stacking_include = each_target.stacking_include
+                include_stacking = each_target.include_stacking
                 numerator = 0  # number of facings available in desired shelf
 
                 stack_filtered_mpis = self.match_product_data
-                if not stacking_include:
+                if not include_stacking:
                     # consider only stacking layer 1 products
                     stack_filtered_mpis = self.match_product_data[self.match_product_data['stacking_layer'] == 1]
-
 
                 # Apply filters based on population_filter
                 boolean_masks = []
@@ -320,8 +347,6 @@ class PNGJPSceneToolBox:
                                 scene=self.current_scene_fk,
                                 kpi=kpi_details.iloc[0][KPI_TYPE_COL]
                             ))
-                            # TODO: Think about it ? return or continue?
-                            # return False
                             continue
 
                         # find the brand products in the shelf_config_key
