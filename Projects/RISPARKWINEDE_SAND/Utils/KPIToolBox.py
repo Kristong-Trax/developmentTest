@@ -1,20 +1,13 @@
-from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
-from Projects.RISPARKWINEDE_SAND.Utils.SOS import BrandOutManufacturerOutCategorySecondaryFacingsSOS, \
+from Projects.RISPARKWINEDE_SAND.Utils.SOS import\
     CategorySecondaryFacingsSOSInStore, ManufacturerSecondaryFacingsSOSPerCategory, \
     BrandOutManufacturerOutCategorySecondaryFacingsSOS, OwnManufacturerPrimaryFacingsSOSInStore, \
     CategoryPrimaryFacingsSOSInStore, ManufacturerPrimaryFacingsSOSPerCategory, \
     BrandOutManufacturerOutCategoryPrimaryFacingsSOS, OwnManufacturerSecondaryFacingsSOSInStore
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-
 from Projects.RISPARKWINEDE_SAND.Data.LocalConsts import Consts
-
-# from KPIUtils_v2.Utils.Consts.DataProvider import 
-# from KPIUtils_v2.Utils.Consts.DB import 
-# from KPIUtils_v2.Utils.Consts.PS import 
-# from KPIUtils_v2.Utils.Consts.GlobalConsts import 
 
 
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -33,10 +26,10 @@ class ToolBox(GlobalSessionToolBox):
     def main_calculation(self):
 
         # facings
-        facings_with_stacking_res = self.category_facings('facings', 'SKU_Facings_ Include_Stacking')
+        facings_with_stacking_res = self.category_facings(Consts.FACINGS, Consts.FACINGS_STACKING_KPI)
         self.common.save_json_to_new_tables(facings_with_stacking_res)
 
-        facings_ignore_stacking_res = self.category_facings('facings_ign_stack', 'SKU_Facings_ Exclude_Stacking')
+        facings_ignore_stacking_res = self.category_facings(Consts.FACINGS_IGN_STACK, 'SKU_Facings_ Exclude_Stacking')
         self.common.save_json_to_new_tables(facings_ignore_stacking_res)
 
         # sos calculation
@@ -46,7 +39,7 @@ class ToolBox(GlobalSessionToolBox):
         self.common.save_json_to_new_tables(sos_res_primary)
 
         # Assortment base availabilities kpis
-        lvl3_result = self.assortment.calculate_lvl3_assortment(False)  # todo ask if iclude stacking
+        lvl3_result = self.assortment.calculate_lvl3_assortment(False)
 
         availability_res = self.assortment_calculation(lvl3_result)
         self.common.save_json_to_new_tables(availability_res)
@@ -215,18 +208,20 @@ class ToolBox(GlobalSessionToolBox):
         lvl3_result = self.filter_by_kpis(lvl3_result, Consts.WINE_LEVEL_2_NAMES)
         if lvl3_result.empty:
             return wine_res
-        wine_sku = self.distribution_sku_level(lvl3_result, {'col': ['kpi_lvl2_fk']})
+        wine_sku = self.distribution_sku_level(lvl3_result, Consts.WINE_SKU_LVL, {'col': ['kpi_fk_lvl2']})
         wine_res.extend(wine_sku.to_dict('records'))
-        store_res = self.wine_store_assortment(wine_sku, Consts.WINE_STORE_LEVEL)
+        store_res = self.wine_store_assortment(lvl3_result, Consts.WINE_STORE_LEVEL)
         wine_res.extend(store_res.to_dict('records'))
         return wine_res
 
     def filter_by_kpis(self, lvl3_result, kpi_types):
+        """ filter assortment df from irrelevant kpis """
         distribution_kpis = [self.common.get_kpi_fk_by_kpi_type(kpi_name) for kpi_name in kpi_types]
         lvl3_result = lvl3_result[lvl3_result['kpi_fk_lvl2'].isin(distribution_kpis)]
         return lvl3_result
 
     def assortment_category(self, lvl3_result):
+        """ Combine assortment df to lvl3_result"""
         cat_df = self.all_products[['product_fk', 'category_fk']]
         lvl3_with_cat = lvl3_result.merge(cat_df, on='product_fk', how='left')
         lvl3_with_cat = lvl3_with_cat[lvl3_with_cat['category_fk'].notnull()]
@@ -238,44 +233,43 @@ class ToolBox(GlobalSessionToolBox):
 
         if lvl3_result.empty:
             return ava_res
-
+        # level 3 results  -  SKU LEVEL
         lvl3_with_cat = self.assortment_category(lvl3_result)
 
-        sku_results = self.distribution_sku_level(lvl3_with_cat,
+        sku_results = self.distribution_sku_level(lvl3_with_cat, Consts.DIST_SKU_LVL,
                                                   {'col': ['denominator_id', 'category_fk'], 'val': 'DIST'})
         ava_res.extend(sku_results.to_dict('records'))
 
         oos_sku_res = self.sku_oos(sku_results)
         ava_res.extend(oos_sku_res.to_dict('records'))
 
+        #  calculate level 2 results -  GROUP LEVEL
         group_result = self.calculate_lvl2_assortment(lvl3_with_cat, Consts.LVL2_GROUP_HEADERS)
         oos_group_res = self.calculate_oos_lvl2(group_result)
 
-        self.assign_parent_child_identifiers(group_result, parent_identifier={'col': ['category_fk']},
+        group_result = self.assign_parent_child_identifiers(group_result, parent_identifier={'col': ['category_fk']},
                                              result_identifier={'col': ['assortment_group_fk',
                                                                         'category_fk'], 'val': 'DIST'})
         group_result = self.group_level(group_result, Consts.DIST_GROUP_LVL)
-
-        self.assign_parent_child_identifiers(oos_group_res, parent_identifier={'val': 'OOS'},
+        oos_group_res = self.assign_parent_child_identifiers(oos_group_res, parent_identifier={'val': 'OOS'},
                                              result_identifier={'col': ['assortment_group_fk'], 'val': 'OOS'})
         oos_group_res = self.group_level(oos_group_res, Consts.OOS_GROUP_LVL)
-
         ava_res.extend(group_result.to_dict('records'))
         ava_res.extend(oos_group_res.to_dict('records'))
 
+        # calculate  for distribution - CATEGORY LEVEL
         category_result = self.calculate_category_result(group_result)
         ava_res.extend(category_result.to_dict('records'))
 
+        # calculate - STORE LEVEL
         store_result = self.calculate_store_assortment(category_result, Consts.DIST_STORE_LVL)
-        self.assign_parent_child_identifiers(store_result, result_identifier={'val': 'DIST'})
-
         oos_store_result = self.calculate_store_assortment(oos_group_res, Consts.OOS_STORE_LVL)
-        self.assign_parent_child_identifiers(oos_store_result, result_identifier={'val': 'OOS'})
         ava_res.extend(store_result.to_dict('records'))
         ava_res.extend(oos_store_result.to_dict('records'))
+
         return ava_res
 
-    def distribution_sku_level(self, lvl_3_result, identifiers):
+    def distribution_sku_level(self, lvl_3_result, kpi_name, identifiers):
         """ This function receive df = lvl_3_result assortment with data regarding the assortment products
             This function turn the sku_assortment_results to be in a shape of db result.
             return distribution_db_results df
@@ -288,7 +282,7 @@ class ToolBox(GlobalSessionToolBox):
         sku_results = sku_results.assign(denominator_result=1,
                                          score=sku_results['result'])
         sku_results.loc[:, 'should_enter'] = True
-        sku_results['fk'] = self.common.get_kpi_fk_by_kpi_type(Consts.DIST_SKU_LVL)
+        sku_results['fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         self.assign_parent_child_identifiers(sku_results, identifiers)
         sku_results = self.filter_df_by_col(sku_results, Consts.SKU_LEVEL)
         Log.info('Distribution sku level is done ')
@@ -328,6 +322,9 @@ class ToolBox(GlobalSessionToolBox):
         if level == Consts.GROUPS_LEVEL:
             return df[Consts.LVL2_SESSION_RESULTS_COL]
 
+        if level == Consts.STORE_LEVEL:
+            return df[Consts.LVL1_SESSION_RESULTS_COL]
+
     def kpi_result_value(self, value):
         """
         :param value:  availability kpi result 0 for oos and 1 for distrbution
@@ -343,6 +340,9 @@ class ToolBox(GlobalSessionToolBox):
 
     @staticmethod
     def calculate_oos_lvl2(lvl2_res):
+        """ create df for oos level based on distribution results
+            :param lvl2_res - assortment df results in sku level
+        """
         oos_res = lvl2_res.copy()
         oos_res['passes'] = oos_res['total'] - oos_res['passes']
         return oos_res
@@ -365,7 +365,9 @@ class ToolBox(GlobalSessionToolBox):
         return lvl2_res
 
     def calculate_category_result(self, group_result):
-
+        """Create df results for assortment kpi in category level
+            :param group_result - db results for assortment kpi in group level
+        """
         category_result = group_result.groupby(['denominator_id'])['numerator_result', 'denominator_result'].agg(
             {'numerator_result': 'sum', 'denominator_result': 'sum'}).reset_index()
         category_result.loc[:, 'result'] = category_result['numerator_result'] / category_result['denominator_result']
@@ -377,43 +379,55 @@ class ToolBox(GlobalSessionToolBox):
         category_result = self.assign_parent_child_identifiers(category_result,
                                                                result_identifier={'col': ['numerator_id']},
                                                                parent_identifier={'val': 'DIST'})
-
+        category_result.loc[:, 'should_enter'] = True
         return category_result
 
-    def calculate_store_assortment(self, category_result, kpi_name):
-
-        store_assortment = category_result.groupby(['fk'])['numerator_result', 'denominator_result'].agg(
+    def calculate_store_assortment(self, lvl_2_res, kpi_name):
+        """ Calculate  assortment  in store level
+            :param lvl_2_res- lvl2 result , df of results from granular group level/ category level
+            :param kpi_name - kpi type
+        """
+        store_assortment = lvl_2_res.groupby(['fk'])['numerator_result', 'denominator_result'].agg(
             {'numerator_result': 'sum', 'denominator_result': 'sum'}).reset_index()
 
-        store_assortment.loc[:, 'result'] = store_assortment['numerator_result'] / category_result['denominator_result']
+        store_assortment.loc[:, 'result'] = store_assortment['numerator_result'] / store_assortment['denominator_result']
         store_assortment.loc[:, 'denominator_id'] = self.store_id
         store_assortment.loc[:, 'numerator_id'] = self.manufacturer_fk
-        store_assortment.loc[:, 'kpi_level_2_fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        store_assortment.loc[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         store_assortment.loc[:, 'should_enter'] = False
         kpi_identifier = 'DIST' if kpi_name == Consts.DIST_STORE_LVL else 'OOS'
-        self.assign_parent_child_identifiers(store_assortment, parent_identifier={'val': kpi_identifier})
+        self.assign_parent_child_identifiers(store_assortment, result_identifier={'val': kpi_identifier})
 
         return store_assortment
 
-    def wine_store_assortment(self, wine_sku, kpi_type):
-        lvl2_result = self.calculate_lvl2_assortment(wine_sku, Consts.WINE_GROUP_HEADERS)
-        self.assign_parent_child_identifiers(lvl2_result, result_identifier={'col': ['parent_identifier']})
+    def wine_store_assortment(self, wine_lvl3_res, kpi_type):
+        """ Create df results for wine assortment kpi in store level
+            :param kpi_type - kpi name
+            :param  wine_lvl3_res - df of lvl3_results
+        """
+        lvl2_result = self.calculate_lvl2_assortment(wine_lvl3_res, Consts.WINE_GROUP_HEADERS)
+        self.assign_parent_child_identifiers(lvl2_result, result_identifier={'col': ['kpi_fk_lvl2']})
         lvl2_result.loc[:, 'denominator_id'] = self.store_id
         lvl2_result.loc[:, 'numerator_id'] = self.manufacturer_fk
         lvl2_result = lvl2_result.rename(
             columns={'total': 'denominator_result', 'passes': 'numerator_result'}, inplace=False)
-        lvl2_result[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_type)
+        lvl2_result.loc[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_type)
         lvl2_result.loc[:, 'result'] = lvl2_result['numerator_result'] / lvl2_result['denominator_result']
         store_results = lvl2_result.assign(score=lvl2_result['result'])
-        store_results = self.filter_df_by_col(store_results, Consts.GROUPS_LEVEL)
+        store_results = self.filter_df_by_col(store_results, Consts.STORE_LEVEL)
         return store_results
 
     def category_facings(self, facings, kpi_name):
-        filterd_scif = self.scif[~ self.scif['product_type'].isin(['Empty', 'Irrelevant', 'Other']) & self.scif['category'].isin(['Sparkling Pure','Sparkling Mix'])]
+        """ return df results with facings count per kpi
+            :param facings : 'facings' / 'facings'
+            :param kpi_name : kpi type from df
+        """
+        filterd_scif = self.scif[~ self.scif['product_type'].isin(['Empty', 'Irrelevant', 'Other']) & self.scif[
+            'category'].isin(['Sparkling Pure', 'Sparkling Mix'])]
         results = filterd_scif.groupby(['product_fk'])[facings].agg(
             {facings: 'sum'}).reset_index()
         results.loc[:, 'denominator_id'] = self.store_id
         results.loc[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        results = results.rename(columns={'facings': 'result', 'numerator_id': 'product_fk'})
+        results = results.rename(columns={facings: 'result', 'numerator_id': 'product_fk'})
         results = results.assign(score=results['result'])
         return results.to_dict('records')
