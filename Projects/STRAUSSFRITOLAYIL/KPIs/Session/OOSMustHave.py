@@ -18,7 +18,7 @@ class OOSMustHaveKpi(UnifiedCalculationsScript):
         for assortment_fk in assortment_fks:
             assortment_df = sku_results[sku_results['denominator_id'] == assortment_fk]
             denominator = len(assortment_df)
-            numerator = len(assortment_df[assortment_df['result'] == 0])
+            numerator = len(assortment_df[assortment_df['result'] == Consts.OOS])
             result = self.utils.calculate_sos_result(numerator, denominator)
             self.write_to_db_result(fk=kpi_fk, numerator_id=assortment_fk, result=result,
                                     numerator_result=numerator, denominator_result=denominator)
