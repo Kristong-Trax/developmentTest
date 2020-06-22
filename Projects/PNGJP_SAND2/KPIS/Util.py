@@ -116,7 +116,10 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
         return filtered_matches
 
     def get_target_by_kpi_type(self, kpi_type):
-        ext_target = self.all_targets_unpacked[self.all_targets_unpacked['type'] == kpi_type]
+        if not self.all_targets_unpacked.empty:
+            ext_target = self.all_targets_unpacked[self.all_targets_unpacked['type'] == kpi_type]
+        else:
+            ext_target = pd.DataFrame()
         return ext_target
 
     def get_scene_kpi_filters(self, param_row, exclude_filters=None):

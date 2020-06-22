@@ -20,6 +20,6 @@ class POSFacingsProductKpi(UnifiedCalculationsScript):
             display_matches['count'] = 1
             result_df = display_matches.groupby(['display_fk'], as_index=False).agg({'count': np.sum})
             for i, row in result_df.iterrows():
-                self.write_to_db_result(fk=kpi_fk, numerator_id=row[MatchesConsts.PRODUCT_FK],
+                self.write_to_db_result(fk=kpi_fk, numerator_id=row['display_fk'],
                                         denominator_id=template_fk,
                                         result=row['count'], by_scene=True)
