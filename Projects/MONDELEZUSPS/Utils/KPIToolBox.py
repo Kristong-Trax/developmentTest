@@ -87,7 +87,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         # , Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.SHELF_POSITION
-        relevant_kpi_types = [Consts.BLOCKING]
+        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.BLOCKING]
         targets = self.targets[self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)]
 
         self._calculate_kpis_from_template(targets)
@@ -261,47 +261,6 @@ class ToolBox(GlobalSessionToolBox):
         df.dropna(subset=[numerator_type], inplace=True)
         result_dict_list = self._logic_for_blocking(return_holder, df, numerator_type, denominator_type)
         return result_dict_list
-        # result_dict_list = []
-        # for unique_denominator_id in set(df[denominator_type]):
-        #     relevant_df = self._filter_df(df, {denominator_type: unique_denominator_id})
-        #     for unique_scene_fk in set(relevant_df.scene_fk):
-        #         scene_relevant_df = self._filter_df(relevant_df, {'scene_fk': unique_scene_fk})
-        #         location = {Consts.SCENE_FK: unique_scene_fk}
-        #         for unique_numerator_id in set(scene_relevant_df[numerator_type]):
-        #             relevant_filter = {numerator_type: [unique_numerator_id]}
-        #             block = self.block.network_x_block_together(population=relevant_filter, location=location,
-        #                                                         additional={'calculate_all_scenes': False,
-        #                                                                     'use_masking_only': True,
-        #                                                                     'include_stacking': True})  # need to change later
-        #             passed_block = block[block.is_block.isin([True])]
-        #             if block.empty:
-        #                 continue
-        #             elif passed_block.empty:
-        #                 relevant_block = block.iloc[block.block_facings.astype(
-        #                     int).idxmax()]
-        #                 numerator_result = relevant_block.block_facings
-        #                 denominator_result = relevant_block.total_facings
-        #                 result = 0
-        #             else:
-        #                 relevant_block = passed_block.iloc[passed_block.block_facings.astype(
-        #                     int).idxmax()]
-        #
-        #                 probe_match_fk = [item for each in relevant_block.cluster.nodes.values() for item in
-        #                                   each['probe_match_fk']]
-        #                 self.mark_tags_in_explorer(probe_match_fk, return_holder[0])
-        #                 numerator_result = relevant_block.block_facings
-        #                 denominator_result = relevant_block.total_facings
-        #                 result = 1
-        #             if not isinstance(unique_numerator_id, int):
-        #                 unique_numerator_id = self._get_id_from_custom_entity_table(numerator_type, unique_numerator_id)
-        #             result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-        #                            'numerator_id': unique_numerator_id, 'numerator_result': numerator_result,
-        #                            'denominator_id': unique_denominator_id,
-        #                            'denominator_result': denominator_result,
-        #                            'result': result}
-        #             result_dict_list.append(result_dict)
-        # return result_dict_list
-
 
     def _logic_for_blocking(self, return_holder, df, numerator_type, denominator_type):
         result_dict_list = []
@@ -315,9 +274,9 @@ class ToolBox(GlobalSessionToolBox):
                     block = self.block.network_x_block_together(population=relevant_filter, location=location,
                                                                 additional={'calculate_all_scenes': False,
                                                                             'use_masking_only': True,
-                                                                            'include_stacking': True})  # need to change later for stacking
+                                                                            'include_stacking': False})
                     passed_block = block[block.is_block.isin([True])]
-                    if block.empty: #may need to delete dependent of stacking
+                    if block.empty:
                         continue
                     elif passed_block.empty:
                         relevant_block = block.iloc[block.block_facings.astype(
@@ -344,7 +303,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def mark_tags_in_explorer(self, relevant_block, mpipsr_name):
         probe_match_fk_list = [item for each in relevant_block.cluster.nodes.values() for item in
-                          each['probe_match_fk']]
+                               each['probe_match_fk']]
         if not probe_match_fk_list:
             return
         try:
@@ -356,14 +315,16 @@ class ToolBox(GlobalSessionToolBox):
             Log.warning('Name not found in match_product_in_probe_state_reporting table: {}'.format(mpipsr_name))
             return
 
-        match_product_in_probe_state_values_old = self.common_v2.match_product_in_probe_state_values
+        match_product_in_probe_state_values_old = self.common.match_product_in_probe_state_values
         match_product_in_probe_state_values_new = pd.DataFrame(columns=[MATCH_PRODUCT_IN_PROBE_FK,
                                                                         MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK])
         match_product_in_probe_state_values_new[MATCH_PRODUCT_IN_PROBE_FK] = probe_match_fk_list
         match_product_in_probe_state_values_new[MATCH_PRODUCT_IN_PROBE_STATE_REPORTING_FK] = match_type_fk
 
-        self.common_v2.match_product_in_probe_state_values = pd.concat([match_product_in_probe_state_values_old,
-                                                                        match_product_in_probe_state_values_new])
+        # self.common.match_product_in_probe_state_values = pd.concat([match_product_in_probe_state_values_old,
+        #                                                                 match_product_in_probe_state_values_new])
+        self.common.match_product_in_probe_state_values = self.common.match_product_in_probe_state_values.append(
+            match_product_in_probe_state_values_new)
 
         return
 
@@ -394,7 +355,8 @@ class ToolBox(GlobalSessionToolBox):
                     for unique_numerator_fk in set(scene_unique_scif[numerator_type]):
                         manufacturer_unique_scif = scene_unique_scif[
                             scene_unique_scif[numerator_type].isin([unique_numerator_fk])]
-                        if manufacturer_unique_scif.facings.sum() >= int(facings_threshold):
+                        if manufacturer_unique_scif.drop_duplicates(subset=['product_fk']).facings.sum() >= int(
+                                facings_threshold):
                             numerator_result = numerator_result + 1
                             denominator_result = denominator_result + 1
                 if denominator_result != 0:
@@ -529,9 +491,9 @@ class ToolBox(GlobalSessionToolBox):
 
     def _save_into_custom_entity_table(self, final_numerator_id, string_numerator_id,
                                        relevant_entity_type_fk):
-        query = """ INSERT INTO static.custom_entity (pk,name, entity_type_fk) 
-                                              values ({},'{}', {})""".format(final_numerator_id, string_numerator_id,
-                                                                             relevant_entity_type_fk)
+        query = """INSERT INTO static.custom_entity (pk,name, entity_type_fk) 
+                                              values ({},"{}", {});""".format(final_numerator_id, string_numerator_id,
+                                                                              relevant_entity_type_fk)
         cur = self.rds_conn.db.cursor()
         cur.execute(query)
         self.rds_conn.db.commit()
