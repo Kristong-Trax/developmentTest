@@ -21,6 +21,7 @@ class SKUFacingsbySceneKpi(UnifiedCalculationsScript):
                 kpi_fk = self.util.common.get_kpi_fk_by_kpi_type('PGJAPAN_SKU_FACINGS_BY_SCENE')
                 target_prameters = ext_targets.iloc[0]
                 matches = self.util.filter_matches_for_scene_kpis(target_prameters)
+                matches = matches[~(matches[ScifConsts.PRODUCT_TYPE] == 'POS')]
                 matches = matches[~(matches[MatchesConsts.BAY_NUMBER] == -1)]
                 max_shelf = matches.groupby([MatchesConsts.BAY_NUMBER],
                                             as_index=False).agg({MatchesConsts.SHELF_NUMBER: np.max})
