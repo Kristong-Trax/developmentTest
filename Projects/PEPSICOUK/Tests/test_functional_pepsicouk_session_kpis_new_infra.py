@@ -497,14 +497,12 @@ class Test_PEPSICOUK(TestFunctionalCase):
         kpi_results['result'] = kpi_results['result'].apply(lambda x: round(x, 5))
         kpi_results['score'] = kpi_results['score'].apply(lambda x: round(x, 5))
         # print kpi_results[['numerator_id', 'numerator_result', 'denominator_result', 'result']]
-        self.assertEquals(len(kpi_results), 3)
+        self.assertEquals(len(kpi_results), 2)
         expected_list = list()
         expected_list.append({'kpi_level_2_fk': 293, 'numerator_id': 136, 'denominator_id': 2, 'numerator_result': 180,
-                              'denominator_result': 435, 'result': round((180.0/435) * 100, 5)})
+                              'denominator_result': 300, 'result': round((180.0/300) * 100, 5)})
         expected_list.append({'kpi_level_2_fk': 293, 'numerator_id': 138, 'denominator_id': 2, 'numerator_result': 120,
-                              'denominator_result': 435, 'result': round((120.0/435) * 100, 5)})
-        expected_list.append({'kpi_level_2_fk': 293, 'numerator_id': 189, 'denominator_id': 2, 'numerator_result': 135,
-                              'denominator_result': 435, 'result': round((135.0 / 435) * 100, 5)})
+                              'denominator_result': 300, 'result': round((120.0/300) * 100, 5)})
 
         test_result_list = []
         for expected_result in expected_list:
@@ -517,7 +515,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         sos_parent_results = pd.DataFrame(sos_parent.kpi_results)
         self.assertEquals(len(sos_parent_results), 1)
         expected_list = list()
-        expected_list.append({'numerator_id': 2, 'score': 3})
+        expected_list.append({'numerator_id': 2, 'score': 2})
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(sos_parent_results, expected_result) == 1)

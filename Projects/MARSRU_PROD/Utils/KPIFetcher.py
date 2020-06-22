@@ -56,6 +56,8 @@ class MARSRU_PRODKPIFetcher:
                            sub_brands=None,
                            sub_brands_to_exclude=None,
                            categories=None,
+                           sub_cats=None,
+                           sub_cats_to_exclude=None,
                            cl_sub_cats=None,
                            cl_sub_cats_to_exclude=None,
                            form_factors=None,
@@ -85,7 +87,7 @@ class MARSRU_PRODKPIFetcher:
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
                                            (self.scif['manufacturer_name'].isin(manufacturers)) &
-                                           (~self.scif['product_type'].isin([OTHER, EMPTY]))]
+                                           (~self.scif['product_type'].isin([EMPTY]))]
         elif object_type == 'BRAND in CAT':
             if type(categories) is not list:
                 categories = [categories]
@@ -93,12 +95,12 @@ class MARSRU_PRODKPIFetcher:
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
                                            (self.scif['category'].isin(categories)) &
-                                           (~self.scif['product_type'].isin([OTHER, EMPTY]))]
+                                           (~self.scif['product_type'].isin([EMPTY]))]
         else:
             initial_result = self.scif.loc[(self.scif['scene_id'].isin(scenes)) &
                                            (self.scif[object_field].isin(objects)) &
                                            (self.scif['facings'] > 0) & (self.scif['rlv_dist_sc'] == 1) &
-                                           (~self.scif['product_type'].isin([OTHER, EMPTY]))]
+                                           (~self.scif['product_type'].isin([EMPTY]))]
 
         if initial_result.empty:
             return 0
@@ -120,6 +122,10 @@ class MARSRU_PRODKPIFetcher:
             final_result = final_result[~final_result['sub_brand'].isin(sub_brands_to_exclude)]
         if categories:
             final_result = final_result[final_result['category'].isin(categories)]
+        if sub_cats:
+            final_result = final_result[final_result['Sub Category'].isin(sub_cats)]
+        if sub_cats_to_exclude:
+            final_result = final_result[~final_result['Sub Category'].isin(sub_cats_to_exclude)]
         if cl_sub_cats:
             final_result = final_result[final_result['Client Sub Category Name'].isin(cl_sub_cats)]
         if cl_sub_cats_to_exclude:
