@@ -32,9 +32,6 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
         self.data_provider = data_provider
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        # self.tool_box = PNGJP_SAND2ToolBox(self.data_provider, self.output)
-        # self.KpiQualitative_tool_box = PNGJP_SAND2KpiQualitative_ToolBox(self.data_provider, self.output)
-        # self.main_function()
 
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
@@ -52,20 +49,6 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.external_targets = self.get_all_kpi_external_targets()
         self.all_targets_unpacked = self.unpack_all_external_targets()
-
-    # @log_runtime('Total Calculations', log_start=True)
-    # def main_function(self):
-    #     """
-    #     This is the main KPI calculation function.
-    #     It calculates the score for every KPI set and saves it to the DB.
-    #     """
-    #     if self.tool_box.scif.empty:
-    #         Log.warning('Scene item facts is empty for this session')
-    #     self.tool_box.main_calculation()
-    #     self.tool_box.hadle_update_custom_scif()
-    #     self.tool_box.commit_results_data()
-    #     self.KpiQualitative_tool_box.main_calculation()
-    #     self.KpiQualitative_tool_box.commit_results_data()
 
     def get_match_display_in_scene(self):
         query = PNGJP_SAND2Queries.get_match_display(self.session_uid)
