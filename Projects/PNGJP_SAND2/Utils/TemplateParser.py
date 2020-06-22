@@ -93,7 +93,7 @@ class PNGJPTemplateParser(object):
                         value = u"{:.0f}".format(value)
                     else:
                         value = unicode(value).strip()
-                    population[key].extend([unicode(v) for v in value.split(",") if v])
+                    population[key].extend([unicode(v).strip() for v in value.split(",") if v])
                 else:
                     population[key].append(value)
 
