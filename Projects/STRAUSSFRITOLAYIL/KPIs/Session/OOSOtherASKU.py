@@ -17,7 +17,7 @@ class OOSOtherASKUKpi(UnifiedCalculationsScript):
             in_store = sku_row['in_store_wo_hangers']
             facings = sku_row['facings_all_products_wo_hangers']
             assortment_fk = sku_row['assortment_fk']
-            result = 2 if (in_store == 1) else 1
+            result = Consts.DISTRIBUTED if (in_store == 1) else Consts.OOS
             self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result,
                                     denominator_id=assortment_fk, score=facings)
 
