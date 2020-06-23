@@ -574,6 +574,7 @@ class PSAPAC_SAND3ToolBox:
         denominator_res = len(assortment_pos)
 
         result = round((numerator_res / float(denominator_res)), 4) if denominator_res != 0 else 0
+
         results.append(
             {'fk': kpi_gsk_pos_distribution_store_fk,
              SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer,
@@ -613,6 +614,9 @@ class PSAPAC_SAND3ToolBox:
                 product_fk = each_product[ProductsConsts.PRODUCT_FK]
                 result = 1 if int(each_product['in_store']) == 1 else 0
                 # Implement the logic to calculate the numerator & denominator
+                DISTRIBUTED = 2
+                OOS = 1
+                result_status = DISTRIBUTED if result == 1 else OOS
 
                 results.append(
                     {'fk': kpi_gsk_pos_distribution_sku_fk,
@@ -620,8 +624,8 @@ class PSAPAC_SAND3ToolBox:
                      SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
                      SessionResultsConsts.NUMERATOR_RESULT: result,
                      SessionResultsConsts.DENOMINATOR_RESULT: 1,
-                     SessionResultsConsts.RESULT: result,
-                     SessionResultsConsts.SCORE: result,
+                     SessionResultsConsts.RESULT: result_status,
+                     SessionResultsConsts.SCORE: result_status,
                      'identifier_parent': "Gsk_Pos_Distribution_Brand_" + str(int(brand)),
                      'identifier_result': "Gsk_Pos_Distribution_SKU_" + str(int(product_fk)),
                      'should_enter': True}
