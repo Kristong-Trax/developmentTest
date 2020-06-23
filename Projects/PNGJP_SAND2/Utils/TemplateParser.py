@@ -11,13 +11,6 @@ from collections import defaultdict, OrderedDict
 
 class PNGJPTemplateParser(object):
 
-    # product_fk, product_name, product_ean_code, product_type
-    # manufacturer_name, product_short_name
-    # category_fk, sub_category_fk
-    # category, sub_category, brand_name
-    # category_local_name, manufacturer_local_name, brand_local_name, sub_category_local_name
-    # product_english_name, brand_fk
-    # sub_brand, Super Brand, sub_brand_name
     FILTER_TYPES_AND_COLUMNS_MAPPING = OrderedDict([
         ("ean_code", "product_ean_code"),
         ("brand", "brand_local_name"),
