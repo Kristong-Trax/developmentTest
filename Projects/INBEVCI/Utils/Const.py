@@ -17,6 +17,7 @@ class Const(object):
     MANUFACTURER_DISPLAY_COUNT = "Manufacturer Displays Count"
     SOS_PER_MANUFACTURER_AND_LOCATION_TYPE = "SOS per Manufacturer and Location Type"
     LINEAR_SOS_CATEGORY_LOCATION_TYPE = "Linear SOS SKU out of Category per Location Type"
+    SKU_FACING_TARGET = 'SKU_facing_target'
 
     # level 2:
 
@@ -31,6 +32,7 @@ class Const(object):
     COMPARISON_LEVEL_2 = "Brand Comparison"
     COMPARISON_LEVEL_3 = "Brand Comparison - BRAND"
     COMPARISON_LEVEL_4 = "Brand Comparison - SKU"
+    SKU_FACING_TARGET_SKU = "SKU_facing_target - SKU"
 
     OOS_SKU_KPI = 'OOS - SKU'
     OOS_KPI = 'OOS'
@@ -84,6 +86,7 @@ class Const(object):
         BRAND_COMPARISON,
         TOP_BRAND_BLOCK,
         BRAND_FACING_TARGET,
+        SKU_FACING_TARGET,
         SOS,
         ASSORTMENT,
         SOS_VS_TARGET,
@@ -109,5 +112,15 @@ class Const(object):
     STACK_PER_LOCATION = {PRIMARY_SHELF: 'gross_len_ign_stack', SECONDARY_SHELF: 'gross_len_add_stack',
                           COOLER: 'gross_len_ign_stack'}
     SOS_SKU_LOCATIONS = [PRIMARY_SHELF, SECONDARY_SHELF, COOLER]
-    STACK_PER_LOCATION_TOTAL = {PRIMARY_SHELF: 'gross_len_ign_stack_total_location', SECONDARY_SHELF: 'gross_len_add_stack_total_location',
+    STACK_PER_LOCATION_TOTAL = {PRIMARY_SHELF: 'gross_len_ign_stack_total_location',
+                                SECONDARY_SHELF: 'gross_len_add_stack_total_location',
                                 COOLER: 'gross_len_ign_stack_total_location'}
+
+    SECONDARY_SHELF_TARGETS = 'secondary_shelf_targets'
+    SOS_PRIMARY_SHELF_TARGETS = 'sos_primary_shelf_targets'
+    TARGET_FACINGS = 'target_facings'
+    NUMERATOR_TYPE = 'numerator_type'
+    NUMERATOR_VALUE = 'numerator_value'
+    DENOMINATOR_TYPE = 'denominator_type'
+    DENOMINATOR_VALUE = 'denominator_value'
+
