@@ -199,8 +199,8 @@ Validations: all validations are in validate_template() function:
 """
 
 if __name__ == '__main__':
-    LoggerInitializer.init('test')
+    LoggerInitializer.init('KEngine')
     Config.init()
-    project_name = 'batru-sand'
-    template_path = '/home/natalyak/Desktop/batru/p4_changes/kpis_to_db_template_new_kpi.xlsx'
+    project_name = 'pngjp-sand2'
+    template_path = '/home/natalyak/Desktop/pngJP/kpi_template.xlsx'
     AddKPIs(project_name, template_path=template_path).add_kpis_from_template()

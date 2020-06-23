@@ -2291,6 +2291,8 @@ class CCRUKPIToolBox:
                             break
                     if doors < 2:
                         return -1
+            else:
+                scenes = self.get_relevant_scenes(params)
         children = self.children_to_int_list(params.get("Children"))
         total_res = 0
         for c in all_params.values()[0]:
@@ -2352,8 +2354,8 @@ class CCRUKPIToolBox:
                                                                                       func='get scenes',
                                                                                       proportion_param=0.9)
                         break
-            else:
-                scenes = self.get_relevant_scenes(p)
+            # else:
+            #     scenes = self.get_relevant_scenes(p)
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = self.children_to_int_list(p.get("Children"))
             kpi_total = 0
@@ -2363,14 +2365,12 @@ class CCRUKPIToolBox:
                     atomic_res = -1
                     atomic_score = -1
                     if c.get("Formula").strip() in ("number of facings", "number of SKUs"):
-                        atomic_res = self.calculate_availability(
-                            c, scenes=scenes, all_params=params)
+                        atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
                     elif c.get("Formula").strip() == "each SKU hits facings target":
                         atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
                         atomic_score = 100 if atomic_res == 100 else 0
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        atomic_res = self.calculate_sub_atomic_passed(
-                            c, params, parent=p, scenes=scenes)
+                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p, scenes=scenes)
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed on the same scene":
                         atomic_res = self.calculate_sub_atomic_passed_on_the_same_scene(
                             c, params, parent=p, scenes=scenes)

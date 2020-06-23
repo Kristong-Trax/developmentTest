@@ -430,6 +430,18 @@ class MARSRU_PRODKPIToolBox:
         else:
             sub_brands_to_exclude = []
 
+        if params.get('Sub Category to include'):
+            sub_cats = [str(sub_cats)
+                        for sub_cats in params.get('Sub Category to include').split(', ')]
+        else:
+            sub_cats = []
+
+        if params.get('Sub Category to exclude'):
+            sub_cats_to_exclude = [str(sub_cat)
+                                   for sub_cat in params.get('Sub Category to exclude').split(', ')]
+        else:
+            sub_cats_to_exclude = []
+
         if params.get('Client Sub Category Name to include'):
             cl_sub_cats = [str(cl_sub_cat)
                            for cl_sub_cat in params.get('Client Sub Category Name to include').split(', ')]
@@ -456,6 +468,8 @@ class MARSRU_PRODKPIToolBox:
                                                              sub_brands=sub_brands,
                                                              sub_brands_to_exclude=sub_brands_to_exclude,
                                                              categories=categories,
+                                                             sub_cats=sub_cats,
+                                                             sub_cats_to_exclude=sub_cats_to_exclude,
                                                              cl_sub_cats=cl_sub_cats,
                                                              cl_sub_cats_to_exclude=cl_sub_cats_to_exclude,
                                                              form_factors=form_factors,
@@ -2757,7 +2771,8 @@ class MARSRU_PRODKPIToolBox:
         """
         product_fks = []
         for attributes in attributes_list:
+            products = self.products
             for attribute in attributes.keys():
-                product_fks += self.products[self.products[attribute].isin(attributes[attribute])][
-                    'product_fk'].tolist()
+                products = products[products[attribute].isin(attributes[attribute])]
+            product_fks += products['product_fk'].tolist()
         return list(set(product_fks))
