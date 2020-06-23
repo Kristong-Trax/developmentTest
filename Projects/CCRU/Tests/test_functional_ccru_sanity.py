@@ -24,7 +24,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
                 .return_value = json.load(f)
         return
 
-    @skip('fix later')
+    # @skip('fix later')
     @PsSanityTestsFuncs.seeder.seed(["ccru_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_ccru_sanity(self):
         self.add_mocks()
