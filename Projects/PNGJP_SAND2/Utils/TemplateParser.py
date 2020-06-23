@@ -98,11 +98,9 @@ class PNGJPTemplateParser(object):
                     population[key].append(value)
 
         population = dict(population)
-        print(population)
         if transform_columns_to_mapped_columns:
             mappings = PNGJPTemplateParser.FILTER_TYPES_AND_COLUMNS_MAPPING
             population = { mappings.get(k): v for k, v in population.items() if mappings.get(k)}
-        print (population)
         return population
 
     def load_templates_from_db(self):
@@ -123,7 +121,6 @@ class PNGJPTemplateParser(object):
         select pk, name from static.custom_entity 
         where name in ({})
         """.format(values_to_filter_as_str)
-        print(query)
         self.custom_entity = pd.read_sql_query(query, self.rds_conn.db)
         self.custom_entity_dict = self.custom_entity[['pk', 'name']].set_index('name').to_dict()['pk']
 
@@ -188,14 +185,14 @@ class PNGJPTemplateParser(object):
         return self.custom_entity
 
 
-if __name__ == "__main__":
-    print("Testing template parser")
-    LoggerInitializer.init('pngjp-sand2 Scene Calculations')
-    Config.init()
-    rds_conn = PSProjectConnector("pngjp-sand2", DbUsers.CalculationEng)
-    p = PNGJPTemplateParser(data_provider=None, rds_conn=rds_conn)
-    for k, v in p.get_targets().items():
-        print(k)
-        print(v)
-    targets = p.get_targets()
-    print()
+# if __name__ == "__main__":
+#     print("Testing template parser")
+#     LoggerInitializer.init('pngjp-sand2 Scene Calculations')
+#     Config.init()
+#     rds_conn = PSProjectConnector("pngjp-sand2", DbUsers.CalculationEng)
+#     p = PNGJPTemplateParser(data_provider=None, rds_conn=rds_conn)
+#     for k, v in p.get_targets().items():
+#         print(k)
+#         print(v)
+#     targets = p.get_targets()
+#     print()
