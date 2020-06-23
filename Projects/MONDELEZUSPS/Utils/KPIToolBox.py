@@ -87,7 +87,7 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         # , Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.SHELF_POSITION
-        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.BLOCKING]
+        relevant_kpi_types = [Consts.SHELF_POSITION]
         targets = self.targets[self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)]
 
         self._calculate_kpis_from_template(targets)
@@ -200,7 +200,7 @@ class ToolBox(GlobalSessionToolBox):
             unique_template_scif_mpis = self._filter_df(df, {denominator_type: unique_denominator_fk})
             df_with_max_facings_by_scene = self._df_groupby_logic(unique_template_scif_mpis,
                                                                   ['scene_fk', numerator_type],
-                                                                  {'facings': 'sum'})
+                                                                  {'facings': 'count'})
 
             relevant_scene_with_most_numerator_facings = \
                 df_with_max_facings_by_scene.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
@@ -209,13 +209,13 @@ class ToolBox(GlobalSessionToolBox):
                 'scene_fk': relevant_scene_with_most_numerator_facings})
 
             df_with_max_facings_by_bay = self._df_groupby_logic(relevant_scif_mpis_scene_with_most_facings,
-                                                                ['bay_number', numerator_type], {'facings': 'sum'})
+                                                                ['bay_number', numerator_type], {'facings': 'count'})
             relevant_bay_with_most_numerator_facings = \
                 df_with_max_facings_by_bay.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
             final_df = self._filter_df(relevant_scif_mpis_scene_with_most_facings,
                                        {'bay_number': relevant_bay_with_most_numerator_facings})
             container_with_shelf_number = self._df_groupby_logic(final_df, ['shelf_number_from_bottom', numerator_type],
-                                                                 {'facings': 'sum'})
+                                                                 {'facings': 'count'})
             max_shelf = final_df.shelf_number_from_bottom.max()
             shelf_number = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
                 0]  # shelf with the mose number of facings
@@ -224,7 +224,7 @@ class ToolBox(GlobalSessionToolBox):
                 result = self.shelf_number.loc[max_shelf, shelf_number]
                 result_by_id = key_dict.get(result)
             except:
-                pass
+                continue
 
             numerator_id = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
                 1]  # numerator_id with most facings in the bay
