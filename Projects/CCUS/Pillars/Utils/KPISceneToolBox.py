@@ -11,15 +11,16 @@ __author__ = 'Jasmine'
 BINARY = 2
 
 class PillarsSceneToolBox:
+    TEMPLATE_NAME = 'CCUS_Templatev8_June052020.xlsx'
     PROGRAM_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                         'Data', 'CCUS_Templatev7_February2020.xlsx')
+                                         'Data', TEMPLATE_NAME)
     BITWISE_RECOGNIZER_SIZE = 6
     RECOGNIZED_BY_POS = BITWISE_RECOGNIZER_SIZE - 1
     RECOGNIZED_BY_SCENE_RECOGNITION = BITWISE_RECOGNIZER_SIZE - 2
     RECOGNIZED_BY_QURI = BITWISE_RECOGNIZER_SIZE - 3
     RECOGNIZED_BY_SURVEY = BITWISE_RECOGNIZER_SIZE - 4
 
-    def __init__(self, data_provider,output, common):
+    def __init__(self, data_provider, output, common):
         self.data_provider = data_provider
         self.common = common
         self.project_name = self.data_provider.project_name

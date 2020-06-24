@@ -1,7 +1,7 @@
 
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.ALTRIAUS.Utils.KPIToolBox import ALTRIAUSToolBox
+from Projects.ALTRIAUS.Utils.KPIToolBox2 import ALTRIAUSToolBox
 
 from KPIUtils_v2.DB.Common import Common
 

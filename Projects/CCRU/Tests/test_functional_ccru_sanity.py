@@ -5,6 +5,7 @@ from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.CCRU.Tests.Data.kpi_results import CCRUKpiResults
 import os
 import json
+from Trax.Utils.Testing.Case import skip
 
 __author__ = 'sergey'
 
@@ -23,6 +24,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
                 .return_value = json.load(f)
         return
 
+    # @skip('fix later')
     @PsSanityTestsFuncs.seeder.seed(["ccru_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_ccru_sanity(self):
         self.add_mocks()

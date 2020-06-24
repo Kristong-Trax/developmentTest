@@ -31,7 +31,6 @@ class Const(object):
                 SHARE_OF_EMPTY_KPI: FACINGS_IGN_STACKING
                 }
 
-
     SOS_HIERARCHY = {
                     'Brand out of Category Facings SOS': 'Manufacturer out of Category Facings SOS',
                     'Manufacturer out of Category Facings SOS': 'Manufacturer out of Store Facings SOS',

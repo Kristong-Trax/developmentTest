@@ -9,7 +9,7 @@ class Const(object):
     PRICE_ADHERENCE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                  'Price Adherence Targets 01Apr2020.xlsx')
     EXTRA_SPACES_RELEVANT_SUB_CATEGORIES_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                             'Extra_spaces_relevant_sub_categories_2019_11_25.xlsx')
+                                                             'Extra_spaces_relevant_sub_categories_2020_06_01.xlsx')
     STORE_TARGETS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                       'Targets Store Excecution Score_ 24 Jun 2019.xlsx')
 

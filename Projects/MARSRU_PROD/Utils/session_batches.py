@@ -55,9 +55,9 @@ class CCRUSessionBatches:
                 SELECT ss.visit_date, ss.session_uid, ss.number_of_scenes
                 FROM probedata.session ss
                 WHERE ss.number_of_scenes > 0 AND delete_time is NULL AND status='Completed'
-                AND ss.visit_date >= '{}' AND ss.visit_date <= '{}'
+                AND ss.visit_date >= '2020-06-14'
                 ORDER BY ss.pk DESC;
-                """.format(START_DATE, END_DATE)
+                """
 
         sessions = pd.read_sql_query(query, self.aws_conn.db)
 

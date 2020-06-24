@@ -1,6 +1,5 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from Trax.Utils.Logging.Logger import Log
 import numpy as np
 
 

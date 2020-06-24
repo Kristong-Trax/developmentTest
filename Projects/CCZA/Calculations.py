@@ -1,8 +1,8 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 
 from Projects.CCZA.KPIGenerator import CCZAGenerator
 
@@ -25,7 +25,7 @@ class CCZACalculations(BaseCalculationsScript):
 #                 # 'FF39172D-EE62-4184-ABF7-91CD2D05800B',
 #                 # 'FE8E0E52-9DF1-40BF-81E2-C6F618682806',
 #                 # 'FE1CF09E-272A-4B15-9BF4-E9E4228A2BF2'
-#                 'e2303112-7f0c-4cc9-952c-ebf62e52b395' # wholesaler for new kpis
+#                 'dd0bf1d0-c9d8-4cf4-ae47-3048e38778e1' # wholesaler for new kpis
 #     ]
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)

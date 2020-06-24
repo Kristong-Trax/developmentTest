@@ -1,13 +1,10 @@
-
 from Trax.Utils.Logging.Logger import Log
-
 from Projects.LIONJP.Utils.KPIToolBox import LIONJPToolBox
-
 from KPIUtils_v2.DB.Common import Common
-
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-__author__ = 'nidhin'
+
+__author__ = 'satya'
 
 
 class Generator:
@@ -26,7 +23,7 @@ class Generator:
         This is the main KPI calculation function.
         It calculates the score for every KPI set and saves it to the DB.
         """
-        if self.tool_box.scif.empty:
-            Log.warning('Scene item facts is empty for this session')
-        else:
+        try:
             self.tool_box.main_calculation()
+        except Exception as ex:
+            Log.error("ERROR:{}".format(ex.message))

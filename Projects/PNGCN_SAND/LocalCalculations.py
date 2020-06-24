@@ -14,14 +14,14 @@ import pandas as pd
 __author__ = 'ilays'
 
 if __name__ == '__main__':
-    LoggerInitializer.init('Png-cn calculations')
+    LoggerInitializer.init('KEngine')
     Config.init()
     project_name = 'pngcn-sand'
     data_provider = KEngineDataProvider(project_name)
     output = Output()
     sessions = {
         # 'dd4b7c71-582b-4d4f-af3e-6fa03b47b588': ["22154399"]
-        '035a7895-c96f-48c0-9559-8e67243b8a9a': [22275611]
+        '58db3b4d-5d23-41dd-b93b-73e9b3c2b898': ['28004415']
         # 'EE913E9B-71E7-4A39-A66F-2A9B8DA9B2BB': ['27846171', '27846517', '27848213', '27848280'],
         # '9be106d4-24a3-4876-bfe1-b096510770fd': ['27860729', '27860731', '27860735', '27860737', '27860772', '27860775',
         #                                          '27860790', '27860727', '27860784', '27860789'],
@@ -42,6 +42,6 @@ if __name__ == '__main__':
             SceneVanillaCalculations(data_provider, output).run_project_calculations()
             save_scene_item_facts_to_data_provider(data_provider, output)
             SceneCalculations(data_provider).calculate_kpis()
-        data_provider.load_session_data(session)
-        output = Output()
-        PngCNEmptyCalculations(data_provider, output).run_project_calculations()
+        # data_provider.load_session_data(session)
+        # output = Output()
+        # PngCNEmptyCalculations(data_provider, output).run_project_calculations()
