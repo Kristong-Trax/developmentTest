@@ -5,6 +5,7 @@ from Trax.Utils.Conf.Configuration import Config
 from mock import MagicMock
 from Trax.Apps.Services.KEngine.Handlers.Utils.ScriptsLoadingUtils import ProjectSpecificCalculationsLoader, \
     NUM_OF_RETRIES, TIMEOUT, retry, StorageFactory, S3_BUCKET, S3_REGION
+import pandas as pd
 
 __author__ = 'prasanna'
 
@@ -48,6 +49,7 @@ if __name__ == '__main__':
     for session in sessions:
         session_uid = session['session_uid']
         scene_uid = session['scene_uid']
+        print(session_uid, scene_uid)
 
         message_scene = {
             "project_name": project_name,
@@ -68,6 +70,9 @@ if __name__ == '__main__':
             "persistence": {"flavor": None}
         }
 
-        kenigineUnified = UnifiedHandler.KEngineUnifiedHandler()
-        kenigineUnified._validate_message(message_scene)
-        kenigineUnified._process_message(message_scene, None, MagicMock(), None)
+        try:
+            kenigineUnified = UnifiedHandler.KEngineUnifiedHandler()
+            kenigineUnified._validate_message(message_scene)
+            kenigineUnified._process_message(message_scene, None, MagicMock(), None)
+        except Exception as e:
+            print ("Error {}".format(e))
