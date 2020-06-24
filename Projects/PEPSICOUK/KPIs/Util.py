@@ -117,6 +117,7 @@ class PepsicoUtil(UnifiedKPISingleton):
                                                             else self.session_info['store_fk'].values[0]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.display_scene = self.get_match_display_in_scene()
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.kpi_results_queries = []
 
@@ -135,6 +136,9 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.filtered_matches = self.commontools.filtered_matches.copy()
         self.filtered_matches = self.filtered_matches.merge(self.probe_groups, on='probe_match_fk', how='left')
 
+        self.filtered_scif_secondary = self.commontools.filtered_scif_secondary.copy()
+        self.filtered_matches_secondary = self.commontools.filtered_matches_secondary.copy()
+
         self.scene_bay_shelf_product = self.commontools.scene_bay_shelf_product
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.full_store_info = self.commontools.full_store_info.copy()
@@ -151,6 +155,11 @@ class PepsicoUtil(UnifiedKPISingleton):
         self.all_targets_unpacked = self.commontools.all_targets_unpacked.copy()
         self.block_results = pd.DataFrame(columns=['Group Name', 'Score'])
         self.hero_type_custom_entity_df = self.get_hero_type_custom_entity_df()
+
+    def get_match_display_in_scene(self):
+        query = PEPSICOUK_Queries.get_match_display(self.session_uid)
+        match_display = pd.read_sql_query(query, self.rds_conn.db)
+        return match_display
 
     def get_probe_group(self):
         query = PEPSICOUK_Queries.get_probe_group(self.session_uid)
@@ -311,6 +320,10 @@ class PepsicoUtil(UnifiedKPISingleton):
     def reset_filtered_scif_and_matches_to_exclusion_all_state(self):
         self.filtered_scif = self.commontools.filtered_scif.copy()
         self.filtered_matches = self.commontools.filtered_matches.copy()
+
+    def reset_secondary_filtered_scif_and_matches_to_exclusion_all_state(self):
+        self.filtered_scif_secondary = self.commontools.filtered_scif_secondary.copy()
+        self.filtered_matches_secondary = self.commontools.filtered_matches_secondary.copy()
 
     def get_available_hero_sku_list(self, dependencies_df):
         hero_list = dependencies_df[(dependencies_df['kpi_type'] == self.HERO_SKU_AVAILABILITY_SKU) &

@@ -1,9 +1,7 @@
-
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-
 from Projects.LIONJP.KPIGenerator import Generator
 
-__author__ = 'nidhin'
+__author__ = 'satya'
 
 
 class Calculations(BaseCalculationsScript):

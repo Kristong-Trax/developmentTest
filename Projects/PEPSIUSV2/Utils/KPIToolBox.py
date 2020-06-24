@@ -1,5 +1,5 @@
-from Trax.Tools.ProfessionalServices.PsConsts.DB import SessionResultsConsts as Src
-from Trax.Tools.ProfessionalServices.PsConsts.DataProvider import ScifConsts as Sc
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts as Src
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts as Sc
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment

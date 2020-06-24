@@ -5,14 +5,12 @@ class LIONJPKpiResults:
 
     @staticmethod
     def get_kpi_results():
-        return {
-            'numerator_id': {
-                0: 0}, 'kpi_level_2_fk': {
-                0: 3000}, 'context_id': {
-                0: 389}, 'client_name': {
-                    0: u'FACINGS_IN_CELL_PER_PRODUCT'}, 'session_fk': {
-                        0: 923279}, 'numerator_result': {
-                            0: 4}, 'denominator_result': {
-                                0: 6}, 'result': {
-                                    0: 1.0}, 'denominator_id': {
-                                        0: 7538}}
+        return {u'numerator_id': {},
+                u'kpi_level_2_fk': {},
+                u'context_id': {},
+                u'client_name': {},
+                u'session_fk': {},
+                u'numerator_result': {},
+                u'denominator_result': {},
+                u'result': {},
+                u'denominator_id': {}}

@@ -17,7 +17,7 @@ class ShareOfAssortmentByHeroTypeKpi(UnifiedCalculationsScript):
         if not lvl3_ass_res_df.empty:
             kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.SHARE_OF_ASSORTMENT_BY_HERO_TYPE)
             in_store_skus = len(self.util.get_available_hero_sku_list(self.dependencies_data))  # total recognized
-            location_type_fk = self.util.scif[self.util.scif[ScifConsts.LOCATION_TYPE] == 'Primary Shelf']\
+            location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf']\
                 [ScifConsts.LOCATION_TYPE_FK].values[0]
 
             product_hero_df = self.util.all_products[[ScifConsts.PRODUCT_FK, self.util.HERO_SKU_LABEL]]
@@ -45,6 +45,6 @@ class ShareOfAssortmentByHeroTypeKpi(UnifiedCalculationsScript):
 
     @staticmethod
     def get_result(row):
-        rv = row['numerator_result'] / row['in_store_total'] * 100 if row['in_store_total'] else 0
+        rv = float(row['numerator_result']) / row['in_store_total'] * 100 if row['in_store_total'] else 0
         return rv
 

@@ -8,7 +8,7 @@ from Projects.JNJANZ.Tests.Data.kpi_results import JNJANZKpiResults
 # import os
 # import json
 
-__author__ = 'ilays'
+__author__ = 'prasanna'
 
 
 class TestKEnginePsCode(PsSanityTestsFuncs):
@@ -29,7 +29,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'CE9BD14E-DBF1-4F82-BEE4-E1D61F0B211F': []}
+        sessions = {'CC3129C1-9C06-4B28-BE68-33983548F712': []}
         kpi_results = JNJANZKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))

@@ -3,7 +3,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 
 from Projects.GSKSG_SAND.KPIGenerator import Generator
 
-__author__ = 'urid'
+__author__ = 'jasmine'
 
 
 class Calculations(BaseCalculationsScript):
