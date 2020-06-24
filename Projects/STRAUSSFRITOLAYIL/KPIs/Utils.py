@@ -138,7 +138,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
 
     def add_sub_brand_to_scif(self):
         sub_brand_df = self.ps_data.get_custom_entities_df(entity_type_name='Sub_Brand_Local')
-        sub_brand_df = sub_brand_df[['entity_name', 'entity_fk']]
+        sub_brand_df = sub_brand_df[['entity_name', 'entity_fk']].copy()
         # sub_brand_df['entity_name'] = sub_brand_df['entity_name'].str.lower()
         sub_brand_df.rename({'entity_fk': 'sub_brand_fk'}, axis='columns', inplace=True)
         # delete duplicates by name and entity_type_fk to avoid recognition duplicates.
@@ -149,7 +149,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
 
     def add_brand_mix_to_scif(self):
         brand_mix_df = self.ps_data.get_custom_entities_df(entity_type_name='Brand_Mix')
-        brand_mix_df = brand_mix_df[['entity_name', 'entity_fk']]
+        brand_mix_df = brand_mix_df[['entity_name', 'entity_fk']].copy()
         brand_mix_df.rename({'entity_fk': 'brand_mix_fk'}, axis='columns', inplace=True)
         # delete duplicates by name and entity_type_fk to avoid recognition duplicates.
         brand_mix_df.drop_duplicates(subset=['entity_name'], keep='first', inplace=True)
