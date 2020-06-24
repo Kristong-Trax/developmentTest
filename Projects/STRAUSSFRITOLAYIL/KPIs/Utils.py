@@ -24,6 +24,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.add_sub_brand_to_scif()
+        self.add_brand_mix_to_scif()
         self.match_probe_in_scene = self.ps_data.get_product_special_attribute_data(self.session_uid)
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         if not self.match_product_in_scene.empty:
@@ -142,9 +143,19 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         sub_brand_df.rename({'entity_fk': 'sub_brand_fk'}, axis='columns', inplace=True)
         # delete duplicates by name and entity_type_fk to avoid recognition duplicates.
         sub_brand_df.drop_duplicates(subset=['entity_name'], keep='first', inplace=True)
-        self.scif['prod_KPI/Projects'] = self.scif['Sub_Brand_Local'].fillna('no value')
+        self.scif['Sub_Brand_Local'] = self.scif['Sub_Brand_Local'].fillna('no value')
         self.scif = self.scif.merge(sub_brand_df, left_on='Sub_Brand_Local', right_on="entity_name", how="left")
         self.scif['sub_brand_fk'].fillna(Consts.SUB_BRAND_NO_VALUE, inplace=True)
+
+    def add_brand_mix_to_scif(self):
+        brand_mix_df = self.ps_data.get_custom_entities_df(entity_type_name='Brand_Mix')
+        brand_mix_df = brand_mix_df[['entity_name', 'entity_fk']]
+        brand_mix_df.rename({'entity_fk': 'brand_mix_fk'}, axis='columns', inplace=True)
+        # delete duplicates by name and entity_type_fk to avoid recognition duplicates.
+        brand_mix_df.drop_duplicates(subset=['entity_name'], keep='first', inplace=True)
+        self.scif['Brand_Mix'] = self.scif['Brand_Mix'].fillna('no value')
+        self.scif = self.scif.merge(brand_mix_df, left_on='Brand_Mix', right_on="entity_name", how="left")
+        self.scif['brand_mix_fk'].fillna(Consts.BRAND_MIX_NO_VALUE, inplace=True)
 
     @staticmethod
     def calculate_sos_result(numerator, denominator):
