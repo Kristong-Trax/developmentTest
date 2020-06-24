@@ -34,7 +34,8 @@ class Consts(object):
     REPLACMENT_EAN_CODES = "Replacement Ean Codes"
     ADDITIONAL_DISPLAY = 'additional display'
     RELEVENT_FIELDS = ['scene_fk', 'product_fk', 'product_ean_code', 'template_name', 'product_type', 'manufacturer_fk',
-                       'category', 'category_fk', 'sub_brand', 'sub_brand_fk', 'location_type']
+                       'category', 'category_fk', 'sub_brand', 'sub_brand_fk', 'location_type', 'brand_mix',
+                       'brand_mix_fk']
 
     # external targets keys
     KEY_FIELDS = [ADDITIONAL_ATTRIBUTE_2, ADDITIONAL_ATTRIBUTE_3, ADDITIONAL_ATTRIBUTE_4, CATEGORY, BRAND_MIX,
