@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime
 from Trax.Apps.Services.KEngine.Handlers.Utils.Scripts import LiveSessionBaseClass
-from KPIUtils.GlobalProjects.DIAGEO.Utils.DiageoAssortment import DiageoAssortment
+from KPIUtils.GlobalProjects.DIAGEO.Utils.DiageoLiveAssortment import DiageoAssortment
 # from KPIUtils.Calculations.LiveAssortment import LiveAssortmentCalculation
 from KPIUtils_v2.DB.CommonV3 import Common
 from KPIUtils_v2.GlobalDataProvider.LivePsDataProvider import PsDataProvider
