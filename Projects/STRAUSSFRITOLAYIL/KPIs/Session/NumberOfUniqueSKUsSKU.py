@@ -27,7 +27,7 @@ class NumberOfUniqueSKUsSKUKpi(UnifiedCalculationsScript):
             result = sku_row['facings']
             score = Consts.PASS if result > 0 else Consts.FAIL
             self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result,
-                                    denominator_id=self.utils.own_manuf_fk, score=score)
+                                    denominator_id=self.utils.store_id, score=score)
 
     def kpi_type(self):
         pass

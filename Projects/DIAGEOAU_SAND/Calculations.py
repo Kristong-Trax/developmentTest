@@ -1,12 +1,12 @@
 
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Projects.DIAGEOAU_SAND.KPIGenerator import DiageoAUSandGenerator
+from Projects.DIAGEOAU_SAND.KPIGenerator import DIAGEOAU_SANDGenerator
 
 
-class DiageoAUSandCalculations(BaseCalculationsScript):
+class DIAGEOAU_SANDCalculations(BaseCalculationsScript):
     def run_project_calculations(self):
         self.timer.start()
-        DiageoAUSandGenerator(self.data_provider, self.output).main_function()
+        DIAGEOAU_SANDGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPIGenerator.run_project_calculations')
 
 
@@ -16,9 +16,9 @@ class DiageoAUSandCalculations(BaseCalculationsScript):
 # if __name__ == '__main__':
 #     LoggerInitializer.init('diageoau calculations')
 #     Config.init()
-#     project_name = 'diageoau-sand'
+#     project_name = 'diageoau'
 #     data_provider = KEngineDataProvider(project_name)
-#     session = '57F997DA-155F-4F50-9E49-B02C328CCD95'
+#     session = '13CA7DB5-9B04-4C18-9460-471ABA9A9416'
 #     data_provider.load_session_data(session)
 #     output = Output()
-#     DiageoAUSandGenerator(data_provider, output).run_project_calculations()
+#     DIAGEOAU_SANDCalculations(data_provider, output).run_project_calculations()

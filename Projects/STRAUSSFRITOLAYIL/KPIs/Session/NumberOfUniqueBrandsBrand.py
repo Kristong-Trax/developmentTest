@@ -32,7 +32,7 @@ class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
             sub_brand_df = own_manufacturer_matches[own_manufacturer_matches['sub_brand_fk'] == sub_brand_fk]
             result = score = sub_brand_df['facings'].sum()
             self.write_to_db_result(fk=kpi_fk, numerator_id=sub_brand_fk, result=result,
-                                    denominator_id=self.utils.own_manuf_fk, score=score)
+                                    denominator_id=self.utils.store_id, score=score)
 
     def kpi_type(self):
         pass
