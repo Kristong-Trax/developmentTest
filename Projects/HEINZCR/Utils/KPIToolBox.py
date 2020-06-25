@@ -304,7 +304,7 @@ class HEINZCRToolBox:
             sub_category_fk_list.extend(kpi_dict.keys())
 
         kpi_weight_perfect_store = 0
-        if self.country in self.sub_category_assortment.columns.to_list():
+        if self.country in self.sub_category_weight.columns.to_list():
             kpi_weight_perfect_store = self.sub_category_weight[self.country][
                 self.sub_category_weight['Category'] == Const.PERFECT_STORE_KPI_WEIGHT]
 

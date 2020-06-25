@@ -20,7 +20,8 @@ class OOSNpaKpi(UnifiedCalculationsScript):
             denominator = len(assortment_df)
             numerator = len(assortment_df[assortment_df['result'] == Consts.OOS])
             result = self.utils.calculate_sos_result(numerator, denominator)
-            self.write_to_db_result(fk=kpi_fk, numerator_id=assortment_fk, result=result,
+            self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
+                                    denominator_id=self.utils.store_id, context_id=assortment_fk, result=result,
                                     numerator_result=numerator, denominator_result=denominator)
 
     def kpi_type(self):

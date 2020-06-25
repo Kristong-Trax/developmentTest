@@ -5,6 +5,7 @@ from Projects.INBEVCI.Tests.Data.data_test_inbevci_sanity import ProjectsSanityD
 from Projects.INBEVCI.Calculations import INBEVCIINBEVCICalculations
 from DevloperTools.SanityTests.PsSanityTests import PsSanityTestsFuncs
 from Projects.INBEVCI.Tests.Data.kpi_results import INBEVCIKpiResults
+from Trax.Utils.Testing.Case import skip
 # import os
 # import json
 
@@ -24,6 +25,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         #     relative_position_template
         return
 
+    @skip('fix later')
     @PsSanityTestsFuncs.seeder.seed(["inbevci_seed", "inbevci_seed_2",
                                      "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_inbevci_sanity(self):
