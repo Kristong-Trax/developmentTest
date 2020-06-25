@@ -18,10 +18,9 @@ class SKULinearKpi(UnifiedCalculationsScript):
         combined_scenes_matches = custom_matches.groupby(['product_fk', 'manufacturer_fk']).sum().reset_index()
         for i, sku_row in combined_scenes_matches.iterrows():
             product_fk = sku_row['product_fk']
-            manufacturer_fk = sku_row['manufacturer_fk']
             result = sku_row['width_mm_advance']
             self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result,
-                                    denominator_id=manufacturer_fk, score=result)
+                                    denominator_id=self.utils.store_id, score=result)
 
     def kpi_type(self):
         pass
