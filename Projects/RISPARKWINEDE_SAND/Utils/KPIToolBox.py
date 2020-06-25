@@ -247,23 +247,28 @@ class ToolBox(GlobalSessionToolBox):
         group_result = self.calculate_lvl2_assortment(lvl3_with_cat, Consts.LVL2_GROUP_HEADERS)
         oos_group_res = self.calculate_oos_lvl2(group_result)
 
-        group_result = self.assign_parent_child_identifiers(group_result, parent_identifier={'col': ['category_fk']},
+        group_result = self.assign_parent_child_identifiers(group_result, parent_identifier={'col': ['category_fk'],
+                                                                                             'val': Consts.DISTRIBUTION},
                                              result_identifier={'col': ['assortment_group_fk',
                                                                         'category_fk'], 'val': 'DIST'})
         group_result = self.group_level(group_result, Consts.DIST_GROUP_LVL)
-        oos_group_res = self.assign_parent_child_identifiers(oos_group_res, parent_identifier={'val': 'OOS'},
+        oos_group_res = self.assign_parent_child_identifiers(oos_group_res, parent_identifier={'col': ['category_fk'],
+                                                                                               'val': Consts.OOS},
                                              result_identifier={'col': ['assortment_group_fk'], 'val': 'OOS'})
         oos_group_res = self.group_level(oos_group_res, Consts.OOS_GROUP_LVL)
         ava_res.extend(group_result.to_dict('records'))
         ava_res.extend(oos_group_res.to_dict('records'))
 
-        # calculate  for distribution - CATEGORY LEVEL
-        category_result = self.calculate_category_result(group_result)
+        # calculate - CATEGORY LEVEL
+        category_result = self.calculate_category_result(group_result, Consts.DISTRIBUTION)
         ava_res.extend(category_result.to_dict('records'))
+
+        category_result_oos = self.calculate_category_result(oos_group_res, Consts.OOS)
+        ava_res.extend(category_result_oos.to_dict('records'))
 
         # calculate - STORE LEVEL
         store_result = self.calculate_store_assortment(category_result, Consts.DIST_STORE_LVL)
-        oos_store_result = self.calculate_store_assortment(oos_group_res, Consts.OOS_STORE_LVL)
+        oos_store_result = self.calculate_store_assortment(category_result_oos, Consts.OOS_STORE_LVL)
         ava_res.extend(store_result.to_dict('records'))
         ava_res.extend(oos_store_result.to_dict('records'))
 
@@ -332,7 +337,7 @@ class ToolBox(GlobalSessionToolBox):
         (kpi result value match to mobile report signs) , according to the kpi result.
         :return pk of kpi_result_value
          """
-        value = 'No' if value == 0 else 'Yes'
+        value = 'OOS' if value == 0 else 'DISTRIBUTED'
         value_info = self.result_values[self.result_values['value'] == value]
         if value_info.empty:
             return
@@ -364,9 +369,10 @@ class ToolBox(GlobalSessionToolBox):
         lvl2_res.loc[:, 'should_enter'] = True
         return lvl2_res
 
-    def calculate_category_result(self, group_result):
+    def calculate_category_result(self, group_result, parent_iden):
         """Create df results for assortment kpi in category level
             :param group_result - db results for assortment kpi in group level
+            :param parent_iden  - 'OOS'/'DIST  , kpi identifier between oos and dist
         """
         category_result = group_result.groupby(['denominator_id'])['numerator_result', 'denominator_result'].agg(
             {'numerator_result': 'sum', 'denominator_result': 'sum'}).reset_index()
@@ -374,11 +380,12 @@ class ToolBox(GlobalSessionToolBox):
         category_result = category_result.rename(columns={'denominator_id': 'numerator_id'},
                                                  inplace=False)
         category_result.loc[:, 'denominator_id'] = self.manufacturer_fk
-        category_result.loc[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(Consts.DIST_CAT_LVL)
+        kpi_name = Consts.OOS_CAT_LVL if parent_iden == Consts.OOS else Consts.DIST_CAT_LVL
+        category_result.loc[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         category_result = category_result.assign(score=category_result['result'])
         category_result = self.assign_parent_child_identifiers(category_result,
-                                                               result_identifier={'col': ['numerator_id']},
-                                                               parent_identifier={'val': 'DIST'})
+                                                               result_identifier={'col': ['numerator_id'], 'val': parent_iden},
+                                                               parent_identifier={'val': parent_iden})
         category_result.loc[:, 'should_enter'] = True
         return category_result
 
