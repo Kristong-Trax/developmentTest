@@ -108,7 +108,6 @@ class PSAPAC_SAND3ToolBox:
             results_compliance = self.gsk_compliance()
             self.common.save_json_to_new_tables(results_compliance)
 
-        # New POSM Kpi
         results_pos = self.gsk_pos_kpis()
         self.common.save_json_to_new_tables(results_pos)
 
@@ -531,20 +530,12 @@ class PSAPAC_SAND3ToolBox:
     def gsk_pos_kpis(self):
         """
         Function calculate POSM Distribution
-        Kpis  - GSK_POS_DISTRIBUTION_STORE,
-                - posm distribution for own manufacturer(#No of available POS) by store (#No of POS in Assortment)
-              - GSK_POS_DISTRIBUTION_BRAND
-                - posm distribution for each brand (#No of available POS) by store (#No of POS by brand in Assortment)
-                    - GSK_POS_DISTRIBUTION_SKU
-                      - available POS 0/1
         :return
-              - results :  array of dictionary, each dict contains kpi's result details
+          - results :  array of dictionary, each dict contains kpi's result details
         """
         results = []
-        # assortment_lvl3 msl df initialize
-        # self.gsk_generator.tool_box.extract_data_set_up_file(
-        #     Consts.PLN_MSL, self.set_up_data, Consts.KPI_DICT)
-        # assortment_pos = self.msl_assortment(Const.DISTRIBUTION, Consts.PLN_MSL)
+        OOS= 1
+        DISTRIBUTED = 2
 
         self.gsk_generator.tool_box.extract_data_set_up_file(
             Consts.POSM, self.set_up_data, Consts.KPI_DICT
@@ -561,15 +552,11 @@ class PSAPAC_SAND3ToolBox:
 
         # Calculate KPI : GSK_POS_DISTRIBUTION_STORE
         assortment_pos['in_store'] = assortment_pos['in_store'].astype('int')
-        # TODO: Multiple-granular groups for a store's policy - Remove Duplicate product_fks if Any
         Log.info("Dropping duplicate product_fks accros multiple-granular groups")
         Log.info("Before : {}".format(len(assortment_pos)))
         assortment_pos = assortment_pos.drop_duplicates(subset=[ProductsConsts.PRODUCT_FK])
         Log.info("After : {}".format(len(assortment_pos)))
 
-        # TODO: Make sure product type is "POS" only
-
-        # Implement the logic to calculate the numerator & denominator
         numerator_res = len(assortment_pos[assortment_pos['in_store'] == 1])
         denominator_res = len(assortment_pos)
 
@@ -589,13 +576,11 @@ class PSAPAC_SAND3ToolBox:
         )
 
         # Calculate KPI: GSK_POS_DISTRIBUTION_BRAND
-
         brands_group = assortment_pos.groupby([ProductsConsts.BRAND_FK])
         for brand, assortment_pos_by_brand in brands_group:
             numerator_res = len(assortment_pos_by_brand[assortment_pos_by_brand['in_store'] == 1])
             denominator_res = len(assortment_pos_by_brand)
             result = round((numerator_res / float(denominator_res)), 4) if denominator_res != 0 else 0
-            # Implement the logic to calculate the numerator & denominator
 
             results.append(
                 {'fk': kpi_gsk_pos_distribution_brand_fk,
@@ -613,10 +598,10 @@ class PSAPAC_SAND3ToolBox:
             for idx, each_product in assortment_pos_by_brand.iterrows():
                 product_fk = each_product[ProductsConsts.PRODUCT_FK]
                 result = 1 if int(each_product['in_store']) == 1 else 0
-                # Implement the logic to calculate the numerator & denominator
-                DISTRIBUTED = 2
-                OOS = 1
                 result_status = DISTRIBUTED if result == 1 else OOS
+                last_status = self.gsk_generator.tool_box.get_last_status(
+                    kpi_gsk_pos_distribution_sku_fk,
+                    product_fk)
 
                 results.append(
                     {'fk': kpi_gsk_pos_distribution_sku_fk,
@@ -625,7 +610,7 @@ class PSAPAC_SAND3ToolBox:
                      SessionResultsConsts.NUMERATOR_RESULT: result,
                      SessionResultsConsts.DENOMINATOR_RESULT: 1,
                      SessionResultsConsts.RESULT: result_status,
-                     SessionResultsConsts.SCORE: result_status,
+                     SessionResultsConsts.SCORE: last_status,
                      'identifier_parent': "Gsk_Pos_Distribution_Brand_" + str(int(brand)),
                      'identifier_result': "Gsk_Pos_Distribution_SKU_" + str(int(product_fk)),
                      'should_enter': True}
