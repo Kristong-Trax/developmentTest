@@ -46,5 +46,6 @@ class SKULinearbySceneKpi(UnifiedCalculationsScript):
                                             denominator_id=template_fk,
                                             denominator_result=row[MatchesConsts.SHELF_NUMBER],
                                             result=row[MatchesConsts.WIDTH_MM_ADVANCE],
-                                            score=row[self.util.MAX_SHELF], target=[MatchesConsts.WIDTH_MM_NET],
+                                            score=row[self.util.MAX_SHELF],
+                                            target=row[MatchesConsts.WIDTH_MM_NET],
                                             by_scene=True)
