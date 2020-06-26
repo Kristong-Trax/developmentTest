@@ -13,9 +13,12 @@ class Consts(object):
     SHELF_POSITION = 'Shelf Position'
     DISTRIBUTION = 'Distribution'
     BAY_POSITION = 'Bay Position'
+    DIAMOND_POSITION = 'Diamond Position'
 
+    # random
     SHELF_MAP = 'Shelf Map'
     COMPLETED_STATUS = 'Completed'
 
     DATASET_1_JSON = 'Dataset 1: JSON'
+    FINAL_FACINGS = 'final_facings'
 

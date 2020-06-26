@@ -1,4 +1,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
+from Trax.Algo.Geometry.Masking.MaskingResultsIO import retrieve_maskings_flat
+from Trax.Algo.Geometry.Masking.Utils import transform_maskings_flat
 from Trax.Utils.Logging.Logger import Log
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
@@ -16,6 +19,9 @@ import os
 import numpy as np
 import re
 import ast
+from math import sqrt
+from shapely import affinity
+from shapely.geometry import box
 
 from Projects.MONDELEZUSPS.Data.LocalConsts import Consts
 
@@ -86,8 +92,8 @@ class ToolBox(GlobalSessionToolBox):
             self.write_to_db(**result)
 
     def main_calculation(self):
-        # , Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.SHELF_POSITION
-        relevant_kpi_types = [Consts.SHELF_POSITION]
+        # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
+        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DIAMOND_POSITION]
         targets = self.targets[self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)]
 
         self._calculate_kpis_from_template(targets)
@@ -119,53 +125,284 @@ class ToolBox(GlobalSessionToolBox):
             return self.calculate_distribution
         elif kpi_type == Consts.BAY_POSITION:
             return self.calculate_bay_position
+        elif kpi_type == Consts.DIAMOND_POSITION:
+            return self.calculate_diamond_position
+
+    def calculate_diamond_position(self, row, df):
+        return_holder = self._get_kpi_name_and_fk(row)
+        numerator_type, denominator_type = self._get_numerator_and_denominator_type(
+            row['Config Params: JSON'], context_relevant=False)
+        overlap_pct = float(row['Config Params: JSON']['overlap_pct'][0])
+        population_pct = float(row['Config Params: JSON']['population_pct'][0])
+        df.dropna(subset=[numerator_type], inplace=True)
+        diamond_boarder_df = self._diamond_boarder(df.scene_fk.unique(), overlap_pct) #need to write inside the diamond position
+        result_dict_list = self._logic_diamond_position(df, diamond_boarder_df, return_holder, numerator_type,
+                                                        denominator_type,
+                                                        population_pct)
+        return result_dict_list
+
+    def _logic_diamond_position(self, df, diamond_boarder_df, return_holder, numerator_type, denominator_type,
+                                population_pct):
+        result_dict_list = []
+        for unique_denominator_type in set(df[denominator_type]):
+            denominator_filtered_df = self._filter_df(df, {denominator_type: unique_denominator_type})
+            for unique_numerator_id in set(denominator_filtered_df[numerator_type]):
+                filtered_numerator_df = self._filter_df(df, {numerator_type: unique_numerator_id})
+                groupby_numerator_df = self._df_groupby_logic(filtered_numerator_df, ['scene_fk', numerator_type],
+                                                              {'facings': 'count'})  # may cause issue
+                scene_with_most_numerator_facings = \
+                groupby_numerator_df.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
+                scene_filtered_numerator_df = self._filter_df(filtered_numerator_df,
+                                                              {'scene_fk': scene_with_most_numerator_facings})
+                nodes_in_diamond = self._filter_df(diamond_boarder_df, {
+                    'scene_fk': scene_with_most_numerator_facings}).nodes_in_diamond.iat[0]
+                final_numerator_df = filtered_numerator_df[filtered_numerator_df.scene_match_fk.isin(nodes_in_diamond)]
+                numerator_result = len(final_numerator_df)
+                denominator_result = len(scene_filtered_numerator_df)
+                if not isinstance(unique_numerator_id, int):
+                    unique_numerator_id = self._get_id_from_custom_entity_table(numerator_type, unique_numerator_id)
+                result = 1 if float(numerator_result) / denominator_result >= population_pct else 0
+                result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+                               'numerator_id': unique_numerator_id, 'numerator_result': numerator_result,
+                               'denominator_id': unique_denominator_type, 'denominator_result': denominator_result,
+                               'result': result}
+                result_dict_list.append(result_dict)
+        return result_dict_list
+
+    def _diamond_boarder(self, relevant_scene_fks, overlap_pct):
+        diamond_boarder_df = pd.DataFrame()
+        for unique_scene_fk in relevant_scene_fks:
+            ### diamond positon kpi ###
+            mpis = self.match_product_in_scene[
+                self.match_product_in_scene.scene_fk == unique_scene_fk]
+            # mpis = df[df.scene_fk == scene_with_most_numerator_facings]
+            mpis['pk'] = mpis['scene_match_fk']
+            maskings_data = transform_maskings_flat(*retrieve_maskings_flat(self.project_name,
+                                                                            [unique_scene_fk]))
+            kwargs = {'use_masking_only': True, 'minimal_overlap_ratio': 0.4}
+            adj_graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(
+                mpis, maskings_data, additional_attributes=['scene_fk'], **kwargs)
+
+            # condense the graph by scene_fk so we get a polygon with the bounds of the products on the extreme edges
+            # this could be enhanced (if needed) to exclude irrelevant items to ensure the diamond is over the core product area
+            g = AdjacencyGraphBuilder.condense_graph_by_level('scene_fk', adj_graph)
+            # get the bounds of the scene polygon
+            bounds = g.nodes[0]['polygon'].bounds
+            # get the center of the scene polygon
+            center = g.nodes[0]['polygon'].centroid.coords[0]
+            # we need half the height of the scene so we can use pythagorean theorem to get length of diamond
+            half_height = (bounds[3] - bounds[1]) / 2
+            # pythagorean theorem to get the length of the side of the diamond
+            side_len = sqrt(half_height ** 2 + half_height ** 2)
+            # create a square box in the center of the scene with each side being the length determined earlier
+            b = box(center[0] - side_len / 2, center[1] - side_len / 2, center[0] + side_len / 2,
+                    center[1] + side_len / 2)
+            # rotate the square box 45 degrees to make a diamond
+            diamond = affinity.rotate(b, 45, 'center')
+
+            nodes_in_diamond = []
+            # iterate over all nodes in the base adj graph to see if they overlap the diamond
+            for node, node_data in adj_graph.nodes(data=True):
+                # get the bounds of the node
+                bounds = node_data['polygon'].bounds
+                # build a rectangle from the bounds
+                polygon = box(bounds[0], bounds[1], bounds[2], bounds[3])
+                # check to see if the product rectangle overlaps the diamond, and if so by what %
+                overlap_ratio = polygon.intersection(diamond).area / polygon.area
+                # this can be tuned to include more products by relaxing the required overlap ratio
+                if overlap_ratio > overlap_pct:
+                    # if the product overlaps, add it to the 'in diamond' list
+                    nodes_in_diamond.append(node)
+            diamond_boarder_df = diamond_boarder_df.append(
+                {'scene_fk': unique_scene_fk, 'nodes_in_diamond': nodes_in_diamond}, ignore_index=True)
+        return diamond_boarder_df
 
     def calculate_bay_position(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
         numerator_type, denominator_type = self._get_numerator_and_denominator_type(
             row['Config Params: JSON'], context_relevant=False)
+        anchor_pct = float(row['Config Params: JSON']['anchor_pct'][0])
+        df = df.dropna(subset=[numerator_type])
+        result_dict_list = self._logic_for_bay_postion(df, return_holder, numerator_type, denominator_type, anchor_pct)
+        return result_dict_list
+        # df_without_na_in_numerator_type_column = df.dropna(subset=[numerator_type])
+        # for unqiue_denominator_id in set(df_without_na_in_numerator_type_column[denominator_type]):
+        #     denominator_filtered_df = self._filter_df(df_without_na_in_numerator_type_column,
+        #                                               {denominator_type: unqiue_denominator_id})
+        #     denomi_df_grouped_facings = self._df_groupby_logic(denominator_filtered_df, ['scene_fk', numerator_type],
+        #                                                        {'facings': 'count'})
+        #
+        #     relevant_scene_with_most_facings = \
+        #         denomi_df_grouped_facings.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
+        #
+        #     scene_filtered_df = self._filter_df(denominator_filtered_df, {'scene_fk': relevant_scene_with_most_facings})
+        #     count_of_bays_in_scene = scene_filtered_df.bay_number.max()
+        #
+        #     ## logic for calculating bay number##
+        #     bay_df = self._df_groupby_logic(scene_filtered_df, ['bay_number', numerator_type], {'facings': 'count'})
+        #     relevant_bay_df = self._filter_df(bay_df, {'facings': bay_df.facings.max()}).reset_index()
+        #
+        #     if len(relevant_bay_df) > 1:
+        #         relevant_bay_number_container = relevant_bay_df.bay_number
+        #
+        #         def apply_tie_breaker_logic_for_bay_position(bay_number_container, count_of_bays_in_scene):
+        #             bay_number_df = pd.DataFrame()
+        #             bay_number_df['bay_number'] = bay_number_container
+        #             bay_number_df['bay_number_score'] = [np.square((num - ((count_of_bays_in_scene + 1) / 2))) for num
+        #                                                  in bay_number_container]
+        #             final_bay_number_df = bay_number_df[
+        #                 bay_number_df.bay_number_score == bay_number_df.bay_number_score.max()]
+        #             # if there is a tie with the max score between bay, we get the smallest bay #, else the bay number with the highest score
+        #             return_bay_number = final_bay_number_df.bay_number.min()
+        #             return return_bay_number
+        #
+        #         bay_number = apply_tie_breaker_logic_for_bay_position(relevant_bay_number_container,
+        #                                                               count_of_bays_in_scene)
+        #         numerator_id = relevant_bay_df[relevant_bay_df.bay_number == bay_number][numerator_type].values[0]
+        #
+        #
+        #     else:
+        #         bay_number = relevant_bay_df.bay_number.values[0]
+        #         numerator_id = relevant_bay_df[relevant_bay_df.bay_number == bay_number][numerator_type].values[0]
+        #
+        #     ## logic for calculating bay number##
+        #
+        #     #####logic for calculating bay result #######
+        #     if bay_number == 1:
+        #         bay_filtered_df = self._filter_df(scene_filtered_df, {'bay_number': bay_number})
+        #         bay_filtered_df_with_null = self._filter_df(df, {'scene_fk': relevant_scene_with_most_facings,
+        #                                                          'bay_number': bay_number})
+        #         numerator_result = bay_filtered_df.drop_duplicates([numerator_type]).facings.sum()
+        #         denominator_result = bay_filtered_df_with_null.drop_duplicates([numerator_type]).facings.sum()
+        #         result = float(numerator_result) / denominator_result
+        #         final_result = 'Left Anchor' if result >= anchor_pct else 'Not Anchor'
+        #     elif bay_number == count_of_bays_in_scene:
+        #         bay_filtered_df = self._filter_df(scene_filtered_df, {'bay_number': bay_number})
+        #         bay_filtered_df_with_null = self._filter_df(df, {'scene_fk': relevant_scene_with_most_facings,
+        #                                                          'bay_number': bay_number})
+        #         numerator_result = bay_filtered_df.drop_duplicates([numerator_type]).facings.sum()
+        #         denominator_result = bay_filtered_df_with_null.drop_duplicates([numerator_type]).facings.sum()
+        #         result = float(numerator_result) / denominator_result
+        #         final_result = 'Right Anchor' if result >= anchor_pct else 'Not Anchor'
+        #     else:
+        #         numerator_result = 0
+        #         denominator_result = 0
+        #         final_result = 'Not Anchor'
+        #
+        #     # wait on logic for result
+        #     result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+        #                    'numerator_id': numerator_id, 'numerator_result': numerator_result,
+        #                    'denominator_id': denominator_type, 'denominator_result': denominator_result,
+        #                    'result': final_result}
+        #     result_dict_list.append(result_dict)
+        return result_dict_list
+
+    def _logic_for_bay_postion(self, df, return_holder, numerator_type, denominator_type, anchor_pct):
         result_dict_list = []
+        key_dict = {'Left Anchor': 8, 'Right Anchor': 9, 'Not Anchor': 10}
         for unqiue_denominator_id in set(df[denominator_type]):
-            denominator_filtered_df = self._filter_df(df, {denominator_type: unqiue_denominator_id})
-            denomi_df_grouped_facings = self._df_groupby_logic(denominator_filtered_df, ['scene_fk', numerator_type],
-                                                               {'facings': 'sum'})
-            relevant_scene_with_most_facings = \
-                denomi_df_grouped_facings.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
-            scene_filtered_df = self._filter_df(denominator_filtered_df, {'scene_fk': relevant_scene_with_most_facings})
-            count_of_bays_in_scene = scene_filtered_df.bay_number.max()
+            denominator_filtered_df = self._filter_df(df,
+                                                      {denominator_type: unqiue_denominator_id})
+            for unique_numerator_id in set(denominator_filtered_df[numerator_type]):
+                filtered_numerator_df = self._filter_df(df, {numerator_type: unique_numerator_id})
+                relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg( ['max', 'idxmax']).loc['idxmax']['facings']
+                scene_filtered_df = self._filter_df(filtered_numerator_df, {'scene_fk':relevant_scene})
+                # count_of_bays_in_scene = self.match_product_in_scene[self.match_product_in_scene.scene_fk == relevant_scene].bay_number.max()
+                count_of_bays_in_scene = scene_filtered_df[scene_filtered_df.scene_fk == relevant_scene].bay_number.max()
+                bay_number = self._get_bay_number_for_bay_positon(numerator_type,count_of_bays_in_scene, scene_filtered_df)
+                numerator_result, denominator_result, final_result = self._get_result_for_bay_postion(df, numerator_type,
+                                                                                                      anchor_pct,
+                                                                                                      scene_filtered_df,
+                                                                                                      relevant_scene,
+                                                                                                      count_of_bays_in_scene,
+                                                                                                      bay_number)
+                if not isinstance(unique_numerator_id, int):
+                    unique_numerator_id = self._get_id_from_custom_entity_table(numerator_type, unique_numerator_id)
+                final_result = key_dict.get(final_result)
+                result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+                               'numerator_id': unique_numerator_id, 'numerator_result': numerator_result,
+                               'denominator_id': denominator_type, 'denominator_result': denominator_result,
+                               'result': final_result}
+                result_dict_list.append(result_dict)
+        return result_dict_list
 
-            ## logic for calculating bay number##
-            bay_df = self._df_groupby_logic(scene_filtered_df, ['bay_number'], {'facings': 'sum'})
-            relevant_bay_df = self._filter_df(bay_df, {'facings': bay_df.facings.max()})
 
-            if len(relevant_bay_df) > 1:
-                relevant_bay_number_container = relevant_bay_df.index
-                bay_number = apply_tie_breaker_logic_for_bay_position(relevant_bay_number_container,
-                                                                      count_of_bays_in_scene)
 
-                def apply_tie_breaker_logic_for_bay_position(bay_number_container, count_of_bays_in_scene):
-                    bay_number_df = pd.DataFrame()
-                    bay_number_df['bay_number'] = bay_number_container
-                    bay_number_df['bay_number_score'] = [np.square((num - ((count_of_bays_in_scene + 1) / 2))) for num
-                                                         in bay_number_container]
-                    final_bay_number_df = bay_number_df[
-                        bay_number_df.bay_number_score == bay_number_df.bay_number_score.max()]
-                    # if there is a tie with the max score between bay, we get the smallest bay #, else the bay number with the highest score
-                    return_bay_number = final_bay_number_df.bay_number.min()
-                    return return_bay_number
-            else:
-                bay_number = relevant_bay_df.index[0]
+            # denomi_df_grouped_facings = self._df_groupby_logic(denominator_filtered_df, ['scene_fk', numerator_type],
+            #                                                    {'facings': 'count'})
+            #
+            # relevant_scene_with_most_facings = \
+            #     denomi_df_grouped_facings.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
 
-            ## logic for calculating bay number##
+            # scene_filtered_df = self._filter_df(denominator_filtered_df, {'scene_fk': relevant_scene_with_most_facings})
+            # count_of_bays_in_scene = scene_filtered_df.bay_number.max()
+            #
+            # bay_number, numerator_id = self._get_bay_number_for_bay_positon(numerator_type,
+            #                                                                 count_of_bays_in_scene, scene_filtered_df)
+            #
+            # numerator_result, denominator_result, final_result = self._get_result_for_bay_postion(df, numerator_type,
+            #                                                                                       anchor_pct,
+            #                                                                                       scene_filtered_df,
+            #                                                                                       relevant_scene_with_most_facings,
+            #                                                                                       count_of_bays_in_scene,
+            #                                                                                       bay_number)
+            # final_result = key_dict.get(final_result)
+            #
+            # result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+            #                'numerator_id': numerator_id, 'numerator_result': numerator_result,
+            #                'denominator_id': denominator_type, 'denominator_result': denominator_result,
+            #                'result': final_result}
+            # result_dict_list.append(result_dict)
 
-            #####logic for calculating bay result #######
-            if bay_number != 1 or bay_number == count_of_bays_in_scene:
-                result = 'Not Anchor'
-            else:
-                bay_number_df = self._filter_df(scene_filtered_df, {'bay_number': bay_number})
+    def _get_bay_number_for_bay_positon(self, numerator_type, count_of_bays_in_scene, scene_filtered_df):
+        bay_df = self._df_groupby_logic(scene_filtered_df, ['bay_number', numerator_type], {'facings': 'count'})
+        relevant_bay_df = self._filter_df(bay_df, {'facings': bay_df.facings.max()}).reset_index()
 
-            # wait on logic for result
-            a = 1
+        if len(relevant_bay_df) > 1:
+            relevant_bay_number_container = relevant_bay_df.bay_number
+            bay_number = self.apply_tie_breaker_logic_for_bay_position(relevant_bay_number_container,
+                                                                       count_of_bays_in_scene)
+            # numerator_id = relevant_bay_df[relevant_bay_df.bay_number == bay_number][numerator_type].values[0]
+        else:
+            bay_number = relevant_bay_df.bay_number.values[0]
+            # numerator_id = relevant_bay_df[relevant_bay_df.bay_number == bay_number][numerator_type].values[0]
+        return bay_number
+
+    def _get_result_for_bay_postion(self, df, numerator_type, anchor_pct, scene_filtered_df,
+                                    relevant_scene_with_most_facings, count_of_bays_in_scene, bay_number):
+        if bay_number == 1:
+            bay_filtered_df = self._filter_df(scene_filtered_df, {'bay_number': bay_number})
+            bay_filtered_df_with_null = self._filter_df(df, {'scene_fk': relevant_scene_with_most_facings,
+                                                             'bay_number': bay_number})
+            numerator_result = bay_filtered_df.drop_duplicates([numerator_type])[Consts.FINAL_FACINGS].sum()
+            denominator_result = bay_filtered_df_with_null.drop_duplicates([numerator_type])[Consts.FINAL_FACINGS].sum()
+            result = float(numerator_result) / denominator_result
+            final_result = 'Left Anchor' if result >= anchor_pct else 'Not Anchor'
+        elif bay_number == count_of_bays_in_scene:
+            bay_filtered_df = self._filter_df(scene_filtered_df, {'bay_number': bay_number})
+            bay_filtered_df_with_null = self._filter_df(df, {'scene_fk': relevant_scene_with_most_facings,
+                                                             'bay_number': bay_number})
+            numerator_result = bay_filtered_df.drop_duplicates([numerator_type])[Consts.FINAL_FACINGS].sum()
+            denominator_result = bay_filtered_df_with_null.drop_duplicates([numerator_type])[Consts.FINAL_FACINGS].sum()
+            result = float(numerator_result) / denominator_result
+            final_result = 'Right Anchor' if result >= anchor_pct else 'Not Anchor'
+        else:
+            numerator_result = 0
+            denominator_result = 0
+            final_result = 'Not Anchor'
+        return numerator_result, denominator_result, final_result
+
+    @staticmethod
+    def apply_tie_breaker_logic_for_bay_position(bay_number_container, count_of_bays_in_scene):
+        bay_number_df = pd.DataFrame()
+        bay_number_df['bay_number'] = bay_number_container
+        bay_number_df['bay_number_score'] = [np.square((num - ((count_of_bays_in_scene + 1) / 2))) for num
+                                             in bay_number_container]
+        final_bay_number_df = bay_number_df[
+            bay_number_df.bay_number_score == bay_number_df.bay_number_score.max()]
+        # if there is a tie with the max score between bay, we get the smallest bay #, else the bay number with the highest score
+        return_bay_number = final_bay_number_df.bay_number.min()
+        return return_bay_number
 
     def calculate_distribution(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
@@ -194,49 +431,72 @@ class ToolBox(GlobalSessionToolBox):
         So the intersection of the row where column A matches [shelves] and the column where row 3 matches [shelf#] holds the [KPI Result] value"
         '''
         result_dict_list = []
-        key_dict = {'Bottom': 2, 'Middle': 3, 'Eye': 4, 'Top': 5}
+        key_dict = {'Bottom': 4, 'Middle': 5, 'Eye': 6, 'Top': 7}
 
         for unique_denominator_fk in set(df[denominator_type]):
             unique_template_scif_mpis = self._filter_df(df, {denominator_type: unique_denominator_fk})
-            df_with_max_facings_by_scene = self._df_groupby_logic(unique_template_scif_mpis,
-                                                                  ['scene_fk', numerator_type],
-                                                                  {'facings': 'count'})
-
-            relevant_scene_with_most_numerator_facings = \
-                df_with_max_facings_by_scene.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
-
-            relevant_scif_mpis_scene_with_most_facings = self._filter_df(unique_template_scif_mpis, {
-                'scene_fk': relevant_scene_with_most_numerator_facings})
-
-            df_with_max_facings_by_bay = self._df_groupby_logic(relevant_scif_mpis_scene_with_most_facings,
-                                                                ['bay_number', numerator_type], {'facings': 'count'})
-            relevant_bay_with_most_numerator_facings = \
-                df_with_max_facings_by_bay.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
-            final_df = self._filter_df(relevant_scif_mpis_scene_with_most_facings,
-                                       {'bay_number': relevant_bay_with_most_numerator_facings})
-            container_with_shelf_number = self._df_groupby_logic(final_df, ['shelf_number_from_bottom', numerator_type],
-                                                                 {'facings': 'count'})
-            max_shelf = final_df.shelf_number_from_bottom.max()
-            shelf_number = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
-                0]  # shelf with the mose number of facings
-
-            try:
-                result = self.shelf_number.loc[max_shelf, shelf_number]
-                result_by_id = key_dict.get(result)
-            except:
-                continue
-
-            numerator_id = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
-                1]  # numerator_id with most facings in the bay
-            if not isinstance(numerator_id, int):
-                numerator_id = self._get_id_from_custom_entity_table(numerator_type, numerator_id)
-            result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-                           'numerator_id': numerator_id,
-                           'numerator_result': shelf_number,
-                           'denominator_id': unique_denominator_fk, 'denominator_result': max_shelf,
-                           'result': result_by_id}
-            result_dict_list.append(result_dict)
+            for unique_numerator_id in set(unique_template_scif_mpis[numerator_type]):
+                filtered_numerator_df = self._filter_df(df, {numerator_type: unique_numerator_id})
+                relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg(['max', 'idxmax']).loc['idxmax']['facings']
+                scene_filtered_df = self._filter_df(filtered_numerator_df, {'scene_fk':relevant_scene})
+                relevant_bay_df = self._df_groupby_logic(scene_filtered_df, ['bay_number','shelf_number_from_bottom'], {'facings': 'count'}).agg(
+                    ['max', 'idxmax']).loc['idxmax']['facings']
+                relevant_bay = relevant_bay_df[0]
+                relevant_shelf = relevant_bay_df[1]
+                max_shelf_number_from_bottom = scene_filtered_df.shelf_number_from_bottom.max()
+                try:
+                    result = self.shelf_number.loc[max_shelf_number_from_bottom, relevant_shelf]
+                    result_by_id = key_dict.get(result)
+                except:
+                    continue
+                if not isinstance(unique_numerator_id, int):
+                    unique_numerator_id = self._get_id_from_custom_entity_table(numerator_type, unique_numerator_id)
+                result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+                               'numerator_id': unique_numerator_id,
+                               'numerator_result': relevant_shelf,
+                               'denominator_id': unique_denominator_fk, 'denominator_result': max_shelf_number_from_bottom,
+                               'result': result_by_id}
+                result_dict_list.append(result_dict)
         return result_dict_list
+
+            # df_with_max_facings_by_scene = self._df_groupby_logic(unique_template_scif_mpis,
+            #                                                       ['scene_fk', numerator_type],
+            #                                                       {'facings': 'count'})
+            #
+            # relevant_scene_with_most_numerator_facings = \
+            #     df_with_max_facings_by_scene.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
+            #
+            # relevant_scif_mpis_scene_with_most_facings = self._filter_df(unique_template_scif_mpis, {
+            #     'scene_fk': relevant_scene_with_most_numerator_facings})
+            #
+            # df_with_max_facings_by_bay = self._df_groupby_logic(relevant_scif_mpis_scene_with_most_facings,
+            #                                                     ['bay_number', numerator_type], {'facings': 'count'})
+            # relevant_bay_with_most_numerator_facings = \
+            #     df_with_max_facings_by_bay.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
+            # final_df = self._filter_df(relevant_scif_mpis_scene_with_most_facings,
+            #                            {'bay_number': relevant_bay_with_most_numerator_facings})
+            # container_with_shelf_number = self._df_groupby_logic(final_df, ['shelf_number_from_bottom', numerator_type],
+            #                                                      {'facings': 'count'})
+            # max_shelf = final_df.shelf_number_from_bottom.max()
+            # shelf_number = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
+            #     0]  # shelf with the mose number of facings
+            #
+            # try:
+            #     result = self.shelf_number.loc[max_shelf, shelf_number]
+            #     result_by_id = key_dict.get(result)
+            # except:
+            #     continue
+            #
+            # numerator_id = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
+            #     1]  # numerator_id with most facings in the bay
+            # if not isinstance(numerator_id, int):
+            #     numerator_id = self._get_id_from_custom_entity_table(numerator_type, numerator_id)
+            # result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+            #                'numerator_id': numerator_id,
+            #                'numerator_result': shelf_number,
+            #                'denominator_id': unique_denominator_fk, 'denominator_result': max_shelf,
+            #                'result': result_by_id}
+            # result_dict_list.append(result_dict)
 
     def calculate_scene_location(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
@@ -330,10 +590,9 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_share_of_scenes(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
-        facings_threshold = row['Config Params: JSON'].get('facings_threshold')[0]
+        facings_threshold = int(row['Config Params: JSON'].get('facings_threshold')[0])
         numerator_type, denominator_type, context_type = self._get_numerator_and_denominator_type(
             row['Config Params: JSON'], context_relevant=True)
-
         result_dict_list = self.logic_of_sos(return_holder, df, numerator_type, denominator_type,
                                              context_type, facings_threshold)
         return result_dict_list
@@ -355,8 +614,8 @@ class ToolBox(GlobalSessionToolBox):
                     for unique_numerator_fk in set(scene_unique_scif[numerator_type]):
                         manufacturer_unique_scif = scene_unique_scif[
                             scene_unique_scif[numerator_type].isin([unique_numerator_fk])]
-                        if manufacturer_unique_scif.drop_duplicates(subset=['product_fk']).facings.sum() >= int(
-                                facings_threshold):
+                        if manufacturer_unique_scif.drop_duplicates(subset=['product_fk'])[
+                            Consts.FINAL_FACINGS].sum() >= facings_threshold:
                             numerator_result = numerator_result + 1
                             denominator_result = denominator_result + 1
                 if denominator_result != 0:
@@ -404,6 +663,11 @@ class ToolBox(GlobalSessionToolBox):
         for each_JSON in filter_JSON:
             final_JSON = {'population': each_JSON} if ('include' or 'exclude') in each_JSON else each_JSON
             filtered_scif_mpis = ParseInputKPI.filter_df(final_JSON, filtered_scif_mpis)
+        if 'include_stacking' in row['Config Params: JSON'].keys():
+            including_stacking = row['Config Params: JSON']['include_stacking'][0]
+            filtered_scif_mpis[
+                Consts.FINAL_FACINGS] = filtered_scif_mpis.facings if including_stacking == 'True' else filtered_scif_mpis.facings_ign_stack
+            filtered_scif_mpis = filtered_scif_mpis[filtered_scif_mpis.stacking_layer == 1]
         return filtered_scif_mpis
 
     def apply_json_parser(self, row):
@@ -529,8 +793,8 @@ class ToolBox(GlobalSessionToolBox):
         :return: returns dataframe with groupby logic applied
         '''
 
-        if isinstance(grouby_columns, str):
-            grouby_columns = list(grouby_columns)
+        if not isinstance(grouby_columns, list):
+            grouby_columns = [grouby_columns]
 
         final_df = df.groupby(grouby_columns).agg(aggregation_dict)
         return final_df
