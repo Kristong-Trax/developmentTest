@@ -38,13 +38,12 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('%(project)s calculations')
+    LoggerInitializer.init('mondelezusps calculations')
     Config.init()
     project_name = 'mondelezusps'
     data_provider = KEngineDataProvider(project_name)
-    # session_list = {'INSERT_TEST_SESSION': [1, 2, 3, 4],
-    #                 'INSERT_TEST_SESSION2': []}  # leave empty for all scenes
-    session_list = ['a5216695-4828-48e2-971b-29cd2af42189']
+    session_list = {'a5216695-4828-48e2-971b-29cd2af42189': []}  # leave empty for all scenes
+    # session_list = ['a5216695-4828-48e2-971b-29cd2af42189']
     for session in session_list:
         scenes = session_list[session]
         if len(scenes) == 0:
