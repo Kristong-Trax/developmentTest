@@ -35,7 +35,7 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
             category_df = own_manufacturer_matches[own_manufacturer_matches['category'] == category]
             category_linear_length = category_df['width_mm_advance'].sum()
             # strauss are looking at sub_brand as brand in this KPI
-            brands_mix = set(category_df['category_fk'])
+            brands_mix = set(category_df['brand_mix_fk'])
             for brand_mix_fk in brands_mix:
                 brand_mix_df = category_df[category_df['brand_mix_fk'] == brand_mix_fk]
                 brand_mix_linear_length = brand_mix_df['width_mm_advance'].sum()
