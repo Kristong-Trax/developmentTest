@@ -37,7 +37,7 @@ class CalculateKpi(LiveSessionBaseClass):
         """
         Main function of live project
         """
-        kpi_types = [Consts.GDPA_KPI_TYPE]
+        kpi_types = [Consts.GDPA_KPI_TYPE, 'GMPA']
         assortment_results = self.assortment.main_assortment_calculation(kpi_types)
         assortment_results = pd.DataFrame(assortment_results)
         self.common.write_to_db_results(assortment_results)
