@@ -1328,10 +1328,35 @@ class CCRUKPIToolBox:
 
         return set_total_res
 
-    def calculate_share_of_cch(self, p, scenes, sos=True, no_fc_packs=False):
+    def calculate_share_of_cch(self, p, scenes, sos=True, no_fc_packs=False, all_params=None):
         sum_of_passed_doors = 0
         sum_of_passed_scenes = 0
         sum_of_all_doors = 0
+
+        if not scenes:
+            if p.get('depends on') and all_params:
+                depends_on_kpi_name = p.get('depends on')
+                for c in all_params.values()[0]:
+                    if c.get('KPI name Eng') == depends_on_kpi_name:
+                        if c.get('KPI name Eng') == depends_on_kpi_name:
+                            if c.get('Formula').strip() == 'number of doors with more than Target facings':
+                                scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                    c, 'get scenes')
+                            elif c.get('Formula').strip() == 'number of coolers with facings target and fullness target':
+                                scenes = self.calculate_number_of_doors_more_than_target_facings(
+                                    c, 'get scenes')
+                                scenes = self.calculate_number_of_doors_of_filled_coolers(c, scenes,
+                                                                                          func='get scenes',
+                                                                                          proportion_param=0.9)
+                            else:
+                                scenes = []
+                            break
+
+                if not scenes:
+                    return 0
+            else:
+                scenes = self.get_relevant_scenes(p)
+
         for scene in scenes:
             products_of_tccc = self.scif[(self.scif['scene_id'] == scene) &
                                          (self.scif['manufacturer_name'] == 'TCCC') &
@@ -2266,6 +2291,8 @@ class CCRUKPIToolBox:
                             break
                     if doors < 2:
                         return -1
+            else:
+                scenes = self.get_relevant_scenes(params)
         children = self.children_to_int_list(params.get("Children"))
         total_res = 0
         for c in all_params.values()[0]:
@@ -2327,6 +2354,8 @@ class CCRUKPIToolBox:
                                                                                       func='get scenes',
                                                                                       proportion_param=0.9)
                         break
+            # else:
+            #     scenes = self.get_relevant_scenes(p)
             kpi_fk = self.kpi_fetcher.get_kpi_fk(p.get('KPI name Eng'))
             children = self.children_to_int_list(p.get("Children"))
             kpi_total = 0
@@ -2336,14 +2365,12 @@ class CCRUKPIToolBox:
                     atomic_res = -1
                     atomic_score = -1
                     if c.get("Formula").strip() in ("number of facings", "number of SKUs"):
-                        atomic_res = self.calculate_availability(
-                            c, scenes=scenes, all_params=params)
+                        atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
                     elif c.get("Formula").strip() == "each SKU hits facings target":
                         atomic_res = self.calculate_availability(c, scenes=scenes, all_params=params)
                         atomic_score = 100 if atomic_res == 100 else 0
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed":
-                        atomic_res = self.calculate_sub_atomic_passed(
-                            c, params, parent=p, scenes=scenes)
+                        atomic_res = self.calculate_sub_atomic_passed(c, params, parent=p, scenes=scenes)
                     elif c.get("Formula").strip() == "number of sub atomic KPI Passed on the same scene":
                         atomic_res = self.calculate_sub_atomic_passed_on_the_same_scene(
                             c, params, parent=p, scenes=scenes)
@@ -2357,10 +2384,14 @@ class CCRUKPIToolBox:
                                                       'number of SKU per Door RANGE TOTAL'):
                         atomic_score = self.check_number_of_skus_per_door_range(params, level=3)
                         atomic_res = atomic_score
-                    elif c.get("Formula").strip() in ('number of pure Coolers',
-                                                      'Share of CCH doors which have 98% TCCC facings',
-                                                      'Share of CCH doors which have 98% TCCC facings and no FC packs'):
-                        atomic_score = self.check_number_of_skus_per_door_range(params, level=3)
+                    elif c.get('Formula').strip() == 'number of pure Coolers':
+                        atomic_score = self.calculate_share_of_cch(c, scenes, sos=False, all_params=params)
+                        atomic_res = atomic_score
+                    elif c.get('Formula').strip() == 'Share of CCH doors which have 98% TCCC facings':
+                        atomic_score = self.calculate_share_of_cch(c, scenes, all_params=params)
+                        atomic_res = atomic_score
+                    elif c.get('Formula').strip() == 'Share of CCH doors which have 98% TCCC facings and no FC packs':
+                        atomic_score = self.calculate_share_of_cch(c, scenes, no_fc_packs=True, all_params=params)
                         atomic_res = atomic_score
                     elif c.get("Formula").strip() == "DUMMY":
                         atomic_res = 0

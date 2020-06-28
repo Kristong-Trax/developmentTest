@@ -90,9 +90,9 @@ class AltriaGraphBuilder(object):
         self._calculate_widths_of_flip_signs()
 
         # create component graph (split graph into separate components by removing horizontal connections
-        non_horizontal_edges = self._filter_horizontal_edges_between_blocks(self.condensed_adj_graph)
-        if non_horizontal_edges:
-            self.adj_component_graph = self.condensed_adj_graph.edge_subgraph(non_horizontal_edges)
+        horizontal_edges = self._filter_horizontal_edges_between_blocks(self.condensed_adj_graph)
+        if horizontal_edges:
+            self.adj_component_graph = self._remove_edges_from_graph(horizontal_edges, self.condensed_adj_graph)
         else:
             self.adj_component_graph = self.condensed_adj_graph.copy()
         self._assign_fixture_and_block_numbers_to_product_clusters()
@@ -227,14 +227,20 @@ class AltriaGraphBuilder(object):
                                                   node_data['category'].value != 'POS'])
         for node1, node2, edge_data in sub_graph.edges(data=True):
             if -50.0 < edge_data['degree'] < 50.0:
-                edges_to_remove.extend([(node1, node2), (node2, node1)])
+                edges_to_remove.extend([(node1, node2)])
             elif 130.0 < edge_data['degree'] < 185.0:
-                edges_to_remove.extend([(node1, node2), (node2, node1)])
+                edges_to_remove.extend([(node1, node2)])
             elif -185.0 < edge_data['degree'] < -130.0:
-                edges_to_remove.extend([(node1, node2), (node2, node1)])
+                edges_to_remove.extend([(node1, node2)])
 
-        edges_to_keep = [edge for edge in condensed_adj_graph.edges() if edge not in edges_to_remove]
-        return edges_to_keep
+        return edges_to_remove
+
+    @staticmethod
+    def _remove_edges_from_graph(edges_to_remove, graph):
+        graph = graph.copy()
+        for edge in edges_to_remove:
+            graph.remove_edge(*edge)
+        return graph
 
     def _calculate_widths_of_flip_signs(self):
         additional_skus_to_add = 1

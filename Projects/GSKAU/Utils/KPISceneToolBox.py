@@ -6,8 +6,8 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Projects.GSKAU.Utils.KPISceneLayoutComplianceCalculations import SceneLayoutComplianceCalc
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-
 from Trax.Utils.Logging.Logger import Log
+import os
 
 __author__ = 'nidhinb'
 # The KPIs
@@ -77,6 +77,10 @@ class GSKAUSceneToolBox:
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.targets = self.load_external_targets()
         self.match_display_in_scene = self.data_provider.match_display_in_scene
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                          'gsk_set_up.xlsx'), sheet_name='Functional KPIs',
+                                             keep_default_na=False)
+
 
     def load_external_targets(self):
         targets = self.ps_data_provider.get_kpi_external_targets(
@@ -84,7 +88,7 @@ class GSKAUSceneToolBox:
                                  'Brand_Position',
                                  'Brand_Sequence',
                                  'Super_Brand_Block',
-                                 'Super_Brand_SOS'
+                                 'Super_Brand_SOS',
                                  'Secondary_Display'  # For DISPLAY_KPI
                                  ],
             key_fields=["template_fks", "super_brand_pk", "store_banner_pk", "sub_category_fk",

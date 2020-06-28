@@ -275,7 +275,7 @@ class KPITemplateValidater:
                         column=column_name,
                         value=row[column_name])
                     )
-                result = False
+                    result = False
 
         group_by_obj = self.template.groupby("report_label")
         for key, subset_df in group_by_obj:
@@ -300,6 +300,8 @@ class KPITemplateValidater:
             else:
                 pass
 
+        if result:
+            Log.info("start_date end_date checks completed")
         return result
 
     def validate(self):
@@ -323,9 +325,9 @@ class KPITemplateValidater:
 
 
 if __name__ == "__main__":
-    LoggerInitializer.init("LionJP")
+    LoggerInitializer.init("KEngine")
     Config.init()
-    project_name = "psapac-sand2"
+    project_name = "lionjp"
     a = KPITemplateValidater(project_name)
     if a.validate():
         Log.info("Template Validation check - Completed")

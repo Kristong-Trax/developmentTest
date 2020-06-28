@@ -16,8 +16,9 @@ KPI_RESULT = 'report.kpi_results'
 KPK_RESULT = 'report.kpk_results'
 KPS_RESULT = 'report.kps_results'
 
+TEMPLATE_NAME = 'CCUS_Templatev8_June052020.xlsx'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                         'Data', 'Template.xlsx')
+                                         'Data', TEMPLATE_NAME)
 
 
 def log_runtime(description, log_start=False):

@@ -3,7 +3,8 @@ import pandas as pd
 
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
-
+from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts
+from collections import defaultdict
 __author__ = 'nidhinb'
 
 # The KPIs for Layout Compliance
@@ -27,6 +28,29 @@ class SceneLayoutComplianceCalc(object):
         self.custom_entity_data = self.get_relevant_custom_entity_data()
         self.match_product_data = self.match_product_in_scene.merge(self.products, on='product_fk', how='left')
         self.block = Block(self.data_provider, self.output)
+
+    def parse_include_config_from_setup(self, kpi_details):
+        include_empty = False
+        include_other = False
+        relev_setup_templtate = self.set_up_template[
+            self.set_up_template['KPI Type'] == kpi_details.iloc[0][KPI_TYPE_COL]
+            ]
+        if not relev_setup_templtate.empty:
+            Log.info("Missing KPI Config in setup template: "
+                     "KPI {kpi} for session: {sess} and scene: {scene}".format(
+                kpi=kpi_details.iloc[0][KPI_TYPE_COL],
+                sess=self.session_uid,
+                scene=self.current_scene_fk,
+            ))
+            empty_value = relev_setup_templtate['Include Empty'].iloc[0]
+            if not pd.isnull(empty_value) and empty_value.lower().strip() == "include":
+                include_empty = True
+
+            others_value = relev_setup_templtate["Include Others"].iloc[0]
+            if not pd.isnull(others_value) and others_value.lower().strip() == "include":
+                include_other = True
+
+        return include_empty, include_other
 
     def ensure_as_list(self, template_fks):
         if isinstance(template_fks, list):
@@ -128,6 +152,7 @@ class SceneLayoutComplianceCalc(object):
             sess=self.session_uid,
             scene=self.current_scene_fk,
         ))
+        include_empty, include_other = self.parse_include_config_from_setup(kpi_details)
         block_targets = self.targets[
             self.targets['kpi_fk'] == kpi_details['pk'].iloc[0]]
         # if no targets return
@@ -172,18 +197,28 @@ class SceneLayoutComplianceCalc(object):
                         ))
                     stacking_include = bool(int(each_target.stacking_include))
                     # able to pass sub cat and super brand[?] // or get the prods and pass
-                    block_filters = {'sub_category_fk': [float(sub_category_pk)],
-                                     'Super Brand': [super_brand_custom_entity.name.iloc[0]]
-                                     }
+                    population_filters = {
+                        'sub_category_fk': [float(sub_category_pk)],
+                        'Super Brand': [super_brand_custom_entity.name.iloc[0]]
+                    }
+
+                    allowed_products = defaultdict(list)
+                    if include_empty:
+                        allowed_products['product_type'].append('Empty')
+                    if include_other:
+                        allowed_products['product_type'].append("Other")
+                    allowed_products = dict(allowed_products)
+
                     location_filters = {'scene_fk': [self.current_scene_fk]}
                     additional_filters = {
                         'minimum_facing_for_block': 1,
                         'minimum_block_ratio': 0,
                         'include_stacking': stacking_include,
                         'check_vertical_horizontal': True,
+                        'allowed_products_filters': allowed_products
                     }
                     block_res = self.block.network_x_block_together(
-                        block_filters, location_filters, additional_filters
+                        population_filters, location_filters, additional_filters
                     )
                     block_res.dropna(subset=['total_facings'], inplace=True)
                     block_res = block_res.query('is_block==True')
@@ -310,7 +345,9 @@ class SceneLayoutComplianceCalc(object):
                              format(br=brand_pk_to_check,
                                     seq=sequence_brand_pks))
                     min_shelf_of_brand = stack_filtered_mpis[
-                        stack_filtered_mpis['brand_fk'] == brand_pk_to_check]['shelf_number'].min()
+                        (stack_filtered_mpis['brand_fk'] == brand_pk_to_check) &
+                        (stack_filtered_mpis['sub_category_fk'] == sub_category_pk)
+                        ]['shelf_number'].min()
                     idx_brand_start_check = sequence_brand_pks.index(brand_pk_to_check) - 1
                     while idx_brand_start_check >= 0:
                         predecessor_brand_to_check = sequence_brand_pks[idx_brand_start_check]

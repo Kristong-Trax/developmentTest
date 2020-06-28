@@ -2,7 +2,7 @@
 from Trax.Utils.Logging.Logger import Log
 
 from Projects.DIAGEOUS_SAND2.Utils.menu_count.MenuUtil import MenuToolBox
-from Projects.DIAGEOUS_SAND2.Utils.CaseCountUtil import CaseCountCalculator
+from Projects.DIAGEOUS_SAND2.Utils.case_count.CaseCountSKUUtil import CaseCountCalculator
 
 from Projects.DIAGEOUS_SAND2.Utils.KPIToolBox import ToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime

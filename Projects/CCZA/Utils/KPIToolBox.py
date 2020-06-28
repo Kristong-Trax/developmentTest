@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from Trax.Algo.Calculations.Core.Utils import ToolBox
+# from Trax.Algo.Calculations.Core.Utils import ToolBox
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
@@ -18,6 +18,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
+from Projects.CCZA_SAND.Utils.FlowToolBox import FlowTools as ToolBox
 
 __author__ = 'Elyashiv'
 
@@ -497,9 +498,13 @@ class CCZAToolBox:
         progression_list = map(lambda x: x.strip(), atomic_params[Const.ENTITY_VAL].split(','))
         location_entity_type = Converters.convert_type(atomic_params[Const.TYPE_FILTER])
         location_values = map(lambda x: x.strip(), atomic_params[Const.VALUE_FILTER].split(','))
+        is_in_param = False if atomic_params[Const.IN_NOT_IN] == u'Not in' else True
+        filter_loc_param = self.scif[location_entity_type].isin(location_values) if is_in_param else \
+            ~self.scif[location_entity_type].isin(location_values)
 
         filtered_scif = self.scif[
-            (~self.scif[location_entity_type].isin(location_values)) &
+            # (~self.scif[location_entity_type].isin(location_values)) &
+            filter_loc_param &
             (self.scif['tagged'] >= 1) &
             (self.scif[population_entity_type].isin(progression_list))]
 
@@ -509,14 +514,14 @@ class CCZAToolBox:
         progression_field = 'brand_name'
         group_column = 'scene_fk'
 
-        progression_cross_shelves_true = self.tool_box_for_flow.progression(
+        progression_cross_shelves_true = (self.tool_box_for_flow.progression(
             df=match_product_join_scif, progression_list=progression_list, progression_field=progression_field,
-            at_least_one=False, left_to_right=True, cross_bays=True, cross_shelves=True,
-            include_stacking=False, group_by=group_column)
-        progression_cross_shelves_false = self.tool_box_for_flow.progression(
+            at_least_one=False, left_to_right=False, cross_bays=True, cross_shelves=True,
+            include_stacking=False, group_by=group_column))
+        progression_cross_shelves_false = (self.tool_box_for_flow.progression(
             df=match_product_join_scif, progression_list=progression_list, progression_field=progression_field,
-            at_least_one=False, left_to_right=True, cross_bays=True, cross_shelves=False,
-            include_stacking=False, group_by=group_column)
+            at_least_one=False, left_to_right=False, cross_bays=True, cross_shelves=False,
+            include_stacking=False, group_by=group_column))
 
         return 100.0 * (progression_cross_shelves_true or
                         progression_cross_shelves_false)

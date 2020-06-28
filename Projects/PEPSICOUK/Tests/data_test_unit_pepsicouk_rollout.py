@@ -96,6 +96,8 @@ class DataTestUnitPEPSICOUK(object):
     store_data = pd.DataFrame.from_records([{
         'store_type': 'CORE', 'additional_attribute_1': 'OT', 'additional_attribute_2': 'SAINSBURY',
         'additional_attribute_3': ''}])
+    store_area_map_neutral =  pd.DataFrame(columns=['scene_fk', 'store_area', 'store_area_fk'])
+    store_area_map_scene_1 = pd.DataFrame.from_records([{'scene_fk': 1, 'store_area': 'FTG', 'store_area_fk': 1}])
 
     external_targets = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data',
                                     'external_targets.xlsx')
@@ -106,6 +108,8 @@ class DataTestUnitPEPSICOUK(object):
 
     test_case_1 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_1.xlsx')
     test_case_2 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_2_empty_scene.xlsx')
+    test_case_rollout = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_rollout.xlsx')
+    test_case_secondary = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'test_case_secondary.xlsx')
 
     on_display_products = pd.DataFrame.from_records([{'probe_match_fk': 1, 'smart_attribute': 'stock'},
                                                      {'probe_match_fk': 2, 'smart_attribute': 'additional display'},

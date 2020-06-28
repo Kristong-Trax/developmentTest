@@ -4,7 +4,7 @@ from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScrip
 
 import os
 import datetime as dt
-from KPIUtils.GlobalProjects.SANOFI_3.KPIGenerator import SANOFIGenerator
+from KPIUtils.GlobalProjects.SANOFI.KPIGenerator import SANOFIGenerator
 
 
 __author__ = 'Shani'
