@@ -68,6 +68,7 @@ class HEINZCRToolBox:
         self.targets = self.ps_data_provider.get_kpi_external_targets()
         self.store_assortment = PSAssortmentDataProvider(
             self.data_provider).execute(policy_name=None)
+        self.supervisor_target = self.get_supervisor_target()
         try:
             self.sub_category_assortment = pd.merge(self.store_assortment,
                                                     self.all_products.loc[:, ['product_fk', 'sub_category',
@@ -680,15 +681,23 @@ class HEINZCRToolBox:
         try:
             supervisor = self.store_info['additional_attribute_3'][0]
             store_target = -1
-            for row in self.store_sos_policies.itertuples():
-                policies = json.loads(row.store_policy)
-                for key, value in policies.items():
-                    try:
-                        if key == 'additional_attribute_3' and value[0] == supervisor:
-                            store_target = row.target
-                            break
-                    except KeyError:
-                        continue
+            # for row in self.store_sos_policies.itertuples():
+            #     policies = json.loads(row.store_policy)
+            #     for key, value in policies.items():
+            #         try:
+            #             if key == 'additional_attribute_3' and value[0] == supervisor:
+            #                 store_target = row.target
+            #                 break
+            #         except KeyError:
+            #             continue
+
+            for row in self.supervisor_target.itertuples():
+                try:
+                    if row.supervisor == supervisor:
+                        store_target = row.target
+                        break
+                except:
+                    continue
         except Exception as e:
             Log.error("Supervisor target is not configured for the extra spaces report ")
             raise e
@@ -772,6 +781,10 @@ class HEINZCRToolBox:
     def get_kpi_weight(self, kpi_name):
         weight = self.kpi_weights['Score'][self.kpi_weights['KPIs'] == Const.KPI_WEIGHTS[kpi_name]].iloc[0]
         return weight
+
+    def get_supervisor_target(self):
+        supervisor_target = self.targets[self.targets['kpi_type'] == 'Extra Spaces']
+        return supervisor_target
 
     def calculate_sub_category_sum(self, dict_list, sub_cat_fk):
         total_score = 0
