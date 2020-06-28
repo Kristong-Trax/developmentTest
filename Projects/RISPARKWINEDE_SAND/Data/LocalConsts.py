@@ -1,7 +1,7 @@
 
 class Consts(object):
     # df columns lists
-    LVL2_GROUP_HEADERS = ['assortment_group_fk', 'kpi_fk_lvl2', 'category_fk']
+    LVL2_GROUP_HEADERS = ['kpi_fk_lvl2', 'category_fk']
     WINE_GROUP_HEADERS = ['kpi_fk_lvl2']
     LVL2_CATEGORY_HEADERS = ['kpi_fk_lvl2', 'category_fk']
     LVL3_SESSION_RESULTS_COL = ['fk', 'numerator_id', 'numerator_result', 'denominator_id',
@@ -37,5 +37,8 @@ class Consts(object):
     FACINGS_STACKING_KPI = 'SKU_Facings_ Exclude_Stacking'
     FACING_EXCLUDE_STACK_KPI = 'SKU_Facings_ Exclude_Stacking'
     OOS = 'OOS'
-    DISTRIBUTION = 'DIST'
+    DISTRIBUTION = 'DISTRIBUTED'# based on kpi_result_value value
 
+    FACINGS_CATEGORIES = ['Sparkling Pure', 'Sparkling Mix']
+    IGNORE_PRODUCT_TYPE = ['Empty', 'Irrelevant', 'Other']
+    SOS_CATEGORY = ['Sparkling Pure', 'Sparkling Mix']

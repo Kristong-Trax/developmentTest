@@ -52,12 +52,11 @@ class ToolBox(GlobalSessionToolBox):
 
     def sos_calculation_secondary(self):
         sos_results = []
-        filtered_categories = ['Sparkling Pure', 'Sparkling Mix']
 
         manu_from_store_fk = self.common.get_kpi_fk_by_kpi_type('SOS OWN MANUFACTURER OUT OF STORE - SECONDARY SHELF')
         manu_from_store_res = OwnManufacturerSecondaryFacingsSOSInStore(data_provider=self.data_provider,
                                                                         kpi_definition_fk=manu_from_store_fk,
-                                                                        categories_include=filtered_categories).calculate()
+                                                                        categories_include=Consts.SOS_CATEGORY).calculate()
         manu_store_df = self.prepare_table_for_res(manu_from_store_res, False)
         manu_store_df = self.assign_parent_child_identifiers(manu_store_df,
                                                              result_identifier={'val': manu_from_store_fk})
@@ -66,7 +65,7 @@ class ToolBox(GlobalSessionToolBox):
         category_from_store_fk = self.common.get_kpi_fk_by_kpi_type('SOS CATEGORY OUT OF STORE - SECONDARY SHELF')
         category_from_store_res = CategorySecondaryFacingsSOSInStore(data_provider=self.data_provider,
                                                                      kpi_definition_fk=category_from_store_fk,
-                                                                     categories_include=filtered_categories).calculate()
+                                                                     categories_include=Consts.SOS_CATEGORY).calculate()
 
         category_from_store_df = self.prepare_table_for_res(category_from_store_res, True)
 
@@ -78,7 +77,7 @@ class ToolBox(GlobalSessionToolBox):
         manu_from_cat_fk = self.common.get_kpi_fk_by_kpi_type('SOS MANUFACTURER OUT OF CATEGORY - SECONDARY SHELF')
         manu_from_cat_res = ManufacturerSecondaryFacingsSOSPerCategory(data_provider=self.data_provider,
                                                                        kpi_definition_fk=manu_from_cat_fk,
-                                                                       categories_include=filtered_categories).calculate()
+                                                                       categories_include=Consts.SOS_CATEGORY).calculate()
         manu_from_cat_df = self.prepare_table_for_res(manu_from_cat_res, True)
 
         manu_from_cat_df = self.assign_parent_child_identifiers(manu_from_cat_df,
@@ -95,7 +94,7 @@ class ToolBox(GlobalSessionToolBox):
             'SOS BRAND OUT OF MANUFACTURER OUT OF CATEGORY - SECONDARY SHELF')
         brand_out_manu_res = BrandOutManufacturerOutCategorySecondaryFacingsSOS(data_provider=self.data_provider,
                                                                                 kpi_definition_fk=barnd_out_manu_fk,
-                                                                                categories_include=filtered_categories).calculate()
+                                                                                categories_include=Consts.SOS_CATEGORY).calculate()
         brand_out_manu_df = self.prepare_table_for_res(brand_out_manu_res, True)
         brand_out_manu_df = self.assign_parent_child_identifiers(brand_out_manu_df,
                                                                  parent_identifier={'col':
@@ -108,13 +107,12 @@ class ToolBox(GlobalSessionToolBox):
 
     def sos_calculation_primary(self):
         sos_results = []
-        filtered_categories = ['Sparkling Pure', 'Sparkling Mix']
 
         manu_from_store_fk = self.common.get_kpi_fk_by_kpi_type(
             'SOS OWN MANUFACTURER OUT OF STORE - PRIMARY SHELF')
         manu_from_store_res = OwnManufacturerPrimaryFacingsSOSInStore(data_provider=self.data_provider,
                                                                       kpi_definition_fk=manu_from_store_fk,
-                                                                      categories_include=filtered_categories).calculate()
+                                                                      categories_include=Consts.SOS_CATEGORY).calculate()
         manu_store_df = self.prepare_table_for_res(manu_from_store_res, False)
         manu_store_df = self.assign_parent_child_identifiers(manu_store_df,
                                                              result_identifier={'val': manu_from_store_fk})
@@ -123,7 +121,7 @@ class ToolBox(GlobalSessionToolBox):
         category_from_store_fk = self.common.get_kpi_fk_by_kpi_type('SOS CATEGORY OUT OF STORE - PRIMARY SHELF')
         category_from_store_res = CategoryPrimaryFacingsSOSInStore(data_provider=self.data_provider,
                                                                    kpi_definition_fk=category_from_store_fk,
-                                                                   categories_include=filtered_categories).calculate()
+                                                                   categories_include=Consts.SOS_CATEGORY).calculate()
         category_from_store_df = self.prepare_table_for_res(category_from_store_res, True)
         category_from_store_df = self.assign_parent_child_identifiers(category_from_store_df, parent_identifier={
             'val': manu_from_store_fk}, result_identifier={'col': ['numerator_id', 'denominator_id'], 'val':
@@ -133,7 +131,7 @@ class ToolBox(GlobalSessionToolBox):
         manu_from_cat_fk = self.common.get_kpi_fk_by_kpi_type('SOS MANUFACTURER OUT OF CATEGORY - PRIMARY SHELF')
         manu_from_cat_res = ManufacturerPrimaryFacingsSOSPerCategory(data_provider=self.data_provider,
                                                                      kpi_definition_fk=manu_from_cat_fk,
-                                                                     categories_include=filtered_categories).calculate()
+                                                                     categories_include=Consts.SOS_CATEGORY).calculate()
         manu_from_cat_df = self.prepare_table_for_res(manu_from_cat_res, True)
         manu_from_cat_df = self.assign_parent_child_identifiers(manu_from_cat_df,
                                                                 parent_identifier={'col': ['denominator_id',
@@ -148,7 +146,7 @@ class ToolBox(GlobalSessionToolBox):
             'SOS BRAND OUT OF MANUFACTURER OUT OF CATEGORY - PRIMARY SHELF')
         brand_out_manu_res = BrandOutManufacturerOutCategoryPrimaryFacingsSOS(data_provider=self.data_provider,
                                                                               kpi_definition_fk=barnd_out_manu_fk,
-                                                                              categories_include=filtered_categories).calculate()
+                                                                              categories_include=Consts.SOS_CATEGORY).calculate()
         brand_out_manu_df = self.prepare_table_for_res(brand_out_manu_res, True)
         brand_out_manu_df = self.assign_parent_child_identifiers(brand_out_manu_df,
                                                                  parent_identifier={'col':
@@ -237,11 +235,12 @@ class ToolBox(GlobalSessionToolBox):
         lvl3_with_cat = self.assortment_category(lvl3_result)
 
         sku_results = self.distribution_sku_level(lvl3_with_cat, Consts.DIST_SKU_LVL,
-                                                  {'col': ['denominator_id', 'category_fk'], 'val': 'DIST'})
-        ava_res.extend(sku_results.to_dict('records'))
+                                                  {'col': ['kpi_fk_lvl2', 'category_fk'], 'val': Consts.DISTRIBUTION})
+
+        ava_res = self.append_to_res(ava_res, sku_results, Consts.SKU_LEVEL)
 
         oos_sku_res = self.sku_oos(sku_results)
-        ava_res.extend(oos_sku_res.to_dict('records'))
+        ava_res = self.append_to_res(ava_res, oos_sku_res, Consts.SKU_LEVEL)
 
         #  calculate level 2 results -  GROUP LEVEL
         group_result = self.calculate_lvl2_assortment(lvl3_with_cat, Consts.LVL2_GROUP_HEADERS)
@@ -249,12 +248,13 @@ class ToolBox(GlobalSessionToolBox):
 
         group_result = self.assign_parent_child_identifiers(group_result, parent_identifier={'col': ['category_fk'],
                                                                                              'val': Consts.DISTRIBUTION},
-                                             result_identifier={'col': ['assortment_group_fk',
-                                                                        'category_fk'], 'val': 'DIST'})
+                                             result_identifier={'col': ['kpi_fk_lvl2',
+                                                                        'category_fk'], 'val': Consts.DISTRIBUTION})
         group_result = self.group_level(group_result, Consts.DIST_GROUP_LVL)
         oos_group_res = self.assign_parent_child_identifiers(oos_group_res, parent_identifier={'col': ['category_fk'],
                                                                                                'val': Consts.OOS},
-                                             result_identifier={'col': ['assortment_group_fk'], 'val': 'OOS'})
+                                             result_identifier={'col': ['kpi_fk_lvl2', 'category_fk'], 'val':
+                                                 Consts.OOS})
         oos_group_res = self.group_level(oos_group_res, Consts.OOS_GROUP_LVL)
         ava_res.extend(group_result.to_dict('records'))
         ava_res.extend(oos_group_res.to_dict('records'))
@@ -289,14 +289,13 @@ class ToolBox(GlobalSessionToolBox):
         sku_results.loc[:, 'should_enter'] = True
         sku_results['fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         self.assign_parent_child_identifiers(sku_results, identifiers)
-        sku_results = self.filter_df_by_col(sku_results, Consts.SKU_LEVEL)
         Log.info('Distribution sku level is done ')
         return sku_results
 
     def sku_oos(self, sku_results):
-        oos_res = sku_results[sku_results['result'] == self.kpi_result_value('0')]
+        oos_res = sku_results[sku_results['result'] == self.kpi_result_value(0)]
         oos_res.loc[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LVL)
-        self.assign_parent_child_identifiers(oos_res, {'col': ['denominator_id'], 'val': 'OOS'})
+        self.assign_parent_child_identifiers(oos_res, {'col': ['kpi_fk_lvl2', 'category_fk'], 'val': 'OOS'})
         return oos_res
 
     def group_level(self, lvl_2_result, kpi_name):
@@ -305,9 +304,8 @@ class ToolBox(GlobalSessionToolBox):
             return distribution_db_results df
         """
         group_results = lvl_2_result.rename(
-            columns={'assortment_group_fk': 'numerator_id', 'category_fk': 'denominator_id',
-                     'total': 'denominator_result', 'passes': 'numerator_result',
-                     'kpi_fk_lvl2': 'kpi_fk'}, inplace=False)
+            columns={'kpi_fk_lvl2': 'numerator_id', 'category_fk': 'denominator_id',
+                     'total': 'denominator_result', 'passes': 'numerator_result'}, inplace=False)
         group_results.loc[:, 'result'] = group_results['numerator_result'] / group_results['denominator_result']
         group_results = group_results.assign(score=group_results['result'])
         group_results.loc[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
@@ -337,7 +335,7 @@ class ToolBox(GlobalSessionToolBox):
         (kpi result value match to mobile report signs) , according to the kpi result.
         :return pk of kpi_result_value
          """
-        value = 'OOS' if value == 0 else 'DISTRIBUTED'
+        value = Consts.OOS if value == 0 else Consts.DISTRIBUTION
         value_info = self.result_values[self.result_values['value'] == value]
         if value_info.empty:
             return
@@ -402,7 +400,7 @@ class ToolBox(GlobalSessionToolBox):
         store_assortment.loc[:, 'numerator_id'] = self.manufacturer_fk
         store_assortment.loc[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         store_assortment.loc[:, 'should_enter'] = False
-        kpi_identifier = 'DIST' if kpi_name == Consts.DIST_STORE_LVL else 'OOS'
+        kpi_identifier = Consts.DISTRIBUTION if kpi_name == Consts.DIST_STORE_LVL else Consts.OOS
         self.assign_parent_child_identifiers(store_assortment, result_identifier={'val': kpi_identifier})
 
         return store_assortment
@@ -429,8 +427,8 @@ class ToolBox(GlobalSessionToolBox):
             :param facings : 'facings' / 'facings'
             :param kpi_name : kpi type from df
         """
-        filterd_scif = self.scif[~ self.scif['product_type'].isin(['Empty', 'Irrelevant', 'Other']) & self.scif[
-            'category'].isin(['Sparkling Pure', 'Sparkling Mix'])]
+        filterd_scif = self.scif[~ self.scif['product_type'].isin(Consts.IGNORE_PRODUCT_TYPE) & self.scif[
+            'category'].isin(Consts.FACINGS_CATEGORIES)]
         results = filterd_scif.groupby(['product_fk'])[facings].agg(
             {facings: 'sum'}).reset_index()
         results.loc[:, 'denominator_id'] = self.store_id
@@ -438,3 +436,8 @@ class ToolBox(GlobalSessionToolBox):
         results = results.rename(columns={facings: 'result', 'numerator_id': 'product_fk'})
         results = results.assign(score=results['result'])
         return results.to_dict('records')
+
+    def append_to_res(self, total_res, res, level):
+        sku_results = self.filter_df_by_col(res, level)
+        total_res.extend(sku_results.to_dict('records'))
+        return total_res
