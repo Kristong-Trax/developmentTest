@@ -87,8 +87,11 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name='ccnayarmx')
 
     check_sessions = [
+        'a5662f4b-6122-49f6-823e-358758eda37a',
+        '2cb0ec65-2803-413e-8a7b-6734bc98781a',
+        'b7faec9b-4c34-496b-b78a-d2748c034f99',
         # 'e4aa24a5-d13e-4b6a-8941-0a195d589070',  # error
-        # '5f20ba65-63ae-4057-a8b0-3491accf7869',
+        # '5f20ba65-63ae-4057-a8b0-3491accf7869',  # fine
         # '69b028e2-5119-4c11-a846-94ca29adede4',
         # 'cf7bd046-0acc-4c60-bb33-3ed5dfdd836e',
         # 'E45618DB-39E9-45A4-B541-054C85515A69',
@@ -99,16 +102,15 @@ if __name__ == '__main__':
         # 'cf7bd046-0acc-4c60-bb33-3ed5dfdd836e',
         # 'E45618DB-39E9-45A4-B541-054C85515A69',
         # '69b028e2-5119-4c11-a846-94ca29adede4',  # fine
-        'cf7bd046-0acc-4c60-bb33-3ed5dfdd836e',
-        'E45618DB-39E9-45A4-B541-054C85515A69',
-        '725524e8-2e9b-4c42-ace1-b2120d987f9e',
-        '725524e8-2e9b-4c42-ace1-b2120d987f9e',
-        '90004fbd-58dd-418f-a359-f2605134291c',
-        '677d0628-9566-4760-8702-821882f74665',
-        'f6f086d8-b269-4f2d-8229-144af3b1edf8',
-        '7e117743-0448-447b-9ad3-7c895ca8a0b7',
-        '543f7eff-309b-419c-8f39-931cc5cbcba6',
-        '199eda17-4fbb-4c23-b02d-8f3f47e079d9',
+        # 'cf7bd046-0acc-4c60-bb33-3ed5dfdd836e',
+        # 'E45618DB-39E9-45A4-B541-054C85515A69',
+        # '725524e8-2e9b-4c42-ace1-b2120d987f9e',
+        # '90004fbd-58dd-418f-a359-f2605134291c',
+        # '677d0628-9566-4760-8702-821882f74665',
+        # 'f6f086d8-b269-4f2d-8229-144af3b1edf8',
+        # '7e117743-0448-447b-9ad3-7c895ca8a0b7',
+        # '543f7eff-309b-419c-8f39-931cc5cbcba6',
+        # '199eda17-4fbb-4c23-b02d-8f3f47e079d9',
     ]
 
     completed_sessions = []
