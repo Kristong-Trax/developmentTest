@@ -10,8 +10,8 @@ if __name__ == '__main__':
 
     # session_uid, session_id = '8B184570-DCA6-4A10-803A-06A35B66CA01', 22 # empty session
     sessions = [
-                {"session_uid": 'b73f14fa-a0c1-4781-885c-c78d57ca2371', "session_id": 54983},
                 {"session_uid": 'db38513a-8191-4217-ba8f-e8283bd83813', "session_id": 45594},
+                {"session_uid": 'b73f14fa-a0c1-4781-885c-c78d57ca2371', "session_id": 54983},
                 {"session_uid": '7d4e1ad0-3ba7-4bc3-bd7c-944f42943625', "session_id": 45165},
                 {"session_uid": "d386503d-f3bf-4167-9f7e-2a73ab494b45", "session_id": 49696},
                 {"session_uid": "fdb00c3e-11b9-4999-ac54-33fecf3f4ef4", "session_id": 23818},
