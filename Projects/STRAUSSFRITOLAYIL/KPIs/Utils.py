@@ -57,6 +57,8 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
 
     def set_updated_assortment(self):
         assortment_result = self.assortment.get_lvl3_relevant_ass()
+        if assortment_result.empty:
+            return pd.DataFrame(columns=["kpi_fk_lvl2", "kpi_fk_lvl3"])
         assortment_result = self.calculate_lvl3_assortment(assortment_result)
         replacement_eans_df = pd.DataFrame([json_normalize(json.loads(js)).values[0] for js
                                             in assortment_result['additional_attributes']])
