@@ -31,7 +31,7 @@ class CalculateKpi(LiveSessionBaseClass):
         self.store_fk = data_provider.store_fk
         self.current_date = datetime.now()
         self.live_ps_provider = PsDataProvider(data_provider, None)
-        self.assortment = DiageoAssortment(data_provider, self.common, self.live_ps_provider, False, True) 
+        self.assortment = DiageoAssortment(data_provider, self.common, self.live_ps_provider, False, True)
 
     def calculate_session_live_kpi(self):
         """
