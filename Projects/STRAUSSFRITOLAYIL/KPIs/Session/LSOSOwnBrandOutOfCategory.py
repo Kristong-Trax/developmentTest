@@ -33,7 +33,7 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
             # strauss are looking at sub_brand as brand in this KPI
             brands_mix = set(category_df['brand_mix_fk'])
             for brand_mix_fk in brands_mix:
-                target = template[template[brand_mix_fk] == brand_mix_fk][Consts.TARGET]
+                target = template[template['brand_mix_fk'] == brand_mix_fk][Consts.TARGET]
                 if not target.empty:
                     target = target.values[0]
                 else:
