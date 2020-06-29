@@ -8,3 +8,7 @@ class Consts(object):
     BAY_POSITION = 'Bay Position'
     DIAMOND_POSITION = 'Diamond Position'
     KPI_TYPE = 'KPI Type'
+    KPI_NAME = 'kpi_client_name'
+    FINAL_FACINGS = 'final_facings'
+    DISTRIBUTION = 'Distribution'
+    SCENE_FK = 'scene_fk'

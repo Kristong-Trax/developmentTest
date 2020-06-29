@@ -61,7 +61,7 @@ class ToolBox(GlobalSessionToolBox):
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.templates = {}
         self.parse_template()
-        self.shelf_number = self.templates['Shelf Map'].set_index('Num Shelves')
+        self.shelf_number = self.templates[Consts.SHELF_MAP].set_index('Num Shelves')
         self.block = Block(data_provider)
         self.match_product_in_probe_state_reporting = self.ps_data_provider.get_match_product_in_probe_state_reporting()
         self.assortment = Assortment(self.data_provider, self.output)
@@ -79,8 +79,7 @@ class ToolBox(GlobalSessionToolBox):
                                                 'denominator_id', 'denominator_result', 'result', 'score'])
 
     def parse_template(self):
-        for sheet in SHEETS:
-            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
+        for sheet in SHEETS:            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
