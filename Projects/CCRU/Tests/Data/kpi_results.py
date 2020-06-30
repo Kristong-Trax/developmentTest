@@ -1,7 +1,7 @@
 
 class CCRUKpiResults:
     def __init__(self):
-        pass
+        pass 
 
     @staticmethod
     def get_kpi_results():
