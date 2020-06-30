@@ -544,7 +544,7 @@ class RTDToolBox(GlobalSessionToolBox):
         return weight
 
     def _get_template_fk(self, template_name):
-        return self.templates[self.templates['template_name'] == template_name]['template_fk'].iloc[0]
+        return self.project_templates[self.project_templates['template_name'] == template_name]['template_fk'].iloc[0]
 
     def mark_tags_in_explorer(self, probe_match_fk_list, mpipsr_name):
         if not probe_match_fk_list:

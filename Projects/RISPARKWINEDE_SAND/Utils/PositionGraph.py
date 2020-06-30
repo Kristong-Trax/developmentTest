@@ -62,7 +62,7 @@ class RISPARKWINEDEPositionGraphs:
         matches = matches.sort_values(by=['bay_number', 'shelf_number', 'facing_sequence_number'])
         matches = matches.merge(self.data_provider[Data.ALL_PRODUCTS], how='left', on='product_fk', suffixes=['', '_3'])
         scene_template = self.data_provider.scenes_info[['scene_fk', 'template_fk']]
-        scene_template = scene_template.merge(self.data_provider.templates[['template_fk', 'location_type']],
+        scene_template = scene_template.merge(self.data_provider.project_templates[['template_fk', 'location_type']],
                                               how='left', on='template_fk')
         scene_template['scene_id'] = scene_template['scene_fk']
         matches = matches.merge(scene_template, how='left', on='scene_fk', suffixes=['', '_4'])

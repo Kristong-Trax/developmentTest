@@ -61,7 +61,7 @@ class ToolBox(GlobalSessionToolBox):
         final_mpis = pd.concat([present_products_in_session, absent_products_in_session]).fillna(0)
         final_mpis = final_mpis[final_mpis.product_short_name.isin(
             self.relevant_template['English SKU Name'])]  # Fix the logic in the future
-        template_fk = self.templates.template_fk.iloc[0] if not self.templates.empty else 0
+        template_fk = self.project_templates.template_fk.iloc[0] if not self.project_templates.empty else 0
 
         # final mpis has repeated product_fks based on because of this we need the sum of facings for each product fk.
         # Facings is unique across each row
