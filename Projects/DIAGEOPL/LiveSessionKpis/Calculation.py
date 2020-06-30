@@ -40,5 +40,6 @@ class CalculateKpi(LiveSessionBaseClass):
         kpi_types = [Consts.GDPA_KPI_TYPE, Consts.GMPA_KPI_NAME]
         assortment_results = self.assortment.main_assortment_calculation(kpi_types)
         assortment_results = pd.DataFrame(assortment_results)
-        self.common.write_to_db_results(assortment_results)
-        self.common.commit_results_data()
+        if not assortment_results.empty:
+            self.common.write_to_db_results(assortment_results)
+            self.common.commit_results_data()
