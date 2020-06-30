@@ -93,7 +93,7 @@ class ToolBox(GlobalSessionToolBox):
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
         # relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DIAMOND_POSITION]
-        relevant_kpi_types = [Consts.BAY_POSITION]
+        relevant_kpi_types = [Consts.SHARE_OF_SCENES]
         targets = self.targets[self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)]
 
         self._calculate_kpis_from_template(targets)
@@ -615,7 +615,7 @@ class ToolBox(GlobalSessionToolBox):
                 result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
                                'numerator_id': item.numerator_id, 'numerator_result': item.count_of_numerator_id,
                                'denominator_id': item.denominator_id,
-                               'denominator_result': item.count_of_numerator_id,
+                               'denominator_result': item.count_of_denominator_id,'context_id':item.context_id,
                                'result': item.result}
                 list_holder.append(result_dict)
         return list_holder

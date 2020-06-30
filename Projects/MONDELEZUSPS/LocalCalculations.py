@@ -10,7 +10,10 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'mondelezusps'
     data_provider = KEngineDataProvider(project_name)
-    session_list = ['540b2e3d-988c-43ef-9897-7ac5850d654f']
+    session_list = [
+        '6555cf89-66b0-46e6-bf72-ea7c1e140bf4',
+        # '540b2e3d-988c-43ef-9897-7ac5850d654f'
+    ]
     for session in session_list:
         data_provider.load_session_data(session)
         output = Output()
