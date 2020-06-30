@@ -62,7 +62,7 @@ class COOLERSCREENSUSKGenerator:
         """, {'product_fk': match['product_fk'], 'bay_number': match['bay_number'],
               'shelf_number': match['shelf_number'],
               'facing_sequence_number': match['facing_sequence_number'], 'creation_time': match['creation_time'],
-              'store_fk': self._data_provider.store_fk, 'template_fk': int(self._data_provider.project_templates['template_fk'])})
+              'store_fk': self._data_provider.store_fk, 'template_fk': int(self._data_provider.templates['template_fk'])})
 
         for row in cur:
             return row[0]

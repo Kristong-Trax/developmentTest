@@ -85,7 +85,7 @@ class KpiAtomicKpisCalculator(object):
     def get_relevant_scenes_matches(self, scene_type_filter):
         matches = self._tools.match_product_in_scene.copy()
         if scene_type_filter:
-            templates = self._data_provider.project_templates
+            templates = self._data_provider.templates
             relevant_template = templates[templates['template_display_name'].isin(
                 scene_type_filter['template_name'])]
             relevant_scenes = self._data_provider.scenes_info.merge(relevant_template, on='template_fk')[

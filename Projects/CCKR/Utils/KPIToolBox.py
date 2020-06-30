@@ -50,7 +50,7 @@ class CCKRToolBox:
             sheet_name="Template")
         self.kpi_template_info = pd.DataFrame(kpi_info)  # contains the kpis + ean codes
         self.kpi_metadata = self.data_provider.kpi  # information about kpis such as (presentation order)
-        self.template_info = self.data_provider.project_templates  # static data on templates
+        self.template_info = self.data_provider.templates  # static data on templates
         self.kpi_template = pd.DataFrame(file_template)  # relevant template for kpis
         # common for new tables
         self.commonV2 = CommonV2(self.data_provider)
