@@ -785,10 +785,10 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             constraints_sheet_name = external_sheet_name[1]
 
             final_assortment = self.filter_assortments(assortment_sheet_name, kpi_name)
-            final_contraints = self.filter_constraints(self.templates[constraints_sheet_name], kpi_name,
+            final_constraints = self.filter_constraints(self.templates[constraints_sheet_name], kpi_name,
                                                        total_sum_of_bay_in_scenes)
 
-            result = self.calculate_assortment_passed_if_constraints(final_contraints, final_assortment, relevant_scif)
+            result = self.calculate_assortment_passed_if_constraints(final_constraints, final_assortment, relevant_scif)
         else:
             assortment_sheet_name = external_sheet_name[0]
             final_assortment = self.filter_assortments(assortment_sheet_name, kpi_name, filter_att2=True)
@@ -825,7 +825,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
 
         relevant_columns_in_constraints_df = [item for item in constraints_df.columns if "assortment" in item]
         constraints_df = constraints_df[relevant_columns_in_constraints_df]
-        final_constraints = constraints_df.values[0:1]
+        final_constraints = constraints_df.iloc[0:1]
         return final_constraints
 
     def calculate_sos(self, row):

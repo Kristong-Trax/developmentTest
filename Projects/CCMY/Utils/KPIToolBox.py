@@ -261,7 +261,8 @@ class CCMYToolBox:
         return None
 
     def insert_db_new_results(self, kpi_name, result, score, numerator_result, denominator_result,
-                              identifier_parent=None, identifier_result=None, target=None, denominator_id=None, context_id=None, numerator_id=None):
+                              identifier_parent=None, identifier_result=None, target=None, denominator_id=None,
+                              context_id=None, numerator_id=None):
 
         kpi_level_2_fk = self.get_kpi_fk_new_table(kpi_name)
 
@@ -305,12 +306,12 @@ class CCMYToolBox:
             self.data_provider.all_templates[self.data_provider.all_templates['template_name'].isin(
                 scene_types)]['template_fk'].iloc[0]
 
-        df_all_shelfs = self.match_product_in_scene
-
+        df_all_shelves = self.match_product_in_scene.copy()
+        df_product_sku = self.products[self.products['product_type'] != "POS"].copy()
         if self.match_product_in_scene.empty:
             return 0, 0, 0, template_fk
 
-        df_all_shelfs_products = df_all_shelfs.merge(self.products, how='inner', on=CCMYConsts.PRODUCT_FK)
+        df_all_shelfs_products = df_all_shelves.merge(df_product_sku, how='inner', on=CCMYConsts.PRODUCT_FK)
         list_columns = [CCMYConsts.SCENE_FK, CCMYConsts.BAY_NUMBER, CCMYConsts.SHELF_NUMBER,
                         CCMYConsts.MANUFACTURER_FK, CCMYConsts.PRODUCT_FK]
         df_all_shelfs_products = pd.DataFrame(
@@ -333,7 +334,9 @@ class CCMYToolBox:
                             (row_data_y[CCMYConsts.PRODUCT_FK] == CCMYConsts.IRRELEVANT) &
                             (row_data_x[CCMYConsts.IS_PURE] == CCMYConsts.PURE)):
                         row_data_x[CCMYConsts.IS_PURE] = CCMYConsts.IMPURE
-                        print "Impure Shelf={}".format(row_data_y[CCMYConsts.SHELF_NUMBER])
+                        print "Impure Scene_fk={} Bay={} Shelf={}".format(row_data_y[CCMYConsts.SCENE_FK],
+                                                                          row_data_y[CCMYConsts.BAY_NUMBER],
+                                                                          row_data_y[CCMYConsts.SHELF_NUMBER])
                         continue
                     elif ((row_data_x[CCMYConsts.SCENE_FK] == row_data_y[CCMYConsts.SCENE_FK]) &
                           (row_data_x[CCMYConsts.BAY_NUMBER] == row_data_y[CCMYConsts.BAY_NUMBER]) &
@@ -344,7 +347,9 @@ class CCMYToolBox:
                           (row_data_x[CCMYConsts.IS_PURE] == CCMYConsts.PURE)):
 
                         row_data_x[CCMYConsts.IS_PURE] = CCMYConsts.IMPURE
-                        print "Impure Shelf={}".format(row_data_y[CCMYConsts.SHELF_NUMBER])
+                        print "Impure Scene_fk={} Bay={} Shelf={}".format(row_data_y[CCMYConsts.SCENE_FK],
+                                                                          row_data_y[CCMYConsts.BAY_NUMBER],
+                                                                          row_data_y[CCMYConsts.SHELF_NUMBER])
                         continue
                     elif ((row_data_x[CCMYConsts.SCENE_FK] == row_data_y[CCMYConsts.SCENE_FK]) &
                           (row_data_x[CCMYConsts.BAY_NUMBER] == row_data_y[CCMYConsts.BAY_NUMBER]) &
@@ -353,7 +358,9 @@ class CCMYToolBox:
                           (row_data_y[CCMYConsts.PRODUCT_FK] != CCMYConsts.GENERAL_EMPTY_PRODUCT) &
                           (row_data_x[CCMYConsts.IS_PURE] == CCMYConsts.PURE)):
                         row_data_x[CCMYConsts.IS_PURE] = CCMYConsts.IMPURE
-                        print "Impure Shelf={}".format(row_data_y[CCMYConsts.SHELF_NUMBER])
+                        print "Impure Scene_fk={} Bay={} Shelf={}".format(row_data_y[CCMYConsts.SCENE_FK],
+                                                                          row_data_y[CCMYConsts.BAY_NUMBER],
+                                                                          row_data_y[CCMYConsts.SHELF_NUMBER])
                         continue
 
             num_of_pure_shelves = 0 if df_shelf_pure.empty else df_shelf_pure[CCMYConsts.IS_PURE].sum()

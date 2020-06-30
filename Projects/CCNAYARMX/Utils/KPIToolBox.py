@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import os
 from datetime import datetime
+import re
 
 from Projects.CCNAYARMX.Data.LocalConsts import Consts
 
@@ -673,6 +674,9 @@ class ToolBox(GlobalSessionToolBox):
 
             # calculate the 'empaques' data
             assortment_groups = self._get_groups(platform_row.dropna(), 'Assortment')
+            if pd.notna(targets_and_constraints['excluding_invasion'].values[0]):
+                removal_of_assortment_index = map(int, re.findall('\d',targets_and_constraints['excluding_invasion'].values[0]))[0] - 1
+                assortment_groups.pop(removal_of_assortment_index)
             mandatory_skus_found = 1  # True
             for assortment in assortment_groups:
                 if not any(product in product_names_in_scene for product in assortment):
@@ -688,6 +692,7 @@ class ToolBox(GlobalSessionToolBox):
                 if assortment_1_facings >= assortment_2_facings:
                     mandatory_skus_found = 0
 
+            assortment_groups = self._get_groups(platform_row.dropna(), 'Assortment')
             # calculate the 'botellas' data
             total_facings = scene_scif[scene_scif['product_short_name'].isin(
                 [product for sublist in assortment_groups for product in sublist])]['facings'].sum()
@@ -697,6 +702,7 @@ class ToolBox(GlobalSessionToolBox):
                 minimum_facings_met = 0  # False
 
             # calculate the coke purity (coke SOS) of this scene
+            # Terrible logic. Need to change later
             coke_purity_assortment = np.delete(assortment_groups, -1) if pd.notna(
                 targets_and_constraints.excluding_invasion.values[0]) else assortment_groups
             coke_purity_for_scene = self._get_coke_purity_for_scene(scene_scif, coke_purity_assortment)

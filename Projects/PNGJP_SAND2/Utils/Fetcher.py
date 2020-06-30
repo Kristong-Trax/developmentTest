@@ -15,7 +15,7 @@ class PNGJP_SAND2Queries(object):
     @staticmethod
     def get_match_display(session_uid):
         return """
-            select d.display_name, m.scene_fk, sdt.name as display_type
+            select d.display_name, d.pk as display_fk, m.scene_fk, sdt.name as display_type
             from probedata.match_display_in_scene m
             join probedata.scene s on s.pk = m.scene_fk
             join static.display d on d.pk = m.display_fk
@@ -51,3 +51,12 @@ class PNGJP_SAND2Queries(object):
                 where ssi.delete_time is null
                 and sc.session_uid = '{}';
         """.format(session_uid)
+
+    @staticmethod
+    def get_kpi_external_targets(visit_date):
+        return """SELECT ext.*, ot.operation_type, kpi.type as kpi_type
+                      FROM static.kpi_external_targets ext
+                      LEFT JOIN static.kpi_operation_type ot on ext.kpi_operation_type_fk=ot.pk
+                      LEFT JOIN static.kpi_level_2 kpi on ext.kpi_level_2_fk = kpi.pk
+                      WHERE (ext.start_date<='{}' and ext.end_date is null) or 
+                      (ext.start_date<='{}' and ext.end_date>='{}')""".format(visit_date, visit_date, visit_date)

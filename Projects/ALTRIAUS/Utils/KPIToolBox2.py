@@ -87,6 +87,7 @@ class ALTRIAUSToolBox:
         self.survey_dot_com_collected_this_session = self._get_survey_dot_com_collected_value()
         self._add_smart_attributes_to_mpis()
         self.scene_graphs = {}
+        self.excessive_flipsigns = False
 
     def _add_smart_attributes_to_mpis(self):
         smart_attribute_data = \
@@ -106,6 +107,8 @@ class ALTRIAUSToolBox:
         self.calculate_register_type()
         self.calculate_age_verification()
         self.calculate_facings_by_scene_type()
+
+        self.calculate_session_flags()
 
         return
 
@@ -174,6 +177,7 @@ class ALTRIAUSToolBox:
         for i, pair in enumerate(sorted(flip_signs_by_x_coord.items())):
             position_fk = self.get_custom_entity_pk(str(i+1))
             if position_fk == 0 or position_fk > 8:
+                self.excessive_flipsigns = True
                 Log.warning('More than 8 flip-sign positions found for a block')
             product_fk = pair[1]['product_fk'].value
             width = pair[1]['calculated_width_ft'].value
@@ -328,14 +332,17 @@ class ALTRIAUSToolBox:
 
         relevant_matches = self.mpis[self.mpis['scene_match_fk'].isin(scene_match_fks)]
 
-        relevant_matches = relevant_matches.groupby(['product_fk', 'template_fk', 'match_product_in_probe_state_fk'],
-                                                    as_index=False)['scene_match_fk'].count()
-        relevant_matches.rename(columns={'scene_match_fk': 'facings'}, inplace=True)
+        relevant_matches = relevant_matches.groupby(['product_fk', 'shelf_number', 'match_product_in_probe_state_fk'],
+                                                    as_index=False).agg({'scene_match_fk': 'min',
+                                                                         'probe_match_fk': 'count'})
+        relevant_matches.rename(columns={'probe_match_fk': 'facings'}, inplace=True)
 
         for row in relevant_matches.itertuples():
-            self.common_v2.write_to_db_result(kpi_fk, numerator_id=row.product_fk, denominator_id=row.template_fk,
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=row.product_fk,
+                                              denominator_id=row.match_product_in_probe_state_fk,
                                               numerator_result=block_number, denominator_result=fixture_number,
-                                              result=row.facings, context_id=row.match_product_in_probe_state_fk)
+                                              result=row.facings, score=row.shelf_number,
+                                              context_id=row.scene_match_fk)
 
     def calculate_header(self, node, node_data, graph):
         kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Header')
@@ -506,6 +513,11 @@ class ALTRIAUSToolBox:
                 self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
                                                   result=result)
         return
+
+    def calculate_session_flags(self):
+        if self.excessive_flipsigns:
+            kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Excessive Flip Signs Detected')
+            self.common_v2.write_to_db_result(kpi_fk, numerator_id=49, denominator_id=self.store_id, result=1)
 
     def mark_tags_in_explorer(self, probe_match_fk_list, mpipsr_name):
         if not probe_match_fk_list:

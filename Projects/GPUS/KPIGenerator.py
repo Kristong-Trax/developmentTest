@@ -4,16 +4,14 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.GPUS.Utils.KPIToolBox import GPUSToolBox
 from Projects.GPUS.Utils.CommonV3 import Common
 
-# from KPIUtils_v2.DB.CommonV2 import Common
-
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
 __author__ = 'nicolaske'
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Data', 'Jump_Shelves_v1.xlsx')
 
-class Generator:
 
+class Generator:
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output

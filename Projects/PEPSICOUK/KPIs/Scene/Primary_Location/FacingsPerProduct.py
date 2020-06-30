@@ -21,6 +21,9 @@ class FacingsPerProductKpi(UnifiedCalculationsScript):
         if not self.util.filtered_matches.empty:
             kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.FACINGS_PER_PRODUCT)
             filtered_matches = self.util.filtered_matches.copy()
+            shelves_arr = np.sort(filtered_matches[MatchesConsts.SHELF_NUMBER].unique()).tolist()
+            filtered_matches[MatchesConsts.SHELF_NUMBER] = filtered_matches[MatchesConsts.SHELF_NUMBER]. \
+                apply(lambda x: shelves_arr.index(x)+1)
             filtered_matches = filtered_matches.merge(self.util.all_products, on=MatchesConsts.PRODUCT_FK,
                                                       how='left')
             filtered_matches.loc[filtered_matches['att1'] == 'display cardboard box', 'count'] = \

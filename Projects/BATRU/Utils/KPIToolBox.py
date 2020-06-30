@@ -1118,6 +1118,7 @@ class BATRUToolBox:
                 self.update_result_values_with_new_dates(dates_in_session)
                 mobile_results = self.set_p2_sku_mobile_results(monitored_sku, identifier_parent_mob_price_monitor)
                 if score or score == 0 or mobile_results:
+                    score = score if score else 0
                     self.write_to_db_result(set_fk, format(score, '.2f'), self.LEVEL1)
                     self.write_to_db_result(fk=mobile_set_fk, result=format(score, '.2f'), level=self.LEVEL1,
                                             score_2=format(efficiency_score, '.2f'))
