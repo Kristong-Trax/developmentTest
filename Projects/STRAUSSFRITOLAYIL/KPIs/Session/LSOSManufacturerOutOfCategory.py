@@ -34,7 +34,7 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
             own_category_linear_length = own_skus_category_df['width_mm_advance'].sum()
             store_category_linear_length = store_category_df['width_mm_advance'].sum()
             sos_result = self.utils.calculate_sos_result(own_category_linear_length, store_category_linear_length)
-            if target == -2:
+            if target == -1:
                 kpi_score = Consts.NO_TARGET
             else:
                 kpi_score = Consts.PASS if (target <= sos_result) else Consts.FAIL
