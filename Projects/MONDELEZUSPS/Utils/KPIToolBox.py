@@ -93,7 +93,7 @@ class ToolBox(GlobalSessionToolBox):
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
         # relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DIAMOND_POSITION]
-        relevant_kpi_types = [Consts.DIAMOND_POSITION]
+        relevant_kpi_types = [Consts.BAY_POSITION]
         targets = self.targets[self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)]
 
         self._calculate_kpis_from_template(targets)
@@ -144,6 +144,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def _logic_diamond_position(self, df, diamond_boarder_df, return_holder, numerator_type, denominator_type,
                                 population_pct):
+        # self.mark_tags_in_explorer(nodes_in_diamond, relevant_holder[0])
+
         result_dict_list = []
         for unique_denominator_type in set(df[denominator_type]):
             denominator_filtered_df = self._filter_df(df, {denominator_type: unique_denominator_type})
@@ -157,7 +159,7 @@ class ToolBox(GlobalSessionToolBox):
                                                               {'scene_fk': scene_with_most_numerator_facings})
                 nodes_in_diamond = self._filter_df(diamond_boarder_df, {
                     'scene_fk': scene_with_most_numerator_facings}).nodes_in_diamond.iat[0]
-                final_numerator_df = filtered_numerator_df[filtered_numerator_df.scene_match_fk.isin(nodes_in_diamond)]
+                final_numerator_df = scene_filtered_numerator_df[scene_filtered_numerator_df.scene_match_fk.isin(nodes_in_diamond)]
                 numerator_result = len(final_numerator_df)
                 denominator_result = len(scene_filtered_numerator_df)
                 if not isinstance(unique_numerator_id, int):
@@ -167,6 +169,8 @@ class ToolBox(GlobalSessionToolBox):
                                'numerator_id': unique_numerator_id, 'numerator_result': numerator_result,
                                'denominator_id': unique_denominator_type, 'denominator_result': denominator_result,
                                'result': result}
+                #save tags into explorer
+                self.mark_tags_in_explorer(final_numerator_df.probe_match_fk.values.tolist(), return_holder[0])
                 result_dict_list.append(result_dict)
         return result_dict_list
 
@@ -217,7 +221,6 @@ class ToolBox(GlobalSessionToolBox):
 
             #add tags in explorer
             if nodes_in_diamond:
-                self.mark_tags_in_explorer(nodes_in_diamond,relevant_holder[0])
                 diamond_boarder_df = diamond_boarder_df.append(
                     {'scene_fk': unique_scene_fk, 'nodes_in_diamond': nodes_in_diamond}, ignore_index=True)
 
@@ -327,7 +330,7 @@ class ToolBox(GlobalSessionToolBox):
                 final_result = key_dict.get(final_result)
                 result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
                                'numerator_id': unique_numerator_id, 'numerator_result': numerator_result,
-                               'denominator_id': denominator_type, 'denominator_result': denominator_result,
+                               'denominator_id':unqiue_denominator_id, 'denominator_result': denominator_result,
                                'result': final_result}
                 result_dict_list.append(result_dict)
         return result_dict_list
