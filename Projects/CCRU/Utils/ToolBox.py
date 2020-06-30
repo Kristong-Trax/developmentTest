@@ -2291,8 +2291,8 @@ class CCRUKPIToolBox:
                             break
                     if doors < 2:
                         return -1
-            else:
-                scenes = self.get_relevant_scenes(params)
+            # else:
+            #     scenes = self.get_relevant_scenes(params)
         children = self.children_to_int_list(params.get("Children"))
         total_res = 0
         for c in all_params.values()[0]:

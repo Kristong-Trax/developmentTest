@@ -24,13 +24,12 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
         #     relative_position_template
         return
 
-
     @PsSanityTestsFuncs.seeder.seed(["diageogr_seed", "mongodb_products_and_brands_seed"], ProjectsSanityData())
     def test_diageogr_sanity(self):
         self.add_mocks()
         project_name = ProjectsSanityData.project_name
         data_provider = KEngineDataProvider(project_name)
-        sessions = {'873e3bff-3ffa-43d9-a6cc-786f0da4d26a': []}
+        sessions = {'8180ec3c-6297-45af-be05-9ae081a30b04': []}
         kpi_results = DIAGEOGRKpiResults().get_kpi_results()
         for session in sessions.keys():
             data_provider.load_session_data(str(session))
@@ -39,7 +38,7 @@ class TestKEnginePsCode(PsSanityTestsFuncs):
             # for scene in sessions[session]:
             # data_provider.load_scene_data(str(session), scene_id=scene)
             # SceneCalculations(data_provider).calculate_kpis()
-        # self._assert_DIAGEO_test_results_matches_reality(kpi_results)
+        self._assert_DIAGEO_test_results_matches_reality(kpi_results)
         # self._assert_old_tables_kpi_results_filled()
         # self._assert_new_tables_kpi_results_filled(distinct_kpis_num=None, list_of_kpi_names=None)
         # self._assert_scene_tables_kpi_results_filled(distinct_kpis_num=None)

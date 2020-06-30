@@ -449,7 +449,7 @@ if __name__ == '__main__':
             # create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
             #                    create_test_script=True, create_test_results=True)
 
-            # # Create kpi test results only
+            # Create kpi test results only
             create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
                                create_test_script=False, create_test_results=True)
 
