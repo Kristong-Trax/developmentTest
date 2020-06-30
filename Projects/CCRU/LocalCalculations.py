@@ -13,7 +13,8 @@ if __name__ == '__main__':
     session_uids = \
         [
 
-            '013a5e8f-df5d-4744-b5c4-e77c5ed58617'
+            'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F',
+            '3b8a8039-2c79-436d-b42f-c72f4ce3b183'
 
         ]
     for session in session_uids:
