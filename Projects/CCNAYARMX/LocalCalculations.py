@@ -87,8 +87,8 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name='ccnayarmx')
 
     check_sessions = [
-        'a5662f4b-6122-49f6-823e-358758eda37a',
         '2cb0ec65-2803-413e-8a7b-6734bc98781a',
+        'a5662f4b-6122-49f6-823e-358758eda37a',
         'b7faec9b-4c34-496b-b78a-d2748c034f99',
         # 'e4aa24a5-d13e-4b6a-8941-0a195d589070',  # error
         # '5f20ba65-63ae-4057-a8b0-3491accf7869',  # fine

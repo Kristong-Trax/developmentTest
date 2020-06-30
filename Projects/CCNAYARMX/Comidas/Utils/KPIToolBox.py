@@ -8,14 +8,10 @@ import os
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
+
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
-
-
 
 __author__ = 'krishnat'
 
@@ -87,6 +83,7 @@ class ComidasToolBox(GlobalSessionToolBox):
             .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
             .merge(self.all_templates[['template_fk', TEMPLATE_GROUP]], on='template_fk') \
             .merge(scif, on='brand_fk')[COLUMNS]
+        self.mpis['store_fk'] = self.store_id
 
         self.calculations = {
             COMBO: self.calculate_combo,
@@ -147,6 +144,10 @@ class ComidasToolBox(GlobalSessionToolBox):
                     result_data['identifier_result'] = result_data['kpi_name']
                 if result_data['result'] <= 1:
                     result_data['result'] = result_data['result'] * 100
+                if 'numerator_id' not in result_data:
+                    result_data['numerator_id'] = self.own_manufacturer
+                if 'denominator_id' not in result_data:
+                    result_data['denominator_id'] = self.store_id
                 self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
 
     def calculate_distribution(self):
@@ -158,6 +159,7 @@ class ComidasToolBox(GlobalSessionToolBox):
         kpi_name = distribution_template.at[0, KPI_NAME]
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi_name)
 
+        # anchor_brands = self.sanitize_values(distribution_template.at[0, 'a_value'])
         try:
             anchor_brands = [int(brand) for brand in distribution_template.at[0, 'a_value'].split(",")]
         except AttributeError:
@@ -197,10 +199,21 @@ class ComidasToolBox(GlobalSessionToolBox):
         parent_kpi = distribution.iloc[0][PARENT_KPI]
         max_score = self.filter_df(self.project_templates[KPIS], filters={KPI_NAME: parent_kpi}).iloc[0]['Score']
         result = score / max_score * 100
+        numerator_result = len(self.filter_df(self.mpis, filters={
+            TEMPLATE_GROUP: template_groups,
+            'manufacturer_fk': self.own_manufacturer,
+            'product_type': 'SKU'}))
+        denominator_result = len(self.filter_df(self.mpis, filters={
+            TEMPLATE_GROUP: template_groups,
+            'product_type': ['SKU', 'Irrelevant']}))
 
         result_dict = {
             'kpi_name': kpi_name,
             'kpi_fk': kpi_id,
+            'numerator_id': self.own_manufacturer,
+            'numerator_result': numerator_result,
+            'denominator_id': self.store_id,
+            'denominator_result': denominator_result,
             'result': result,
             'score': score,
             'identifier_parent': parent_kpi,
@@ -220,17 +233,18 @@ class ComidasToolBox(GlobalSessionToolBox):
         denominator_scif = self.filter_df(self.scif, filters={TEMPLATE_GROUP: template_groups})
         denominator_scif = self.filter_df(denominator_scif, filters={'product_type': 'POS'}, exclude=True)
         numerator_scif = self.filter_df(denominator_scif, filters={numerator_param1: numerator_value1})
+        template_id = self.filter_df(self.all_templates, filters={TEMPLATE_GROUP: template_groups})['template_fk'].unique()[0]
 
         result_dict = {
             'kpi_name': kpi_name,
             'kpi_fk': kpi_id,
-            'numerator_id': self.store_id,
-            'denominator_id': row[TEMPLATE_GROUP],
+            'numerator_id': self.own_manufacturer,
+            'denominator_id': template_id,
             'result': 0}
 
         if not numerator_scif.empty:
-            denominator_result = denominator_scif.facings_ign_stack.sum()
-            numerator_result = numerator_scif.facings_ign_stack.sum()
+            denominator_result = denominator_scif.facings.sum()
+            numerator_result = numerator_scif.facings.sum()
             result = (numerator_result / denominator_result)
             result_dict['numerator_result'] = numerator_result
             result_dict['denominator_result'] = denominator_result
@@ -260,6 +274,8 @@ class ComidasToolBox(GlobalSessionToolBox):
         result_dict = {
             'kpi_name': kpi_name,
             'kpi_fk': kpi_id,
+            'numerator_id': self.own_manufacturer,
+            'denominator_id': num_df[row[DENOMINATOR_ENTITY]].mode().iloc[0],
             'result': result
         }
 
@@ -291,9 +307,15 @@ class ComidasToolBox(GlobalSessionToolBox):
 
         score = max_score * result / 100
 
+        try:
+            denominator_id = filtered_df['template_fk'].mode().iloc[0]
+        except IndexError:
+            denominator_id = template_fks[0]
+
         result_dict = {
             'kpi_fk': kpi_fk,
             'kpi_name': kpi_name,
+            'denominator_id': denominator_id,
             'result': result,
             'score': score,
         }
@@ -327,7 +349,7 @@ class ComidasToolBox(GlobalSessionToolBox):
         component_kpi = [comp.strip() for comp in row['Component KPIs'].split(',')]
         component_df = self.filter_df(self.results_df, filters={'kpi_name': component_kpi})
         score = component_df['score'].sum()
-        result = score / row['Score'] * 100
+        result = score if kpi_name == "ICE-Fondas-Rsr" else score / row['Score'] * 100
 
         result_dict = {
             'kpi_name': kpi_name,
@@ -456,7 +478,7 @@ class ComidasToolBox(GlobalSessionToolBox):
             if type(item) == int:
                 return str(item)
             else:
-                items = [x.strip() for x in item.split(',')]
+                items = [item.strip() for item in item.split(',')]
                 return items
 
     def save_results_to_db(self):
@@ -520,6 +542,9 @@ class ComidasToolBox(GlobalSessionToolBox):
             except TypeError:
                 df = df[vert(func(df[col]))]
         return df
+
+    def get_fk(self, entity, df):
+        df
 
     def get_template_fk(self, template_name):
         """
