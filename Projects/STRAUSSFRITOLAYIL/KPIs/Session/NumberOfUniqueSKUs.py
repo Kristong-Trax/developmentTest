@@ -38,15 +38,15 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
         sadot = math.ceil(numerator / 5.0)
         sadot = sadot if sadot != 0 else 1
         target, upper_target = self.get_target(fields_df, sadot)
-        if target == -1:
+        if not target:
             score = Consts.NO_TARGET
-            ratio = 0
+            ratio = None
         else:
             score = Consts.PASS if target <= number_of_unique_skus <= upper_target else Consts.FAIL
             ratio = self.utils.calculate_sos_result(number_of_unique_skus, upper_target)
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, denominator_id=self.utils.store_id,
-                                numerator_result=number_of_unique_skus, denominator_result=denominator, result=ratio,
-                                target=target, weight=sadot, score=score)
+                                numerator_result=sadot, denominator_result=denominator, result=number_of_unique_skus,
+                                target=target, weight=ratio, score=score)
 
     @staticmethod
     def get_target(fields_df, sadot):
@@ -57,7 +57,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
             target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()][Consts.TARGET_MIN].values[0]
             upper_target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()][Consts.TARGET_MAX].values[0]
         else:
-            target = upper_target = -1
+            target = upper_target = None
         return target, upper_target
 
     def kpi_type(self):
