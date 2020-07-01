@@ -1,4 +1,4 @@
-from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
+from Projects.PEPSICOUK_SAND.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
 
