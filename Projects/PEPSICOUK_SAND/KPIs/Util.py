@@ -2,9 +2,9 @@ import os
 
 import collections
 
-from Projects.PEPSICOUK.Utils.Fetcher import PEPSICOUK_Queries
+from Projects.PEPSICOUK_SAND.Utils.Fetcher import PEPSICOUK_Queries
 from Trax.Algo.Calculations.Core.KPI.UnifiedKpiSingleton import UnifiedKPISingleton
-from Projects.PEPSICOUK.Utils.CommonToolBoxRollout import PEPSICOUKCommonToolBox
+from Projects.PEPSICOUK_SAND.Utils.CommonToolBoxRollout import PEPSICOUKCommonToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.DB.CommonV2 import Common
