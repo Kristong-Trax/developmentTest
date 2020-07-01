@@ -22,6 +22,12 @@ if __name__ == '__main__':
         # # Open Off:
         # "1FF9F838-5F2E-44D2-B1E4-3AE224CDCD8B",
     ]
+    sessions = [
+        '983DF4A8-8380-416F-8AFB-15FFCD067CCC',
+        'D117A929-78A8-4ECE-9EC4-B24A76E0A564',
+        '88481885-13F1-4F6B-9BF9-73BF38BF7DB7',
+        '3F56C98C-1948-4DFE-B65F-7AD7C178CE91'
+    ]
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
