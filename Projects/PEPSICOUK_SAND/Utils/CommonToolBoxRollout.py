@@ -114,6 +114,9 @@ class PEPSICOUKCommonToolBox:
         self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
                                                                   self.filtered_matches_secondary)
 
+    def add_sub_category_to_empty_and_other(self, scif, matches):
+        return scif, matches
+
     def get_store_areas(self):
         query = PEPSICOUK_Queries.get_all_store_areas()
         query_result = pd.read_sql_query(query, self.rds_conn.db)
