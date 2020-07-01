@@ -93,7 +93,7 @@ class ToolBox(GlobalSessionToolBox):
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
         # relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DIAMOND_POSITION]
-        relevant_kpi_types = [Consts.SHARE_OF_SCENES]
+        relevant_kpi_types = [Consts.DIAMOND_POSITION]
         targets = self.targets[self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)]
 
         self._calculate_kpis_from_template(targets)
@@ -160,14 +160,14 @@ class ToolBox(GlobalSessionToolBox):
                 nodes_in_diamond = self._filter_df(diamond_boarder_df, {
                     'scene_fk': scene_with_most_numerator_facings}).nodes_in_diamond.iat[0]
                 final_numerator_df = scene_filtered_numerator_df[scene_filtered_numerator_df.scene_match_fk.isin(nodes_in_diamond)]
-                numerator_result = len(final_numerator_df)
-                denominator_result = len(scene_filtered_numerator_df)
+                # numerator_result = len(final_numerator_df)
+                # denominator_result = len(scene_filtered_numerator_df)
                 if not isinstance(unique_numerator_id, int):
                     unique_numerator_id = self._get_id_from_custom_entity_table(numerator_type, unique_numerator_id)
-                result = 1 if float(numerator_result) / denominator_result >= population_pct else 0
+                result = 1 if float(len(final_numerator_df)) / len(scene_filtered_numerator_df) >= population_pct else 0
                 result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-                               'numerator_id': unique_numerator_id, 'numerator_result': numerator_result,
-                               'denominator_id': unique_denominator_type, 'denominator_result': denominator_result,
+                               'numerator_id': unique_numerator_id, 'numerator_result': result,
+                               'denominator_id': unique_denominator_type, 'denominator_result': 1,
                                'result': result}
                 #save tags into explorer
                 self.mark_tags_in_explorer(final_numerator_df.probe_match_fk.values.tolist(), return_holder[0])
@@ -219,8 +219,10 @@ class ToolBox(GlobalSessionToolBox):
                     # if the product overlaps, add it to the 'in diamond' list
                     nodes_in_diamond.append(node)
 
-            #add tags in explorer
+            #add tags in explorer to define boarder of the diamond
             if nodes_in_diamond:
+                diamond_boarder_probematch_fk = self.match_product_in_scene[self.match_product_in_scene.scene_match_fk.isin(nodes_in_diamond)].probe_match_fk.values.tolist()
+                self.mark_tags_in_explorer(diamond_boarder_probematch_fk, 'diamond_boarder')
                 diamond_boarder_df = diamond_boarder_df.append(
                     {'scene_fk': unique_scene_fk, 'nodes_in_diamond': nodes_in_diamond}, ignore_index=True)
 
@@ -452,7 +454,9 @@ class ToolBox(GlobalSessionToolBox):
                     ['max', 'idxmax']).loc['idxmax']['facings']
                 relevant_bay = relevant_bay_df[0]
                 relevant_shelf = relevant_bay_df[1]
-                max_shelf_number_from_bottom = scene_filtered_df.shelf_number_from_bottom.max()
+                # max_shelf_number_from_bottom = scene_filtered_df.shelf_number_from_bottom.max()
+                max_shelf_number_from_bottom = (self._filter_df(self.match_product_in_scene, {'scene_fk': relevant_scene,
+                                                               'bay_number': relevant_bay})).shelf_number_from_bottom.max()
                 try:
                     result = self.shelf_number.loc[max_shelf_number_from_bottom, relevant_shelf]
                     result_by_id = key_dict.get(result)

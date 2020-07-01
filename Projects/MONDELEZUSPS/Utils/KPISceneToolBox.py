@@ -4,6 +4,8 @@ from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSceneToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
+from KPIUtils_v2.Utils.Parsers import ParseInputKPI
+
 
 import pandas as pd
 import numpy as np
@@ -41,7 +43,6 @@ class SceneToolBox(GlobalSceneToolBox):
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.targets = self.ps_data_provider.get_kpi_external_targets()
-        self.store_area = self.get_store_area_df()
         self.gold_zone_scene_location_kpi = ['Lobby/Entrance', 'Main Alley/Hot Zone', 'Gold Zone End Cap',
                                              'Lobby/Main Entrance']
 
@@ -54,18 +55,18 @@ class SceneToolBox(GlobalSceneToolBox):
         for i, row in scene_location_kpi_template.iterrows():
             row = self.apply_json_parser(row)
             return_holder = self._get_kpi_name_and_fk(row)
-            scene_store_area_df = self.store_area
+            relevant_scif = self._parse_json_filters_to_df(row)
+            if relevant_scif.empty:
+                return
+            scene_store_area_df = self.get_store_area_df()
+            scene_store_area_df = scene_store_area_df[scene_store_area_df.scene_fk.isin(relevant_scif.scene_fk.unique())]
             # scene_store_area_df['result'] = scene_store_area_df.name.apply(
             #     lambda x: 1 if x in self.gold_zone_scene_location_kpi else 0)
             scene_store_area_df['result'] = np.in1d(scene_store_area_df.name.values,
                                                     self.gold_zone_scene_location_kpi) * 1
 
             for store_area_row in scene_store_area_df.itertuples():
-                # result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-                #                'numerator_id': store_area_row.pk,
-                #                'numerator_result': store_area_row.result,
-                #                'denominator_id': self.store_id, 'denominator_result': 1,
-                #                'result': store_area_row.result}
+
                 self.common.write_to_db_result(fk=return_holder[1], numerator_id=store_area_row.pk,
                                                numerator_result=store_area_row.result, result=store_area_row.result,
                                                denominator_id=self.store_id, denominator_result=1,
@@ -135,3 +136,19 @@ class SceneToolBox(GlobalSceneToolBox):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         output = [kpi_name, kpi_fk]
         return output
+
+    def _parse_json_filters_to_df(self, row):
+        JSON = row[row.index.str.contains('JSON') & (~ row.index.str.contains('Config Params'))]
+        filter_JSON = JSON[~JSON.isnull()]
+
+        filtered_scif = self.scif
+        for each_JSON in filter_JSON:
+            final_JSON = {'population': each_JSON} if ('include' or 'exclude') in each_JSON else each_JSON
+            filtered_scif = ParseInputKPI.filter_df(final_JSON, filtered_scif)
+        if 'include_stacking' in row['Config Params: JSON'].keys():
+            including_stacking = row['Config Params: JSON']['include_stacking'][0]
+            filtered_scif[
+                Consts.FINAL_FACINGS] = filtered_scif.facings if including_stacking == 'True' else filtered_scif.facings_ign_stack
+            filtered_scif = filtered_scif[filtered_scif.stacking_layer == 1]
+        return filtered_scif
+
