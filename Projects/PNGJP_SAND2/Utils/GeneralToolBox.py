@@ -4,7 +4,7 @@ import json
 import pandas as pd
 
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts , SceneInfoConsts
-from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import ProductTypeConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import ProductTypeConsts
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 from Projects.PNGJP.Utils.PositionGraph import PNGJPPositionGraphs

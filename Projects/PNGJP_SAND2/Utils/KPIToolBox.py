@@ -1,4 +1,4 @@
-from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import HelperConsts, BasicConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import HelperConsts, BasicConsts, HelperConsts
 from Trax.Data.ProfessionalServices.PsConsts.OldDB import KpiResults, KpkResults, KpsResults
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts, ScifConsts, StoreInfoConsts, SceneInfoConsts,\
     TemplatesConsts, MatchesConsts

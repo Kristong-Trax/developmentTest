@@ -8,7 +8,7 @@ import os
 # from Trax.Data.ProfessionalServices.PsConsts.DataProvider import 
 # from Trax.Data.ProfessionalServices.PsConsts.DB import 
 # from Trax.Data.ProfessionalServices.PsConsts.PS import 
-# from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import 
+# from Trax.Data.ProfessionalServices.PsConsts.Consts import 
 # from Trax.Data.ProfessionalServices.PsConsts.Messages import 
 # from Trax.Data.ProfessionalServices.PsConsts.Custom import 
 # from Trax.Data.ProfessionalServices.PsConsts.OldDB import 

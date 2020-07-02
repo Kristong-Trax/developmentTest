@@ -10,7 +10,7 @@ from Projects.TNUVAILV2_SAND.Utils.DataBaseHandler import DBHandler
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts, ScifConsts
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
-from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import BasicConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import BasicConsts, HelperConsts
 
 __author__ = 'idanr'
 

@@ -11,7 +11,7 @@ from datetime import datetime
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
-from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import BasicConsts, HelperConsts, ProductTypeConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import BasicConsts, HelperConsts, ProductTypeConsts
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import SessionInfoConsts, ProductsConsts, ScifConsts, MatchesConsts
 from Trax.Data.ProfessionalServices.PsConsts.PS import AssortmentProductConsts
 from Trax.Utils.Conf.Keys import DbUsers

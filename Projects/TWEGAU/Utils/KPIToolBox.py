@@ -11,7 +11,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
 from KPIUtils_v2.DB.CommonV2 import (Common, PSProjectConnector)
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import (HelperConsts, ProductTypeConsts)
+from Trax.Data.ProfessionalServices.PsConsts.Consts import (HelperConsts, ProductTypeConsts)
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import (SessionInfoConsts, ProductsConsts, ScifConsts, MatchesConsts)
 

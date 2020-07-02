@@ -8,7 +8,7 @@ from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
-from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import HelperConsts
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers

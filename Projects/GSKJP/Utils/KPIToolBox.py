@@ -2,7 +2,7 @@ from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, 
 from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
 # from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from Projects.GSKJP.Utils.KPILocalGenerator import GSKLocalGenerator as GSKGenerator
-from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import ProductTypeConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import ProductTypeConsts, HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers

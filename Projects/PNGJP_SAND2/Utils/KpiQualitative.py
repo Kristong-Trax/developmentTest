@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import HelperConsts, ProductTypeConsts, BasicConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import HelperConsts, ProductTypeConsts, BasicConsts, HelperConsts
 from Trax.Data.ProfessionalServices.PsConsts.OldDB import KpiResults, KpkResults, KpsResults
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ProductsConsts, StoreInfoConsts, SceneInfoConsts, \
     TemplatesConsts

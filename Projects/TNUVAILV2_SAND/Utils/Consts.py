@@ -1,7 +1,7 @@
 # coding=utf-8
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
 from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
-from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import ProductTypeConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import ProductTypeConsts
 
 
 class Consts(object):
