@@ -43,7 +43,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
             ratio = 0
         else:
             score = Consts.PASS if target <= number_of_unique_skus <= upper_target else Consts.FAIL
-            ratio = (number_of_unique_skus / float(upper_target)) * 100
+            ratio = self.utils.calculate_sos_result(number_of_unique_skus, upper_target)
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, denominator_id=self.utils.store_id,
                                 numerator_result=number_of_unique_skus, denominator_result=denominator, result=ratio,
                                 target=target, weight=sadot, score=score)

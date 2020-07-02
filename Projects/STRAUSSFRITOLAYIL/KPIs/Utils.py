@@ -168,7 +168,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
     def calculate_sos_result(numerator, denominator):
         if denominator == 0:
             return 0
-        result = round((numerator / float(denominator)), 3)
+        result = 100 * round((numerator / float(denominator)), 3)
         return result
 
     def exclude_special_attribute_products(self, df):
