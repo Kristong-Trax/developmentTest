@@ -24,15 +24,16 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches[
             'category'].isin(template_categories)]
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches[
-            'product_type'].isin(['SKU'])]
-        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['brand_mix_fk']
-                                                            != Consts.BRAND_MIX_NO_VALUE]
+            'product_type'].isin(['Empty', 'Other', 'SKU'])]
+        # own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['brand_mix_fk']
+        #                                                     != Consts.BRAND_MIX_NO_VALUE]
         for category in template_categories:
             category_fk = self.utils.all_products[self.utils.all_products['category'] == category][
                 'category_fk'].values[0]
             category_df = own_manufacturer_matches[own_manufacturer_matches['category'] == category]
             category_linear_length = category_df['width_mm_advance'].sum()
-            # strauss are looking at sub_brand as brand in this KPI
+            # strauss are looking at brand_mix as brand in this KPI
+            category_df = category_df[category_df['brand_mix_fk'] != Consts.BRAND_MIX_NO_VALUE]
             brands_mix = set(category_df['brand_mix_fk'])
             for brand_mix_fk in brands_mix:
                 target = template[template['brand_mix_fk'] == brand_mix_fk][Consts.TARGET]

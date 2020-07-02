@@ -22,8 +22,9 @@ class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
         else:
             categories = ['Crackers']
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
-        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['product_type'].isin(['SKU'])]
-        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['brand_mix_fk']
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['product_type'].isin([
+            'Empty', 'Other', 'SKU'])]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['sub_brand_fk']
                                                             != Consts.SUB_BRAND_NO_VALUE]
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category'].isin(categories)]
         own_manufacturer_matches['facings'] = 1
