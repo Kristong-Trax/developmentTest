@@ -1,9 +1,9 @@
-from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts, BasicConsts, HelperConsts
-from KPIUtils_v2.Utils.Consts.OldDB import KpiResults, KpkResults, KpsResults
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, ScifConsts, StoreInfoConsts, SceneInfoConsts,\
+from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import HelperConsts, BasicConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.OldDB import KpiResults, KpkResults, KpsResults
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts, ScifConsts, StoreInfoConsts, SceneInfoConsts,\
     TemplatesConsts, MatchesConsts
 from datetime import datetime
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts,SceneResultsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts,SceneResultsConsts
 import os
 import pandas as pd
 # from timeit import default_timer as timer

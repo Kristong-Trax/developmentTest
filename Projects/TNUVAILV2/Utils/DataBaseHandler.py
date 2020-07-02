@@ -1,4 +1,4 @@
-from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts
+from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import BasicConsts
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Projects.TNUVAILV2.Data.LocalConsts import Consts

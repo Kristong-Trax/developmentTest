@@ -1,8 +1,8 @@
 # coding=utf-8
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts, ScifConsts
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
-from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
+from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import BasicConsts, HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common
 from Projects.TNUVAILV2.Utils.DataBaseHandler import DBHandler
 from Projects.TNUVAILV2.Data.LocalConsts import Consts

@@ -1,8 +1,8 @@
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
 # from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from Projects.PSAPAC_SAND3.Utils.KPILocalGenerator import GSKLocalGenerator as GSKGenerator
-from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.GlobalConsts import ProductTypeConsts, HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers

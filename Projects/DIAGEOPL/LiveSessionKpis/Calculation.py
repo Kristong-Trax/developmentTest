@@ -42,4 +42,4 @@ class CalculateKpi(LiveSessionBaseClass):
         assortment_results = pd.DataFrame(assortment_results)
         if not assortment_results.empty:
             self.common.write_to_db_results(assortment_results)
-            self.common.commit_results_data()
+        self.common.commit_results_data()
