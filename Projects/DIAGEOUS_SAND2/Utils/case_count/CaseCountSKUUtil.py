@@ -49,14 +49,20 @@ class CaseCountCalculator(GlobalSessionToolBox):
 
     def main_case_count_calculations(self):
         """This method calculates the entire Case Count KPIs set."""
-        if not (self.filtered_mdis.empty or self.filtered_scif.empty or self.matches.empty):
+        if not (self.filtered_scif.empty or self.matches.empty):
             try:
-                self._prepare_data_for_calculation()
-                self._generate_adj_graphs()
-                facings_res = self._calculate_display_size_facings()
-                sku_cases_res = self._count_number_of_cases()
-                unshoppable_cases_res = self._non_shoppable_case_kpi()
-                implied_cases_res = self._implied_shoppable_cases_kpi()
+                if not self.filtered_mdis.empty:
+                    self._prepare_data_for_calculation()
+                    self._generate_adj_graphs()
+                    facings_res = self._calculate_display_size_facings()
+                    sku_cases_res = self._count_number_of_cases()
+                    unshoppable_cases_res = self._non_shoppable_case_kpi()
+                    implied_cases_res = self._implied_shoppable_cases_kpi()
+                else:
+                    facings_res = self._calculate_display_size_facings()
+                    sku_cases_res = self._count_number_of_cases()
+                    unshoppable_cases_res = []
+                    implied_cases_res = []
                 total_res = self._calculate_total_cases(sku_cases_res + implied_cases_res + unshoppable_cases_res)
                 placeholder_res = self._generate_placeholder_results(facings_res, sku_cases_res,
                                                                      unshoppable_cases_res, implied_cases_res)
@@ -231,13 +237,31 @@ class CaseCountCalculator(GlobalSessionToolBox):
         branded_other_results = self._get_results_for_branded_other_cases()
         results.extend(branded_other_results)
 
+        orphan_results = self._calculate_orphan_tag_cases()
+
         for res in results:
             for sku in res:
                 total_res[int(sku)] += (1/float(len(res)))
+        for res in orphan_results:
+            total_res[int(res[Pc.PRODUCT_FK])] += float(res[Src.RESULT])
         for product_fk in list(set(self.target.keys() + total_res.keys()) - set(self.excluded_product_fks)):
             result = round(total_res.get(product_fk, 0), 2)
             results_for_db.append({Sc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk})
         return results_for_db
+
+    def _calculate_orphan_tag_cases(self):
+        """Calculates the number of cases that are made up by orphan tags. 4 orphan tags == 1 case"""
+        if Consts.DISPLAY_IN_SCENE_FK in self.matches.columns.tolist():
+            matches = self.matches[self.matches[Consts.DISPLAY_IN_SCENE_FK].isna()]
+        else:
+            matches = self.matches
+        results_df = matches.groupby([Sc.SUBSTITUTION_PRODUCT_FK], as_index=False)['scene_match_fk'].count()
+        results_df.rename(columns={Sc.SUBSTITUTION_PRODUCT_FK: Pc.PRODUCT_FK, 'scene_match_fk': Src.RESULT},
+                          inplace=True)
+        results_df[Src.RESULT] = results_df[Src.RESULT] / 4
+        results_df = results_df.assign(fk=self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI))
+        results_df = results_df.fillna(0)
+        return results_df.to_dict('records')
 
     def _implied_shoppable_cases_kpi(self):
         """
@@ -350,7 +374,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
 
     def get_filtered_matches(self):
         """ This method filters and merges Match Product In Scene and Match Display In Scene DataFrames"""
-        scenes_with_display = self._get_scenes_with_relevant_displays()
+        # scenes_with_display = self._get_scenes_with_relevant_displays()
+        scenes_with_display = self._get_display_template_group_scenes()
         filtered_matches = self.data_provider.matches.loc[self.data_provider.matches.scene_fk.isin(scenes_with_display)]
         if not filtered_matches.empty:
             filtered_matches = self._add_smart_attributes_to_matches(filtered_matches)
@@ -537,7 +562,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
     def _get_filtered_scif(self):
         """The case count is relevant only for scene that includes specific displays.
         So this method filters scene item facts to support the case count logic."""
-        scenes_with_display = self._get_scenes_with_relevant_displays()
+        # scenes_with_display = self._get_scenes_with_relevant_displays()
+        scenes_with_display = self._get_display_template_group_scenes()
         scif = self.data_provider.scene_item_facts.loc[
             self.data_provider.scene_item_facts.scene_fk.isin(scenes_with_display) & ~(
                 self.data_provider.scene_item_facts[Sc.SKU_TYPE].isna())]
@@ -559,6 +585,9 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method returns only scene with "Open" or "Close" display tags"""
         return self.filtered_mdis.scene_fk.unique().tolist()
 
+    def _get_display_template_group_scenes(self):
+        return self.scif[self.scif['template_group'] == 'Display'].scene_fk.unique().tolist()
+
     @staticmethod
     def create_graph_image(scene_id, graph):
         filtered_figure = GraphPlot.plot_networkx_graph(graph, overlay_image=True,
@@ -571,9 +600,9 @@ if __name__ == '__main__':
     from KPIUtils_v2.DB.CommonV2 import Common
     from Trax.Utils.Conf.Configuration import Config
     from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-    Config.init('')
+    Config.init()
     test_data_provider = KEngineDataProvider('diageous-sand2')
-    sessions = ['f1fe8759-a7ae-4d30-894c-b34efe0808cd']
+    sessions = ['b660518b-bcb8-470e-b9fc-0528b38c46bf']
     for session in sessions:
         print(session)
         test_data_provider.load_session_data(session_uid=session)
