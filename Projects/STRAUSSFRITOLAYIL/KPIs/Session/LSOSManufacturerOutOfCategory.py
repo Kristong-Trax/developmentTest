@@ -39,7 +39,7 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
             else:
                 kpi_score = Consts.PASS if (target <= sos_result) else Consts.FAIL
             self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, denominator_id=category_fk,
-                                    numerator_result=own_category_linear_length,
+                                    numerator_result=own_category_linear_length, target=target,
                                     denominator_result=store_category_linear_length,
                                     result=sos_result, score=kpi_score)
 
