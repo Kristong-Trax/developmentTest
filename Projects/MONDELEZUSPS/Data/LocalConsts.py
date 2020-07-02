@@ -12,3 +12,5 @@ class Consts(object):
     FINAL_FACINGS = 'final_facings'
     DISTRIBUTION = 'Distribution'
     SCENE_FK = 'scene_fk'
+    GRANULAR_GROUP_NAME = 'Granular Group Name'
+    EAN_CODE = 'EAN Code'

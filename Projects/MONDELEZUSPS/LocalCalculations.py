@@ -1,10 +1,10 @@
-#
-# from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-# from Trax.Utils.Conf.Configuration import Config
-# from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-# from Projects.MONDELEZUSPS.Calculations import Calculations
-#
-#
+
+from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
+from Trax.Utils.Conf.Configuration import Config
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+from Projects.MONDELEZUSPS.Calculations import Calculations
+
+
 # if __name__ == '__main__':
 #     LoggerInitializer.init('mondelezusps calculations')
 #     Config.init()
@@ -12,7 +12,12 @@
 #     data_provider = KEngineDataProvider(project_name)
 #     session_list = [
 #         'de3619ed-2557-4c6e-b97b-1e05be9f98c8',
-#         # '540b2e3d-988c-43ef-9897-7ac5850d654f'
+#         '540b2e3d-988c-43ef-9897-7ac5850d654f',
+#         'bc647fe2-b377-40a3-9abd-2153d60e1b0c',
+#         '540b2e3d-988c-43ef-9897-7ac5850d654f',
+#         '6555cf89-66b0-46e6-bf72-ea7c1e140bf4',
+#         'b4ce4e36-2df5-47a9-9951-53133c9bdebc'
+#
 #     ]
 #     for session in session_list:
 #         data_provider.load_session_data(session)

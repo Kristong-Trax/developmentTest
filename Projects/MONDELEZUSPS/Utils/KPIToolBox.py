@@ -9,7 +9,6 @@ from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 
 from collections import OrderedDict
@@ -64,7 +63,6 @@ class ToolBox(GlobalSessionToolBox):
         self.shelf_number = self.templates[Consts.SHELF_MAP].set_index('Num Shelves')
         self.block = Block(data_provider)
         self.match_product_in_probe_state_reporting = self.ps_data_provider.get_match_product_in_probe_state_reporting()
-        self.assortment = Assortment(self.data_provider, self.output)
         self.match_product_in_scene = self.data_provider[Data.MATCHES]
         self.merged_scif_mpis = self.match_product_in_scene.merge(self.scif, how='left',
                                                                   left_on=['scene_fk', 'product_fk'],
@@ -74,7 +72,12 @@ class ToolBox(GlobalSessionToolBox):
         self.custom_entity_table = self.get_kpi_custom_entity_table()
         self.final_custom_entity_table = self.custom_entity_table.copy()
         self.store_area = self.get_store_area_df()
-        self.targets = self.ps_data_provider.get_kpi_external_targets()
+        # self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=['KPI Type', 'store_type'],
+                                                                      data_fields=['Granular Group Name',
+                                                                                   'Location: JSON',
+                                                                                   'Config Params: JSON',
+                                                                                   'Dataset 1: JSON', 'EAN Code'])
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result', 'context_id',
                                                 'denominator_id', 'denominator_result', 'result', 'score'])
 
@@ -92,9 +95,11 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
-        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DIAMOND_POSITION]
+        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING,
+                              Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
         # relevant_kpi_types = [Consts.DIAMOND_POSITION]
-        targets = self.targets[self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)]
+        targets = self.targets[(self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)) & (
+            self.targets[Consts.GRANULAR_GROUP_NAME].isnull())]
 
         self._calculate_kpis_from_template(targets)
         self.save_results_to_db()
@@ -135,7 +140,8 @@ class ToolBox(GlobalSessionToolBox):
         overlap_pct = float(row['Config Params: JSON']['overlap_pct'][0])
         population_pct = float(row['Config Params: JSON']['population_pct'][0])
         df.dropna(subset=[numerator_type], inplace=True)
-        diamond_boarder_df = self._diamond_boarder(return_holder,df.scene_fk.unique(), overlap_pct) #need to write inside the diamond position
+        diamond_boarder_df = self._diamond_boarder(return_holder, df.scene_fk.unique(),
+                                                   overlap_pct)  # need to write inside the diamond position
         result_dict_list = self._logic_diamond_position(df, diamond_boarder_df, return_holder, numerator_type,
                                                         denominator_type,
                                                         population_pct)
@@ -154,12 +160,13 @@ class ToolBox(GlobalSessionToolBox):
                 groupby_numerator_df = self._df_groupby_logic(filtered_numerator_df, ['scene_fk', numerator_type],
                                                               {'facings': 'count'})  # may cause issue
                 scene_with_most_numerator_facings = \
-                groupby_numerator_df.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
+                    groupby_numerator_df.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
                 scene_filtered_numerator_df = self._filter_df(filtered_numerator_df,
                                                               {'scene_fk': scene_with_most_numerator_facings})
                 nodes_in_diamond = self._filter_df(diamond_boarder_df, {
                     'scene_fk': scene_with_most_numerator_facings}).nodes_in_diamond.iat[0]
-                final_numerator_df = scene_filtered_numerator_df[scene_filtered_numerator_df.scene_match_fk.isin(nodes_in_diamond)]
+                final_numerator_df = scene_filtered_numerator_df[
+                    scene_filtered_numerator_df.scene_match_fk.isin(nodes_in_diamond)]
                 # numerator_result = len(final_numerator_df)
                 # denominator_result = len(scene_filtered_numerator_df)
                 if not isinstance(unique_numerator_id, int):
@@ -169,12 +176,12 @@ class ToolBox(GlobalSessionToolBox):
                                'numerator_id': unique_numerator_id, 'numerator_result': result,
                                'denominator_id': unique_denominator_type, 'denominator_result': 1,
                                'result': result}
-                #save tags into explorer
+                # save tags into explorer
                 self.mark_tags_in_explorer(final_numerator_df.probe_match_fk.values.tolist(), return_holder[0])
                 result_dict_list.append(result_dict)
         return result_dict_list
 
-    def _diamond_boarder(self, relevant_holder,relevant_scene_fks, overlap_pct):
+    def _diamond_boarder(self, relevant_holder, relevant_scene_fks, overlap_pct):
         diamond_boarder_df = pd.DataFrame()
         for unique_scene_fk in relevant_scene_fks:
             ### diamond positon kpi ###
@@ -219,9 +226,10 @@ class ToolBox(GlobalSessionToolBox):
                     # if the product overlaps, add it to the 'in diamond' list
                     nodes_in_diamond.append(node)
 
-            #add tags in explorer to define boarder of the diamond
+            # add tags in explorer to define boarder of the diamond
             if nodes_in_diamond:
-                diamond_boarder_probematch_fk = self.match_product_in_scene[self.match_product_in_scene.scene_match_fk.isin(nodes_in_diamond)].probe_match_fk.values.tolist()
+                diamond_boarder_probematch_fk = self.match_product_in_scene[
+                    self.match_product_in_scene.scene_match_fk.isin(nodes_in_diamond)].probe_match_fk.values.tolist()
                 self.mark_tags_in_explorer(diamond_boarder_probematch_fk, 'diamond_boarder')
                 diamond_boarder_df = diamond_boarder_df.append(
                     {'scene_fk': unique_scene_fk, 'nodes_in_diamond': nodes_in_diamond}, ignore_index=True)
@@ -316,12 +324,16 @@ class ToolBox(GlobalSessionToolBox):
                                                       {denominator_type: unqiue_denominator_id})
             for unique_numerator_id in set(denominator_filtered_df[numerator_type]):
                 filtered_numerator_df = self._filter_df(df, {numerator_type: unique_numerator_id})
-                relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg( ['max', 'idxmax']).loc['idxmax']['facings']
-                scene_filtered_df = self._filter_df(filtered_numerator_df, {'scene_fk':relevant_scene})
+                relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg(
+                    ['max', 'idxmax']).loc['idxmax']['facings']
+                scene_filtered_df = self._filter_df(filtered_numerator_df, {'scene_fk': relevant_scene})
                 # count_of_bays_in_scene = self.match_product_in_scene[self.match_product_in_scene.scene_fk == relevant_scene].bay_number.max()
-                count_of_bays_in_scene = scene_filtered_df[scene_filtered_df.scene_fk == relevant_scene].bay_number.max()
-                bay_number = self._get_bay_number_for_bay_positon(numerator_type,count_of_bays_in_scene, scene_filtered_df)
-                numerator_result, denominator_result, final_result = self._get_result_for_bay_postion(df, numerator_type,
+                count_of_bays_in_scene = scene_filtered_df[
+                    scene_filtered_df.scene_fk == relevant_scene].bay_number.max()
+                bay_number = self._get_bay_number_for_bay_positon(numerator_type, count_of_bays_in_scene,
+                                                                  scene_filtered_df)
+                numerator_result, denominator_result, final_result = self._get_result_for_bay_postion(df,
+                                                                                                      numerator_type,
                                                                                                       anchor_pct,
                                                                                                       scene_filtered_df,
                                                                                                       relevant_scene,
@@ -332,38 +344,36 @@ class ToolBox(GlobalSessionToolBox):
                 final_result = key_dict.get(final_result)
                 result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
                                'numerator_id': unique_numerator_id, 'numerator_result': numerator_result,
-                               'denominator_id':unqiue_denominator_id, 'denominator_result': denominator_result,
+                               'denominator_id': unqiue_denominator_id, 'denominator_result': denominator_result,
                                'result': final_result}
                 result_dict_list.append(result_dict)
         return result_dict_list
 
+        # denomi_df_grouped_facings = self._df_groupby_logic(denominator_filtered_df, ['scene_fk', numerator_type],
+        #                                                    {'facings': 'count'})
+        #
+        # relevant_scene_with_most_facings = \
+        #     denomi_df_grouped_facings.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
 
-
-            # denomi_df_grouped_facings = self._df_groupby_logic(denominator_filtered_df, ['scene_fk', numerator_type],
-            #                                                    {'facings': 'count'})
-            #
-            # relevant_scene_with_most_facings = \
-            #     denomi_df_grouped_facings.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
-
-            # scene_filtered_df = self._filter_df(denominator_filtered_df, {'scene_fk': relevant_scene_with_most_facings})
-            # count_of_bays_in_scene = scene_filtered_df.bay_number.max()
-            #
-            # bay_number, numerator_id = self._get_bay_number_for_bay_positon(numerator_type,
-            #                                                                 count_of_bays_in_scene, scene_filtered_df)
-            #
-            # numerator_result, denominator_result, final_result = self._get_result_for_bay_postion(df, numerator_type,
-            #                                                                                       anchor_pct,
-            #                                                                                       scene_filtered_df,
-            #                                                                                       relevant_scene_with_most_facings,
-            #                                                                                       count_of_bays_in_scene,
-            #                                                                                       bay_number)
-            # final_result = key_dict.get(final_result)
-            #
-            # result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-            #                'numerator_id': numerator_id, 'numerator_result': numerator_result,
-            #                'denominator_id': denominator_type, 'denominator_result': denominator_result,
-            #                'result': final_result}
-            # result_dict_list.append(result_dict)
+        # scene_filtered_df = self._filter_df(denominator_filtered_df, {'scene_fk': relevant_scene_with_most_facings})
+        # count_of_bays_in_scene = scene_filtered_df.bay_number.max()
+        #
+        # bay_number, numerator_id = self._get_bay_number_for_bay_positon(numerator_type,
+        #                                                                 count_of_bays_in_scene, scene_filtered_df)
+        #
+        # numerator_result, denominator_result, final_result = self._get_result_for_bay_postion(df, numerator_type,
+        #                                                                                       anchor_pct,
+        #                                                                                       scene_filtered_df,
+        #                                                                                       relevant_scene_with_most_facings,
+        #                                                                                       count_of_bays_in_scene,
+        #                                                                                       bay_number)
+        # final_result = key_dict.get(final_result)
+        #
+        # result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+        #                'numerator_id': numerator_id, 'numerator_result': numerator_result,
+        #                'denominator_id': denominator_type, 'denominator_result': denominator_result,
+        #                'result': final_result}
+        # result_dict_list.append(result_dict)
 
     def _get_bay_number_for_bay_positon(self, numerator_type, count_of_bays_in_scene, scene_filtered_df):
         bay_df = self._df_groupby_logic(scene_filtered_df, ['bay_number', numerator_type], {'facings': 'count'})
@@ -417,8 +427,67 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_distribution(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
-        # a =  self.assortment.main_assortment_calculation()
-        a = 1
+        child_sku = self._get_sku_name_and_fk(return_holder[0])
+        relevant_template_for_distribution = self.targets[
+            (~ self.targets[Consts.GRANULAR_GROUP_NAME].isnull()) & (self.targets[Consts.KPI_NAME] == return_holder[0])]
+
+        result_dict_list = []
+        relevant_template_for_distribution.dropna(subset=[Consts.EAN_CODE], inplace=True)
+        relevant_template_for_distribution[Consts.EAN_CODE] = relevant_template_for_distribution[
+            Consts.EAN_CODE].astype(int)
+
+        product_df = self.all_products[['product_ean_code', 'product_fk', 'category_fk']].dropna()
+        product_df.product_ean_code = product_df.product_ean_code.astype(int)
+
+        df.dropna(subset=['product_ean_code'], inplace=True)
+        df.drop_duplicates(subset=['product_ean_code'], keep='first', inplace=True)
+        df['product_ean_code'] = df['product_ean_code'].astype(int)
+        df = df[df.product_ean_code.isin(relevant_template_for_distribution[Consts.EAN_CODE])]
+        final_df = df[['product_ean_code', 'product_fk', Consts.FINAL_FACINGS]]
+
+        for unique_assortment in relevant_template_for_distribution[Consts.GRANULAR_GROUP_NAME].unique():
+            assortment_relevant_template = relevant_template_for_distribution[
+                relevant_template_for_distribution[Consts.GRANULAR_GROUP_NAME] == unique_assortment]
+            if not isinstance(unique_assortment, str):
+                assortment_id = self._get_id_from_custom_entity_table('assortment', unique_assortment)
+
+            categorical_product_df = product_df[
+                product_df.product_ean_code.isin(assortment_relevant_template[Consts.EAN_CODE])]
+
+            for unique_categorical_fk in set(categorical_product_df.category_fk):
+                final_categorical_df = categorical_product_df[
+                    categorical_product_df.category_fk.isin([unique_categorical_fk])]
+                product_results = []
+
+                for unique_product_fk in final_categorical_df.product_fk:
+                    result = 1 if unique_product_fk in final_df.product_fk.values else 0
+                    numerator_result = final_df.loc[final_df.product_fk == unique_product_fk, 'final_facings'].iat[
+                        0] if result else 0
+                    numerator_id = unique_product_fk
+
+                    result_dict = {'kpi_name': child_sku[0], 'kpi_fk': child_sku[1],
+                                   'numerator_id': numerator_id,
+                                   'numerator_result': numerator_result,
+                                   'denominator_id': assortment_id, 'denominator_result': 1,
+                                   'result': result}
+
+                    product_results.append(result)
+                    result_dict_list.append(result_dict)
+
+            parent_numerator_id = assortment_id
+            parent_denominator_id = self.store_id
+            parent_numerator_result = sum(product_results)
+            parent_denominator_result = len(product_results)
+            parent_result = float(parent_numerator_result) / parent_denominator_result
+
+            result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+                           'numerator_id': parent_numerator_id,
+                           'numerator_result': parent_numerator_result,
+                           'denominator_id': parent_denominator_id, 'denominator_result': parent_denominator_result,
+                           'result': parent_result}
+            result_dict_list.append(result_dict)
+
+        return result_dict_list
 
     def calculate_shelf_position(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
@@ -448,15 +517,18 @@ class ToolBox(GlobalSessionToolBox):
             unique_template_scif_mpis = self._filter_df(df, {denominator_type: unique_denominator_fk})
             for unique_numerator_id in set(unique_template_scif_mpis[numerator_type]):
                 filtered_numerator_df = self._filter_df(df, {numerator_type: unique_numerator_id})
-                relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg(['max', 'idxmax']).loc['idxmax']['facings']
-                scene_filtered_df = self._filter_df(filtered_numerator_df, {'scene_fk':relevant_scene})
-                relevant_bay_df = self._df_groupby_logic(scene_filtered_df, ['bay_number','shelf_number_from_bottom'], {'facings': 'count'}).agg(
+                relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg(
+                    ['max', 'idxmax']).loc['idxmax']['facings']
+                scene_filtered_df = self._filter_df(filtered_numerator_df, {'scene_fk': relevant_scene})
+                relevant_bay_df = self._df_groupby_logic(scene_filtered_df, ['bay_number', 'shelf_number_from_bottom'],
+                                                         {'facings': 'count'}).agg(
                     ['max', 'idxmax']).loc['idxmax']['facings']
                 relevant_bay = relevant_bay_df[0]
                 relevant_shelf = relevant_bay_df[1]
                 # max_shelf_number_from_bottom = scene_filtered_df.shelf_number_from_bottom.max()
-                max_shelf_number_from_bottom = (self._filter_df(self.match_product_in_scene, {'scene_fk': relevant_scene,
-                                                               'bay_number': relevant_bay})).shelf_number_from_bottom.max()
+                max_shelf_number_from_bottom = (
+                    self._filter_df(self.match_product_in_scene, {'scene_fk': relevant_scene,
+                                                                  'bay_number': relevant_bay})).shelf_number_from_bottom.max()
                 try:
                     result = self.shelf_number.loc[max_shelf_number_from_bottom, relevant_shelf]
                     result_by_id = key_dict.get(result)
@@ -467,49 +539,50 @@ class ToolBox(GlobalSessionToolBox):
                 result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
                                'numerator_id': unique_numerator_id,
                                'numerator_result': relevant_shelf,
-                               'denominator_id': unique_denominator_fk, 'denominator_result': max_shelf_number_from_bottom,
+                               'denominator_id': unique_denominator_fk,
+                               'denominator_result': max_shelf_number_from_bottom,
                                'result': result_by_id}
                 result_dict_list.append(result_dict)
         return result_dict_list
 
-            # df_with_max_facings_by_scene = self._df_groupby_logic(unique_template_scif_mpis,
-            #                                                       ['scene_fk', numerator_type],
-            #                                                       {'facings': 'count'})
-            #
-            # relevant_scene_with_most_numerator_facings = \
-            #     df_with_max_facings_by_scene.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
-            #
-            # relevant_scif_mpis_scene_with_most_facings = self._filter_df(unique_template_scif_mpis, {
-            #     'scene_fk': relevant_scene_with_most_numerator_facings})
-            #
-            # df_with_max_facings_by_bay = self._df_groupby_logic(relevant_scif_mpis_scene_with_most_facings,
-            #                                                     ['bay_number', numerator_type], {'facings': 'count'})
-            # relevant_bay_with_most_numerator_facings = \
-            #     df_with_max_facings_by_bay.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
-            # final_df = self._filter_df(relevant_scif_mpis_scene_with_most_facings,
-            #                            {'bay_number': relevant_bay_with_most_numerator_facings})
-            # container_with_shelf_number = self._df_groupby_logic(final_df, ['shelf_number_from_bottom', numerator_type],
-            #                                                      {'facings': 'count'})
-            # max_shelf = final_df.shelf_number_from_bottom.max()
-            # shelf_number = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
-            #     0]  # shelf with the mose number of facings
-            #
-            # try:
-            #     result = self.shelf_number.loc[max_shelf, shelf_number]
-            #     result_by_id = key_dict.get(result)
-            # except:
-            #     continue
-            #
-            # numerator_id = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
-            #     1]  # numerator_id with most facings in the bay
-            # if not isinstance(numerator_id, int):
-            #     numerator_id = self._get_id_from_custom_entity_table(numerator_type, numerator_id)
-            # result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-            #                'numerator_id': numerator_id,
-            #                'numerator_result': shelf_number,
-            #                'denominator_id': unique_denominator_fk, 'denominator_result': max_shelf,
-            #                'result': result_by_id}
-            # result_dict_list.append(result_dict)
+        # df_with_max_facings_by_scene = self._df_groupby_logic(unique_template_scif_mpis,
+        #                                                       ['scene_fk', numerator_type],
+        #                                                       {'facings': 'count'})
+        #
+        # relevant_scene_with_most_numerator_facings = \
+        #     df_with_max_facings_by_scene.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
+        #
+        # relevant_scif_mpis_scene_with_most_facings = self._filter_df(unique_template_scif_mpis, {
+        #     'scene_fk': relevant_scene_with_most_numerator_facings})
+        #
+        # df_with_max_facings_by_bay = self._df_groupby_logic(relevant_scif_mpis_scene_with_most_facings,
+        #                                                     ['bay_number', numerator_type], {'facings': 'count'})
+        # relevant_bay_with_most_numerator_facings = \
+        #     df_with_max_facings_by_bay.agg(['max', 'idxmax']).loc['idxmax', 'facings'][0]
+        # final_df = self._filter_df(relevant_scif_mpis_scene_with_most_facings,
+        #                            {'bay_number': relevant_bay_with_most_numerator_facings})
+        # container_with_shelf_number = self._df_groupby_logic(final_df, ['shelf_number_from_bottom', numerator_type],
+        #                                                      {'facings': 'count'})
+        # max_shelf = final_df.shelf_number_from_bottom.max()
+        # shelf_number = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
+        #     0]  # shelf with the mose number of facings
+        #
+        # try:
+        #     result = self.shelf_number.loc[max_shelf, shelf_number]
+        #     result_by_id = key_dict.get(result)
+        # except:
+        #     continue
+        #
+        # numerator_id = container_with_shelf_number.agg(['max', 'idxmax']).loc['idxmax', 'facings'][
+        #     1]  # numerator_id with most facings in the bay
+        # if not isinstance(numerator_id, int):
+        #     numerator_id = self._get_id_from_custom_entity_table(numerator_type, numerator_id)
+        # result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+        #                'numerator_id': numerator_id,
+        #                'numerator_result': shelf_number,
+        #                'denominator_id': unique_denominator_fk, 'denominator_result': max_shelf,
+        #                'result': result_by_id}
+        # result_dict_list.append(result_dict)
 
     def calculate_scene_location(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
@@ -564,7 +637,7 @@ class ToolBox(GlobalSessionToolBox):
                         denominator_result = relevant_block.total_facings
                         result = 1
                         probe_match_fks = [item for each in relevant_block.cluster.nodes.values() for item in
-                               each['probe_match_fk']]
+                                           each['probe_match_fk']]
                         self.mark_tags_in_explorer(probe_match_fks, return_holder[0])
                     if not isinstance(unique_numerator_id, int):
                         unique_numerator_id = self._get_id_from_custom_entity_table(numerator_type, unique_numerator_id)
@@ -607,19 +680,22 @@ class ToolBox(GlobalSessionToolBox):
         numerator_type, denominator_type, context_type = self._get_numerator_and_denominator_type(
             row['Config Params: JSON'], context_relevant=True)
         list_holder = self.logic_of_sos(df, numerator_type, denominator_type,
-                                             context_type, facings_threshold)
+                                        context_type, facings_threshold)
         if list_holder:
             df_holder = pd.DataFrame(list_holder)
-            count_of_denominator_df = df_holder.groupby(['context_id','denominator_id']).agg({'numerator_id':'count'}).rename(columns = {'numerator_id':'count_of_denominator_id'}).reset_index()
-            count_of_numerator_df = df_holder.groupby(['context_id','denominator_id','numerator_id']).agg({'numerator_id':'count'}).rename(columns = {'numerator_id':'count_of_numerator_id'}).reset_index()
-            final_df = count_of_numerator_df.merge(count_of_denominator_df, how='inner', on=['context_id','denominator_id'])
+            count_of_denominator_df = df_holder.groupby(['context_id', 'denominator_id']).agg(
+                {'numerator_id': 'count'}).rename(columns={'numerator_id': 'count_of_denominator_id'}).reset_index()
+            count_of_numerator_df = df_holder.groupby(['context_id', 'denominator_id', 'numerator_id']).agg(
+                {'numerator_id': 'count'}).rename(columns={'numerator_id': 'count_of_numerator_id'}).reset_index()
+            final_df = count_of_numerator_df.merge(count_of_denominator_df, how='inner',
+                                                   on=['context_id', 'denominator_id'])
             final_df['result'] = np.true_divide(final_df.count_of_numerator_id, final_df.count_of_denominator_id)
             list_holder = []
             for item in final_df.itertuples():
                 result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
                                'numerator_id': item.numerator_id, 'numerator_result': item.count_of_numerator_id,
                                'denominator_id': item.denominator_id,
-                               'denominator_result': item.count_of_denominator_id,'context_id':item.context_id,
+                               'denominator_result': item.count_of_denominator_id, 'context_id': item.context_id,
                                'result': item.result}
                 list_holder.append(result_dict)
         return list_holder
@@ -642,55 +718,50 @@ class ToolBox(GlobalSessionToolBox):
 
                         if manufacturer_unique_scif.drop_duplicates(subset=['product_fk'])[
                             Consts.FINAL_FACINGS].sum() >= facings_threshold:
-
-                            dict_holder = {'numerator_id':unique_numerator_fk, 'denominator_id':unique_denominator_fk, 'context_id':unique_context_fk}
+                            dict_holder = {'numerator_id': unique_numerator_fk, 'denominator_id': unique_denominator_fk,
+                                           'context_id': unique_context_fk}
                             return_list.append(dict_holder)
         return return_list
-                            # if unique_numerator_fk == 494 or unique_denominator_fk == 25:
-                            #     a = 1
-                            #
-                            # if unique_denominator_fk in result_container_df.denominator_id.values :
-                            #     place_holder_denominator_result = result_container_df.loc[result_container_df.denominator_id == unique_denominator_fk,'denominator_result'] + 1
-                            #     if unique_numerator_fk in result_container_df.numerator_id.values:
-                            #         place_holder_numerator_result = result_container_df.loc[result_container_df.numerator_id == unique_numerator_fk,'numerator_result'] + 1
-                            #
-                            #     else:
-                            #         place_holder_numerator_result = 1
-                            #
-                            #
-                            #     result_container_df.loc[
-                            #         result_container_df.numerator_id == unique_numerator_fk, 'numerator_result'] = place_holder_numerator_result
-                            #     result_container_df.loc[
-                            #         result_container_df.denominator_id == unique_denominator_fk, 'denominator_result'] = place_holder_denominator_result
-                            # else:
-                            #     result_container_df.loc[len(result_container_df)] = [unique_numerator_fk,
-                            #                                                          unique_denominator_fk,
-                            #                                                          unique_context_fk, 1, 1]
+        # if unique_numerator_fk == 494 or unique_denominator_fk == 25:
+        #     a = 1
+        #
+        # if unique_denominator_fk in result_container_df.denominator_id.values :
+        #     place_holder_denominator_result = result_container_df.loc[result_container_df.denominator_id == unique_denominator_fk,'denominator_result'] + 1
+        #     if unique_numerator_fk in result_container_df.numerator_id.values:
+        #         place_holder_numerator_result = result_container_df.loc[result_container_df.numerator_id == unique_numerator_fk,'numerator_result'] + 1
+        #
+        #     else:
+        #         place_holder_numerator_result = 1
+        #
+        #
+        #     result_container_df.loc[
+        #         result_container_df.numerator_id == unique_numerator_fk, 'numerator_result'] = place_holder_numerator_result
+        #     result_container_df.loc[
+        #         result_container_df.denominator_id == unique_denominator_fk, 'denominator_result'] = place_holder_denominator_result
+        # else:
+        #     result_container_df.loc[len(result_container_df)] = [unique_numerator_fk,
+        #                                                          unique_denominator_fk,
+        #                                                          unique_context_fk, 1, 1]
 
-
-
-
-
-
-                            #TERRIABLE LOGIC: NEED TO CHANGE
-                            # if unique_numerator_fk in result_container_df.numerator_id.values:
-                            #     if unique_denominator_fk not in result_container_df.denominator_id.values:
-                            #         result_container_df.loc[len(result_container_df)] = [unique_numerator_fk, unique_denominator_fk, unique_context_fk, 1, 1]
-                            #
-                            #     else:
-                            #         result_container_df.loc[result_container_df.numerator_id == unique_numerator_fk,'numerator_result'] = result_container_df.loc[result_container_df.numerator_id == unique_numerator_fk,'numerator_result'] + 1
-                            #         result_container_df.loc[result_container_df.denominator_id == unique_denominator_fk,'denominator_result'] = result_container_df.loc[result_container_df.denominator_id == unique_denominator_fk,'denominator_result'] + 1
-                            # else:
-                            #     if unique_denominator_fk in result_container_df.denominator_id.values:
-                            #         denominator_result_placeholder = (result_container_df.loc[
-                            #              result_container_df.denominator_id == unique_denominator_fk, 'denominator_result'] + 1).iat[
-                            #             0]
-                            #         result_container_df.loc[
-                            #             result_container_df.denominator_id == unique_denominator_fk, 'denominator_result'] = denominator_result_placeholder
-                            #         result_container_df.loc[len(result_container_df)] = [unique_numerator_fk, unique_denominator_fk, unique_context_fk, 1, denominator_result_placeholder]
-                            #
-                            #     else:
-                            #         result_container_df.loc[len(result_container_df)] = [unique_numerator_fk, unique_denominator_fk, unique_context_fk, 1, 1]
+        # TERRIABLE LOGIC: NEED TO CHANGE
+        # if unique_numerator_fk in result_container_df.numerator_id.values:
+        #     if unique_denominator_fk not in result_container_df.denominator_id.values:
+        #         result_container_df.loc[len(result_container_df)] = [unique_numerator_fk, unique_denominator_fk, unique_context_fk, 1, 1]
+        #
+        #     else:
+        #         result_container_df.loc[result_container_df.numerator_id == unique_numerator_fk,'numerator_result'] = result_container_df.loc[result_container_df.numerator_id == unique_numerator_fk,'numerator_result'] + 1
+        #         result_container_df.loc[result_container_df.denominator_id == unique_denominator_fk,'denominator_result'] = result_container_df.loc[result_container_df.denominator_id == unique_denominator_fk,'denominator_result'] + 1
+        # else:
+        #     if unique_denominator_fk in result_container_df.denominator_id.values:
+        #         denominator_result_placeholder = (result_container_df.loc[
+        #              result_container_df.denominator_id == unique_denominator_fk, 'denominator_result'] + 1).iat[
+        #             0]
+        #         result_container_df.loc[
+        #             result_container_df.denominator_id == unique_denominator_fk, 'denominator_result'] = denominator_result_placeholder
+        #         result_container_df.loc[len(result_container_df)] = [unique_numerator_fk, unique_denominator_fk, unique_context_fk, 1, denominator_result_placeholder]
+        #
+        #     else:
+        #         result_container_df.loc[len(result_container_df)] = [unique_numerator_fk, unique_denominator_fk, unique_context_fk, 1, 1]
 
     def get_store_area_df(self):
         query = """
@@ -787,6 +858,11 @@ class ToolBox(GlobalSessionToolBox):
         output = [kpi_name, kpi_fk]
         return output
 
+    def _get_sku_name_and_fk(self, kpi_name):
+        final_kpi = kpi_name + " - SKU"
+        final_kpi_fk = self.common.get_kpi_fk_by_kpi_type(final_kpi)
+        return [final_kpi, final_kpi_fk]
+
     def _get_id_from_custom_entity_table(self, numerator_type, string_numerator_id):
         '''
         :param numerator_type: Numerator type from the config json file
@@ -814,7 +890,6 @@ class ToolBox(GlobalSessionToolBox):
             final_numerator_id = \
                 self.final_custom_entity_table[self.final_custom_entity_table.name.isin([string_numerator_id])].iloc[
                     0, 0]
-
         return final_numerator_id
 
     def _save_into_custom_entity_table(self, final_numerator_id, string_numerator_id,
