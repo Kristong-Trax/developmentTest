@@ -24,7 +24,9 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches[
             'category'].isin(template_categories)]
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches[
-            'product_type'].isin(['Empty', 'Other', 'SKU'])]
+            'product_type'].isin(['SKU'])]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['brand_mix_fk']
+                                                            != Consts.BRAND_MIX_NO_VALUE]
         for category in template_categories:
             category_fk = self.utils.all_products[self.utils.all_products['category'] == category][
                 'category_fk'].values[0]
