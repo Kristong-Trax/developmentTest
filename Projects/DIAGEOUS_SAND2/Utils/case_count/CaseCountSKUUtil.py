@@ -58,7 +58,10 @@ class CaseCountCalculator(GlobalSessionToolBox):
                 unshoppable_cases_res = self._non_shoppable_case_kpi()
                 implied_cases_res = self._implied_shoppable_cases_kpi()
                 total_res = self._calculate_total_cases(sku_cases_res + implied_cases_res + unshoppable_cases_res)
-                self._save_results_to_db(facings_res+sku_cases_res+unshoppable_cases_res+implied_cases_res+total_res)
+                placeholder_res = self._generate_placeholder_results(facings_res, sku_cases_res,
+                                                                     unshoppable_cases_res, implied_cases_res)
+                self._save_results_to_db(facings_res + sku_cases_res + unshoppable_cases_res +
+                                         implied_cases_res + total_res + placeholder_res)
                 self._calculate_total_score_level_res(total_res)
             except Exception as err:
                 Log.error("DiageoUS Case Count calculation failed due to the following error: {}".format(err))
@@ -82,13 +85,26 @@ class CaseCountCalculator(GlobalSessionToolBox):
             total_results_per_sku[res[Pc.PRODUCT_FK]] += res[Src.RESULT]
         # save products with targets
         for product_fk, target in self.target.iteritems():
-            result = total_results_per_sku.get(product_fk, 0)
+            result = total_results_per_sku.pop(product_fk, 0)
             results_list.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk, Src.TARGET: target})
         # save products with no targets
         for product_fk in list(set(total_results_per_sku.keys()) - set(self.excluded_product_fks)):
             result = total_results_per_sku.get(product_fk, 0)
             results_list.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk, Src.TARGET: 0})
         return results_list
+
+    @staticmethod
+    def _generate_placeholder_results(facings_res, sku_cases_res, unshoppable_cases_res, implied_cases_res):
+        """This method creates KPI results with zeroes to give the illusion that all KPIs were calculated"""
+        placeholder_res = []
+        total_res = facings_res+sku_cases_res+unshoppable_cases_res+implied_cases_res
+        total_product_fks = list(set([res[Sc.PRODUCT_FK] for res in total_res]))
+        for res_list in [facings_res, sku_cases_res, unshoppable_cases_res, implied_cases_res]:
+            res_product_fks = [res[Sc.PRODUCT_FK] for res in res_list]
+            kpi_fk = res_list[0]['fk']
+            for missing_product_fk in [fk for fk in total_product_fks if fk not in res_product_fks]:
+                placeholder_res.append({Pc.PRODUCT_FK: missing_product_fk, Src.RESULT: 0, 'fk': kpi_fk})
+        return placeholder_res
 
     def _save_results_to_db(self, results_list):
         """This method saves the KPI results to DB"""
@@ -261,10 +277,17 @@ class CaseCountCalculator(GlobalSessionToolBox):
             Sc.TAGGED].sum().rename({Sc.SUBSTITUTION_PRODUCT_FK: Sc.PRODUCT_FK}, axis=1)
         grouped_scif = grouped_scif.loc[grouped_scif[Sc.TAGGED] > 0]
         grouped_scif_dict = grouped_scif.groupby(Pc.PRODUCT_FK)[Sc.SKU_TYPE].apply(list).to_dict()
-        for product_fk in list(set(self.target.keys() + grouped_scif_dict.keys()) - set(self.excluded_product_fks)):
-            sku_types = grouped_scif_dict.get(product_fk, [])
+        for product_fk in self.target.keys():
+            sku_types = grouped_scif_dict.pop(product_fk, [])
             res = 1 if len(sku_types) == 1 and sku_types[0].lower() == 'case' else 0
             unshoppable_results.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: res, 'fk': kpi_fk})
+        # we only want to save non-shoppable results for products that have non-shoppable cases if they are not
+        # in the standards
+        for product_fk in list(set(grouped_scif_dict.keys()) - set(self.excluded_product_fks)):
+            sku_types = grouped_scif_dict.get(product_fk, [])
+            res = 1 if len(sku_types) == 1 and sku_types[0].lower() == 'case' else 0
+            if res == 1:
+                unshoppable_results.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: res, 'fk': kpi_fk})
         return unshoppable_results
 
     @staticmethod
@@ -527,7 +550,10 @@ class CaseCountCalculator(GlobalSessionToolBox):
     def _get_excluded_product_fks(self):
         if self.filtered_scif.empty:
             return []
-        return self.filtered_scif[self.filtered_scif[Sc.PRODUCT_TYPE] == 'Other'][Sc.PRODUCT_FK].unique().tolist()
+        other_products = self.filtered_scif[self.filtered_scif[Sc.PRODUCT_TYPE] == 'Other'][
+            Sc.PRODUCT_FK].unique().tolist()
+        substitution_products = self.filtered_scif[self.filtered_scif[Sc.FACINGS] == 0][Sc.PRODUCT_FK].unique().tolist()
+        return other_products + substitution_products
 
     def _get_scenes_with_relevant_displays(self):
         """This method returns only scene with "Open" or "Close" display tags"""
@@ -547,7 +573,7 @@ if __name__ == '__main__':
     from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
     Config.init('')
     test_data_provider = KEngineDataProvider('diageous-sand2')
-    sessions = ['b0cb6544-2609-473d-ac91-6e280c61eaff']
+    sessions = ['f1fe8759-a7ae-4d30-894c-b34efe0808cd']
     for session in sessions:
         print(session)
         test_data_provider.load_session_data(session_uid=session)
