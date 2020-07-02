@@ -23,7 +23,9 @@ class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
             categories = ['Crackers']
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['product_type'].isin([
-            'SKU', 'Empty', 'Other'])]
+            'Empty', 'Other', 'SKU'])]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['sub_brand_fk']
+                                                            != Consts.SUB_BRAND_NO_VALUE]
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category'].isin(categories)]
         own_manufacturer_matches['facings'] = 1
         # strauss are looking at sub_brand as brand in this KPI
