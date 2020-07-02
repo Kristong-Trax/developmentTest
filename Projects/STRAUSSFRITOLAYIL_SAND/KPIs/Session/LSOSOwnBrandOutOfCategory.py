@@ -37,11 +37,11 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
                 if not target.empty:
                     target = target.values[0]
                 else:
-                    target = -1
+                    target = None
                 brand_mix_df = category_df[category_df['brand_mix_fk'] == brand_mix_fk]
                 brand_mix_linear_length = brand_mix_df['width_mm_advance'].sum()
                 sos_result = self.utils.calculate_sos_result(brand_mix_linear_length, category_linear_length)
-                if target == -1:
+                if not target:
                     kpi_score = Consts.NO_TARGET
                 else:
                     kpi_score = Consts.PASS if ((target - target_range) <= sos_result <=
