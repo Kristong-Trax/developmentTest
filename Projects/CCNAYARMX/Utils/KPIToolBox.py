@@ -467,8 +467,6 @@ class ToolBox(GlobalSessionToolBox):
 
     def calculate_scoring(self, row):
         kpi_name = row[KPI_NAME]
-        if kpi_name == 'Bonificaciones':
-            a = 1
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         numerator_id = self.own_manuf_fk
         denominator_id = self.store_id
@@ -513,6 +511,9 @@ class ToolBox(GlobalSessionToolBox):
             else:
                 result_dict['result'] = 0
 
+        if 'score' in result_dict.keys():
+            if result_dict['result'] == result_dict['score'] and ((result_dict['result'] > 0) and (result_dict['result'] < 1)):
+                result_dict['score'] = result_dict['score'] * 100
         return result_dict
 
     def calculate_combo(self, row):

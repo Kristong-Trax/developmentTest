@@ -543,6 +543,10 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             else:
                 result_dict['result'] = 0
 
+        if 'score' in result_dict.keys():
+            if result_dict['result'] == result_dict['score'] and ((result_dict['result'] > 0) and (result_dict['result'] < 1)):
+                result_dict['score'] = result_dict['score'] * 100
+
         return result_dict
 
     def calculate_combo(self, row):
