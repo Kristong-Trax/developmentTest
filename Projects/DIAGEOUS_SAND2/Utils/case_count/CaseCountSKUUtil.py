@@ -99,15 +99,16 @@ class CaseCountCalculator(GlobalSessionToolBox):
             results_list.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk, Src.TARGET: 0})
         return results_list
 
-    @staticmethod
-    def _generate_placeholder_results(facings_res, sku_cases_res, unshoppable_cases_res, implied_cases_res):
+    def _generate_placeholder_results(self, facings_res, sku_cases_res, unshoppable_cases_res, implied_cases_res):
         """This method creates KPI results with zeroes to give the illusion that all KPIs were calculated"""
         placeholder_res = []
         total_res = facings_res+sku_cases_res+unshoppable_cases_res+implied_cases_res
         total_product_fks = list(set([res[Sc.PRODUCT_FK] for res in total_res]))
-        for res_list in [facings_res, sku_cases_res, unshoppable_cases_res, implied_cases_res]:
+        for kpi_fk, res_list in [(self.get_kpi_fk_by_kpi_type(Consts.FACINGS_KPI), facings_res),
+                                 (self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI), sku_cases_res),
+                                 (self.get_kpi_fk_by_kpi_type(Consts.NON_SHOPPABLE_CASES_KPI), unshoppable_cases_res),
+                                 (self.get_kpi_fk_by_kpi_type(Consts.IMPLIED_SHOPPABLE_CASES_KPI), implied_cases_res)]:
             res_product_fks = [res[Sc.PRODUCT_FK] for res in res_list]
-            kpi_fk = res_list[0]['fk']
             for missing_product_fk in [fk for fk in total_product_fks if fk not in res_product_fks]:
                 placeholder_res.append({Pc.PRODUCT_FK: missing_product_fk, Src.RESULT: 0, 'fk': kpi_fk})
         return placeholder_res
@@ -163,7 +164,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
 
     def _calculate_closest_product_to_display(self):
         """This method calculates the closest tag for each display and returns a DataFrame with the results"""
-        matches = self.matches[Consts.RLV_FIELDS_FOR_MATCHES_CLOSET_DISPLAY_CALC]
+        matches = self.matches[self.matches[Mc.SCENE_FK].isin(self._get_scenes_with_relevant_displays())]
+        matches = matches[Consts.RLV_FIELDS_FOR_MATCHES_CLOSET_DISPLAY_CALC]
         mdis = self.filtered_mdis[Consts.RLV_FIELDS_FOR_DISPLAY_IN_SCENE_CLOSET_TAG_CALC]
         closest_display_data = matches.apply(lambda row: self._apply_closet_point_logic_on_row(row, mdis, 'pk'), axis=1)
         closest_display_data = pd.DataFrame(closest_display_data.values.tolist())
@@ -185,7 +187,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """This method identifies branded other cases and attempts to distribute them across the products in the
         open case most closely above the branded other case"""
         results = []
-        for scene_fk in self.matches.scene_fk.unique().tolist():
+        for scene_fk in self._get_scenes_with_relevant_displays():
             adj_g = self.adj_graphs_per_scene[scene_fk]
             branded_other_cases = self.matches[(self.matches['product_type'] == 'Other') &
                                                (self.matches[Consts.MPIPS_FK] == Consts.PACK_FK) &
@@ -270,7 +272,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """
         results = []
         kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.IMPLIED_SHOPPABLE_CASES_KPI)
-        scenes_to_calculate = self.matches.scene_fk.unique().tolist()
+        scenes_to_calculate = self._get_scenes_with_relevant_displays()
         total_score_per_sku = Counter()
         for scene_fk in scenes_to_calculate:
             adj_g = self.adj_graphs_per_scene[scene_fk]
@@ -331,7 +333,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
             min_distance = min(distances)
         except ValueError:
             Log.error('Unable to find a matching opposite point for supplied anchor!')
-            return other_points_df
+            return other_points_df, None
         return other_points_df[(other_points_df['rect_x'] == closest_point[0]) & (
                 other_points_df['rect_y'] == closest_point[1])], min_distance
 
