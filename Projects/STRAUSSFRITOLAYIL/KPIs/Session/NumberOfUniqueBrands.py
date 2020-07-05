@@ -29,7 +29,7 @@ class NumberOfUniqueBrandsKpi(UnifiedCalculationsScript):
             score = Consts.NO_TARGET
         else:
             score = Consts.PASS if number_of_sub_brands >= target else Consts.FAIL
-        self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
+        self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, target=target,
                                 result=number_of_sub_brands, denominator_id=self.utils.store_id, score=score)
 
     def kpi_type(self):
