@@ -8,6 +8,7 @@ from Projects.RISPARKWINEDE_SAND.Utils.SOS import\
     BrandOutManufacturerOutCategoryPrimaryFacingsSOS, OwnManufacturerSecondaryFacingsSOSInStore
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from Projects.RISPARKWINEDE_SAND.Data.LocalConsts import Consts
+from Projects.TNUVAILV2.Utils.DataBaseHandler import DBHandler
 
 
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
@@ -22,6 +23,7 @@ class ToolBox(GlobalSessionToolBox):
         self.assortment = Assortment(self.data_provider)
         self.ps_data = PsDataProvider(self.data_provider, self.output)
         self.result_values = self.ps_data.get_result_values()
+        self.db_handler = DBHandler(self.data_provider.project_name, self.data_provider.session_uid)
 
     def main_calculation(self):
 
@@ -228,9 +230,11 @@ class ToolBox(GlobalSessionToolBox):
     def assortment_calculation(self, lvl3_result):
         ava_res = []
         lvl3_result = self.filter_by_kpis(lvl3_result, Consts.DISTRIBUTION_LEVEL_2_NAMES)
+        lvl3_result = self.update_by_oos_reason(lvl3_result)
 
         if lvl3_result.empty:
             return ava_res
+
         # level 3 results  -  SKU LEVEL
         lvl3_with_cat = self.assortment_category(lvl3_result)
 
@@ -297,6 +301,23 @@ class ToolBox(GlobalSessionToolBox):
         oos_res.loc[:, 'fk'] = self.common.get_kpi_fk_by_kpi_type(Consts.OOS_SKU_LVL)
         self.assign_parent_child_identifiers(oos_res, {'col': ['kpi_fk_lvl2', 'category_fk'], 'val': 'OOS'})
         return oos_res
+
+    def update_by_oos_reason(self, lvl3_results):
+        """
+        This function change assortment results if products has oos reason.
+        Product with oos reason : Distribuiert , will be treated as distributed
+        Product with oos reason : Nicht distribuiert (technisches Problem), will be removed from assortment list
+        """
+        if self.data_provider.session_info.status.values[0] == Consts.COMPLETED_STATUS:
+            oos_reason = self.db_handler.get_oos_reasons_for_session(self.session_uid)
+            if oos_reason.empty:
+                return lvl3_results
+            remove_products = oos_reason[oos_reason['message'] == Consts.REMOVE_REASON][
+                'product_fk'].unique()
+            distriubted_products = oos_reason[oos_reason['message'] == Consts.DISTRIBUTED_REASON]['product_fk'].unique()
+            lvl3_results = lvl3_results[~lvl3_results['product_fk'].isin(remove_products)]
+            lvl3_results.loc[lvl3_results['product_fk'].isin(distriubted_products), 'in_store'] = 1
+        return lvl3_results
 
     def group_level(self, lvl_2_result, kpi_name):
         """ This function receive df = lvl_3_result assortment with data regarding the assortment products
