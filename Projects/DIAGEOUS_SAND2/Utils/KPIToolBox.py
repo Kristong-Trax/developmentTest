@@ -267,10 +267,10 @@ class ToolBox:
         :return:
         """
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_ON_NAMES[kpi_name])
-        if kpi_name == Consts.BACK_BAR and self.no_back_bar_allowed:
-            self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
-            Log.debug("There is no back bar, Back Bar got 100")
-            return 1 * weight, 1 * weight, 1 * weight
+        # if kpi_name == Consts.BACK_BAR and self.no_back_bar_allowed:
+        #     self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
+        #     Log.debug("There is no back bar, Back Bar got 100")
+        #     return 1 * weight, 1 * weight, 1 * weight
         if self.assortment_products.empty:
             return 0, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -453,10 +453,10 @@ class ToolBox:
         relevant_assortment = self.relevant_assortment
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_OFF_NAMES[kpi_name])
         if kpi_name == Consts.DISPLAY_BRAND:
-            if self.no_display_allowed:
-                self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
-                Log.debug("There is no display, Display Brand got 100")
-                return 1 * weight, 1 * weight, 1 * weight
+            # if self.no_display_allowed:
+            #     self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
+            #     Log.debug("There is no display, Display Brand got 100")
+            #     return 1 * weight, 1 * weight, 1 * weight
             if self.attr11 in Consts.NOT_INDEPENDENT_STORES and kpi_name == Consts.DISPLAY_BRAND:
                 relevant_assortment = relevant_assortment[relevant_assortment[Consts.DISPLAY].isin([1, '1'])]
             relevant_scif = relevant_scif[relevant_scif[ScifConsts.LOCATION_TYPE] == 'Secondary Shelf']
@@ -592,14 +592,14 @@ class ToolBox:
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_ON_NAMES[Consts.MENU][Consts.TOTAL])
         result_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         total_dict = self.common.get_dictionary(name=Consts.TOTAL)
-        if self.no_menu_allowed:
-            Log.debug("There is no menu, Menu got 100")
-            score = 1
-            self.common.write_to_db_result(
-                fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
-                result=score, should_enter=True, weight=weight * 100, score=score,
-                identifier_parent=total_dict)
-            return score * weight, 0, 0
+        # if self.no_menu_allowed:
+        #     Log.debug("There is no menu, Menu got 100")
+        #     score = 1
+        #     self.common.write_to_db_result(
+        #         fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
+        #         result=score, should_enter=True, weight=weight * 100, score=score,
+        #         identifier_parent=total_dict)
+        #     return score * weight, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_scif = self.scif_without_emptys[
             (self.scif_without_emptys[ScifConsts.SCENE_ID].isin(relevant_scenes)) &
@@ -705,14 +705,14 @@ class ToolBox:
         total_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
             Consts.DB_OFF_NAMES[Consts.DISPLAY_SHARE][Consts.MANUFACTURER])
-        if self.no_display_allowed:
-            Log.debug("There is no display, Display Share got 100")
-            score = 1
-            self.common.write_to_db_result(
-                fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
-                result=score, should_enter=True, weight=weight * 100, score=score,
-                identifier_parent=self.common.get_dictionary(name=Consts.TOTAL))
-            return score * weight, 0, 0
+        # if self.no_display_allowed:
+        #     Log.debug("There is no display, Display Share got 100")
+        #     score = 1
+        #     self.common.write_to_db_result(
+        #         fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
+        #         result=score, should_enter=True, weight=weight * 100, score=score,
+        #         identifier_parent=self.common.get_dictionary(name=Consts.TOTAL))
+        #     return score * weight, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif_without_emptys[
             (self.scif_without_emptys[ScifConsts.SCENE_FK].isin(relevant_scenes)) &
