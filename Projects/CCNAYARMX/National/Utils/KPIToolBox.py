@@ -160,6 +160,8 @@ class NationalToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(GENERAL_ASSORTMENTS_PATH, sheet_name=sheet)
 
     def main_calculation(self):
+        if self.store_info.loc[0, 'store_type'] in ('Fondas-Rsr', 'Puestos Fijos'):
+            return
         relevant_kpi_template = self.templates[KPIS]
         relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull()) |
                                                       (relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].str.contains(
@@ -179,7 +181,6 @@ class NationalToolBox(GlobalSessionToolBox):
         self._calculate_kpis_from_template(scoring_kpi_template)
 
         self.save_results_to_db()
-        return
 
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)

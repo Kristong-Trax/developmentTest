@@ -1,14 +1,15 @@
-from Trax.Utils.Logging.Logger import Log
+from KPIUtils_v2.DB.CommonV2 import Common
+# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+
+from Trax.Utils.Logging.Logger import Log
+
 from Projects.CCNAYARMX.Utils.KPIToolBox import ToolBox
 from Projects.CCNAYARMX.National.Utils.KPIToolBox import NationalToolBox
 from Projects.CCNAYARMX.Especializado.Utils.KPIToolBox import EspecializadoToolBox
 from Projects.CCNAYARMX.Fondas.Utils.KPIToolBox import FONDASToolBox
+from Projects.CCNAYARMX.Comidas.Utils.KPIToolBox import ComidasToolBox
 
-
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-
-from KPIUtils_v2.DB.CommonV2 import Common
 __author__ = 'krishnat'
 
 
@@ -19,7 +20,7 @@ class Generator:
         self.output = output
         self.project_name = data_provider.project_name
         self.session_uid = self.data_provider.session_uid
-        # self.tool_box = ToolBox(self.data_provider, self.output, self.common)
+        self.common = Common(self.data_provider)
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -31,32 +32,19 @@ class Generator:
         #     Log.warning('Scene item facts is empty for this session')
         # self.tool_box.main_calculation()
         # self.tool_box.commit_results()
-        common = Common(self.data_provider)
         # assortment = Assortment(self.data_provider, common=common)
         # if assortment.store_assortment.empty:
         #     Log.warning('Scene item facts is empty for this session')
-        tool_box = ToolBox(self.data_provider, self.output, common)
 
-        if tool_box.scif.empty:
+        if self.data_provider['scene_item_facts'].empty:
             Log.warning('Scene item facts is empty for this session')
         else:
-            especializado_tool_box = EspecializadoToolBox(self.data_provider,self.output, common)
-            especializado_tool_box.main_calculation()
-
-            fondas_tool_box = FONDASToolBox(self.data_provider, self.output,common)
-            fondas_tool_box.main_calculation()
-
-            nayar_tool_box = NationalToolBox(self.data_provider, self.output, common)
-            nayar_tool_box.main_calculation()
-            # nayar_tool_box.commit_results()
-
-            tool_box = ToolBox(self.data_provider, self.output, common)
-            tool_box.main_calculation()
-            tool_box.commit_results()
-
-            # nayar_tool_box = NationalToolBox(self.data_provider, self.output, common)
-            # nayar_tool_box.main_calculation()
-            # nayar_tool_box.commit_results()
+            ComidasToolBox(self.data_provider, self.output, self.common).main_calculation()
+            EspecializadoToolBox(self.data_provider,self.output, self.common).main_calculation()
+            FONDASToolBox(self.data_provider, self.output, self.common).main_calculation()
+            NationalToolBox(self.data_provider, self.output, self.common).main_calculation()
+            ToolBox(self.data_provider, self.output, self.common).main_calculation()
+            self.common.commit_results_data()
 
     # @log_runtime('Original Nayar Calculations')
     # def caculate_original_nayar(self):
