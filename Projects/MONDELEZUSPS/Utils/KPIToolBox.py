@@ -82,7 +82,8 @@ class ToolBox(GlobalSessionToolBox):
                                                 'denominator_id', 'denominator_result', 'result', 'score'])
 
     def parse_template(self):
-        for sheet in SHEETS:            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
+        for sheet in SHEETS:
+            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
@@ -95,9 +96,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
-        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING,
-                              Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
-        # relevant_kpi_types = [Consts.DIAMOND_POSITION]
+        # relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
+        relevant_kpi_types = [Consts.DIAMOND_POSITION]
         targets = self.targets[(self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)) & (
             self.targets[Consts.GRANULAR_GROUP_NAME].isnull())]
 
@@ -156,7 +156,9 @@ class ToolBox(GlobalSessionToolBox):
         for unique_denominator_type in set(df[denominator_type]):
             denominator_filtered_df = self._filter_df(df, {denominator_type: unique_denominator_type})
             for unique_numerator_id in set(denominator_filtered_df[numerator_type]):
-                filtered_numerator_df = self._filter_df(df, {numerator_type: unique_numerator_id})
+                if unique_numerator_id == 106:
+                    a = 1
+                filtered_numerator_df = self._filter_df(denominator_filtered_df, {numerator_type: unique_numerator_id})
                 groupby_numerator_df = self._df_groupby_logic(filtered_numerator_df, ['scene_fk', numerator_type],
                                                               {'facings': 'count'})  # may cause issue
                 scene_with_most_numerator_facings = \
@@ -174,7 +176,7 @@ class ToolBox(GlobalSessionToolBox):
                 result = 1 if float(len(final_numerator_df)) / len(scene_filtered_numerator_df) >= population_pct else 0
                 result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
                                'numerator_id': unique_numerator_id, 'numerator_result': result,
-                               'denominator_id': unique_denominator_type, 'denominator_result': 1,
+                               'denominator_id': unique_denominator_type,'context_id':scene_with_most_numerator_facings, 'denominator_result': 1,
                                'result': result}
                 # save tags into explorer
                 self.mark_tags_in_explorer(final_numerator_df.probe_match_fk.values.tolist(), return_holder[0])
@@ -323,28 +325,29 @@ class ToolBox(GlobalSessionToolBox):
             denominator_filtered_df = self._filter_df(df,
                                                       {denominator_type: unqiue_denominator_id})
             for unique_numerator_id in set(denominator_filtered_df[numerator_type]):
-                filtered_numerator_df = self._filter_df(df, {numerator_type: unique_numerator_id})
+                if unique_numerator_id == 97:
+                    a = 1
+                filtered_numerator_df = self._filter_df(denominator_filtered_df, {numerator_type: unique_numerator_id})
                 relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg(
                     ['max', 'idxmax']).loc['idxmax']['facings']
                 scene_filtered_df = self._filter_df(filtered_numerator_df, {'scene_fk': relevant_scene})
                 # count_of_bays_in_scene = self.match_product_in_scene[self.match_product_in_scene.scene_fk == relevant_scene].bay_number.max()
-                count_of_bays_in_scene = scene_filtered_df[
-                    scene_filtered_df.scene_fk == relevant_scene].bay_number.max()
+                count_of_bays_in_scene = scene_filtered_df.bay_number.max()
                 bay_number = self._get_bay_number_for_bay_positon(numerator_type, count_of_bays_in_scene,
                                                                   scene_filtered_df)
-                numerator_result, denominator_result, final_result = self._get_result_for_bay_postion(df,
-                                                                                                      numerator_type,
-                                                                                                      anchor_pct,
-                                                                                                      scene_filtered_df,
-                                                                                                      relevant_scene,
-                                                                                                      count_of_bays_in_scene,
-                                                                                                      bay_number)
+                final_result = self._get_result_for_bay_postion(df,
+                                                                  numerator_type,
+                                                                  anchor_pct,
+                                                                  scene_filtered_df,
+                                                                  relevant_scene,
+                                                                  count_of_bays_in_scene,
+                                                                  bay_number)
                 if not isinstance(unique_numerator_id, int):
                     unique_numerator_id = self._get_id_from_custom_entity_table(numerator_type, unique_numerator_id)
                 final_result = key_dict.get(final_result)
                 result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-                               'numerator_id': unique_numerator_id, 'numerator_result': numerator_result,
-                               'denominator_id': unqiue_denominator_id, 'denominator_result': denominator_result,
+                               'numerator_id': unique_numerator_id, 'numerator_result': bay_number,
+                               'denominator_id': unqiue_denominator_id, 'denominator_result': count_of_bays_in_scene, 'context_id':relevant_scene,
                                'result': final_result}
                 result_dict_list.append(result_dict)
         return result_dict_list
@@ -408,10 +411,10 @@ class ToolBox(GlobalSessionToolBox):
             result = float(numerator_result) / denominator_result
             final_result = 'Right Anchor' if result >= anchor_pct else 'Not Anchor'
         else:
-            numerator_result = 0
-            denominator_result = 0
+            # numerator_result = 0
+            # denominator_result = 0
             final_result = 'Not Anchor'
-        return numerator_result, denominator_result, final_result
+        return final_result
 
     @staticmethod
     def apply_tie_breaker_logic_for_bay_position(bay_number_container, count_of_bays_in_scene):
@@ -516,7 +519,7 @@ class ToolBox(GlobalSessionToolBox):
         for unique_denominator_fk in set(df[denominator_type]):
             unique_template_scif_mpis = self._filter_df(df, {denominator_type: unique_denominator_fk})
             for unique_numerator_id in set(unique_template_scif_mpis[numerator_type]):
-                filtered_numerator_df = self._filter_df(df, {numerator_type: unique_numerator_id})
+                filtered_numerator_df = self._filter_df(unique_template_scif_mpis, {numerator_type: unique_numerator_id})
                 relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg(
                     ['max', 'idxmax']).loc['idxmax']['facings']
                 scene_filtered_df = self._filter_df(filtered_numerator_df, {'scene_fk': relevant_scene})
@@ -540,7 +543,7 @@ class ToolBox(GlobalSessionToolBox):
                                'numerator_id': unique_numerator_id,
                                'numerator_result': relevant_shelf,
                                'denominator_id': unique_denominator_fk,
-                               'denominator_result': max_shelf_number_from_bottom,
+                               'denominator_result': max_shelf_number_from_bottom,'context_id':relevant_scene,
                                'result': result_by_id}
                 result_dict_list.append(result_dict)
         return result_dict_list
@@ -644,7 +647,7 @@ class ToolBox(GlobalSessionToolBox):
                     result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
                                    'numerator_id': unique_numerator_id, 'numerator_result': numerator_result,
                                    'denominator_id': unique_denominator_id,
-                                   'denominator_result': denominator_result,
+                                   'denominator_result': denominator_result,'context_id':unique_scene_fk,
                                    'result': result}
                     result_dict_list.append(result_dict)
         return result_dict_list
