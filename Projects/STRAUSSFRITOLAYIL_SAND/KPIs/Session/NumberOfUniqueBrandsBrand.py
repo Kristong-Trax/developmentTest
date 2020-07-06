@@ -1,6 +1,6 @@
-from Projects.STRAUSSFRITOLAYIL.KPIs.Utils import StraussfritolayilUtil
+from Projects.STRAUSSFRITOLAYIL_SAND.KPIs.Utils import StraussfritolayilUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
+from Projects.STRAUSSFRITOLAYIL_SAND.Data.LocalConsts import Consts
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -32,8 +32,7 @@ class NumberOfUniqueBrandsBrandKpi(UnifiedCalculationsScript):
         sub_brands = set(own_manufacturer_matches['sub_brand_fk'])
         for sub_brand_fk in sub_brands:
             sub_brand_df = own_manufacturer_matches[own_manufacturer_matches['sub_brand_fk'] == sub_brand_fk]
-            result = sub_brand_df['facings'].sum()
-            score = Consts.PASS if result > 0 else Consts.FAIL
+            result = score = sub_brand_df['facings'].sum()
             self.write_to_db_result(fk=kpi_fk, numerator_id=sub_brand_fk, result=result,
                                     denominator_id=self.utils.store_id, score=score)
 

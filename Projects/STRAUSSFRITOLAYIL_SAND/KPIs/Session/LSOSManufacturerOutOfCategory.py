@@ -1,6 +1,6 @@
-from Projects.STRAUSSFRITOLAYIL.KPIs.Utils import StraussfritolayilUtil
+from Projects.STRAUSSFRITOLAYIL_SAND.KPIs.Utils import StraussfritolayilUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
+from Projects.STRAUSSFRITOLAYIL_SAND.Data.LocalConsts import Consts
 
 
 class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
@@ -24,7 +24,7 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
         for category in template_categories:
             target = template[template[Consts.CATEGORY] == category][Consts.TARGET]
             if not target.empty:
-                target = target.values[0] * 100
+                target = target.values[0]
             else:
                 target = None
             category_fk = self.utils.all_products[self.utils.all_products['category'] == category][

@@ -1,6 +1,6 @@
-from Projects.STRAUSSFRITOLAYIL.KPIs.Utils import StraussfritolayilUtil
+from Projects.STRAUSSFRITOLAYIL_SAND.KPIs.Utils import StraussfritolayilUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
+from Projects.STRAUSSFRITOLAYIL_SAND.Data.LocalConsts import Consts
 from Trax.Utils.Logging.Logger import Log
 
 
@@ -29,7 +29,7 @@ class NumberOfUniqueBrandsKpi(UnifiedCalculationsScript):
             score = Consts.NO_TARGET
         else:
             score = Consts.PASS if number_of_sub_brands >= target else Consts.FAIL
-        self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, target=target,
+        self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
                                 result=number_of_sub_brands, denominator_id=self.utils.store_id, score=score)
 
     def kpi_type(self):
