@@ -42,3 +42,8 @@ class Consts(object):
     FACINGS_CATEGORIES = ['Sparkling Pure', 'Sparkling Mix']
     IGNORE_PRODUCT_TYPE = ['Empty', 'Irrelevant', 'Other']
     SOS_CATEGORY = ['Sparkling Pure', 'Sparkling Mix']
+    COMPLETED_STATUS = 'Completed'
+    REMOVE_REASON = 'Nicht distribuiert (technisches Problem)'
+    DISTRIBUTED_REASON = 'Distribuiert'
+
+

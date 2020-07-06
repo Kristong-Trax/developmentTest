@@ -41,9 +41,9 @@ class NumberOfFacingsMustHaveAssortmentSKUKpi(UnifiedCalculationsScript):
             product_fk = sku_row['product_fk']
             facings = sku_row['facings_all_products_wo_hangers']
             target = sku_row[Consts.TARGET_MAX]
-            result = Consts.PASS if facings >= target else Consts.FAIL
-            self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result, weight=sadot, target=target,
-                                    denominator_id=self.utils.store_id, score=facings)
+            score = Consts.PASS if facings >= target else Consts.FAIL
+            self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=facings, weight=sadot, target=target,
+                                    denominator_id=self.utils.store_id, score=score)
 
     def tarnsform_kpi_external_targets_to_assortment(self, template):
         assortment = template[['kpi_fk', Consts.EAN_CODE, Consts.FIELD, Consts.TARGET_MAX]].copy()

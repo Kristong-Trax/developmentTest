@@ -7,7 +7,7 @@ from KPIUtils_v2.DB.CommonV3 import Common
 from KPIUtils_v2.GlobalDataProvider.LivePsDataProvider import PsDataProvider
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Consts import Consts
 
-from Trax.Utils.Logging.Logger import Log
+# from Trax.Utils.Logging.Logger import Log
 
 
 class CalculateKpi(LiveSessionBaseClass):
@@ -40,6 +40,5 @@ class CalculateKpi(LiveSessionBaseClass):
         kpi_types = [Consts.GDPA_KPI_TYPE, Consts.GMPA_KPI_NAME]
         assortment_results = self.assortment.main_assortment_calculation(kpi_types)
         assortment_results = pd.DataFrame(assortment_results)
-        if not assortment_results.empty:
-            self.common.write_to_db_results(assortment_results)
+        self.common.write_to_db_results(assortment_results)
         self.common.commit_results_data()

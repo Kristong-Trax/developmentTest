@@ -24,9 +24,9 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
         for category in template_categories:
             target = template[template[Consts.CATEGORY] == category][Consts.TARGET]
             if not target.empty:
-                target = target.values[0]
+                target = target.values[0] * 100
             else:
-                target = -1
+                target = None
             category_fk = self.utils.all_products[self.utils.all_products['category'] == category][
                 'category_fk'].values[0]
             own_skus_category_df = own_manufacturer_matches[own_manufacturer_matches['category_fk'] == category_fk]
@@ -34,12 +34,12 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
             own_category_linear_length = own_skus_category_df['width_mm_advance'].sum()
             store_category_linear_length = store_category_df['width_mm_advance'].sum()
             sos_result = self.utils.calculate_sos_result(own_category_linear_length, store_category_linear_length)
-            if target == -1:
+            if not target:
                 kpi_score = Consts.NO_TARGET
             else:
                 kpi_score = Consts.PASS if (target <= sos_result) else Consts.FAIL
             self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, denominator_id=category_fk,
-                                    numerator_result=own_category_linear_length,
+                                    numerator_result=own_category_linear_length, target=target,
                                     denominator_result=store_category_linear_length,
                                     result=sos_result, score=kpi_score)
 
