@@ -1,6 +1,7 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from Projects.CCBOTTLERSUS.SOVI.Const import Const
+import pandas as pd
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -47,26 +48,86 @@ class SOVIToolBox:
         This function calculates the KPI results.
         """
         self.sanitize_scif()
-        self.calculate_total_sos()
-        self.calculate_still_ssd()
-        self.calculate_category()
-        self.calculate_template_group()
-        self.calculate_share_template_group()
-        self.calculate_ssd_template_group()
-        self.calculate_category_template_group()
-        self.calculate_manufacturer_total_store()
-        self.calculate_manufacturer_share_store()
-        self.calculate_manufacturer_brandshare_store()
-        self.calculate_manufacturer_productshare_store()
-        self.calculate_manufacturer_template_group()
-        self.calculate_store_template_group()
-        self.calculate_manufacturer_share_template_group()
-        self.calculate_brand_share_template_group()
-        self.calculate_product_share_template_group()
+        self.calculate_total_kpis()
 
+        self._calculate_sos(Const.UNITED_SSD, 'att4', denominator_id='store_id', united_numerator=True)
+        self._calculate_sos(Const.UNITED_CATEGORY, 'category_fk', denominator_id='store_id',
+                            context_id='att4', united_numerator=True)
 
+        self._calculate_sos(Const.SHARE_TEMPLATE_GROUP, 'template_group', denominator_id='store_id',
+                            united_numerator=True)
+        self._calculate_sos(Const.SHARE_SSD_TEMPLATE_GROUP, 'att4', denominator_id='template_group',
+                            united_numerator=True)
+        self._calculate_sos(Const.SHARE_CATEGORY_TEMPLATE_GROUP, 'category_fk', denominator_id='template_group',
+                            context_id='att4', united_numerator=True)
 
-    def calculate_total_sos(self):
+        self._calculate_sos(Const.MANUFACTURER_SHARE_STORE, 'manufacturer_fk', denominator_id='store_id')
+        self._calculate_sos(Const.BRAND_SHARE_MANUFACTURER, 'brand_fk', denominator_id='store_id',
+                            context_id='manufacturer_fk')
+        self._calculate_sos(Const.PRODUCT_SHARE_MANUFACTURER, 'product_fk', denominator_id='store_id',
+                            context_id='brand_fk')
+
+        self._calculate_sos(Const.TEMPLATE_GROUP_STORE, 'template_group', denominator_id='store_id')
+        self._calculate_sos(Const.MANUFACTURER_TEMPLATE_GROUP, 'manufacturer_fk', denominator_id='template_group')
+        self._calculate_sos(Const.BRAND_TEMPLATE_GROUP, 'brand_fk', denominator_id='template_group',
+                            context_id='manufacturer_fk')
+        self._calculate_sos(Const.PRODUCT_TEMPLATE_GROUP, 'product_fk', denominator_id='template_group',
+                            context_id='brand_fk')
+
+    def _calculate_sos(self, kpi_name, numerator_id, denominator_id=None, context_id=None, united_numerator=False):
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        parent_fk = self._get_parent_kpi_fk_by_kpi_type(kpi_name)
+
+        num_columns = [col for col in [numerator_id, denominator_id, context_id] if col]
+        if united_numerator:
+            num_df = self.scif[self.scif[self.manufacturer_attribute] == self.manufacturer_value]
+        else:
+            num_df = self.scif
+        num_df = num_df.groupby(num_columns, as_index=False)['facings'].sum()
+        num_df.rename(columns={'facings': 'numerator'}, inplace=True)
+
+        den_columns = [col for col in [denominator_id, context_id] if col]
+        den_df = self.scif.groupby(den_columns, as_index=False)['facings'].sum()
+        den_df.rename(columns={'facings': 'denominator'}, inplace=True)
+
+        results_df = pd.merge(den_df, num_df, how='left', on=den_columns).fillna(0)
+
+        results_df['sos'] = results_df['numerator'] / results_df['denominator']
+
+        if 'template_group' in results_df.columns.tolist():
+            results_df = pd.merge(results_df,
+                                  self.scif[['template_fk',
+                                             'template_group']].drop_duplicates(subset=['template_group']),
+                                  how='inner', on='template_group')
+            results_df['template_group'] = results_df['template_fk']
+
+        if 'att4' in results_df.columns.tolist():
+            results_df['att4'] = results_df['att4'].apply(lambda x: Const.STILL_FK if x == 'Still' else Const.SSD_FK)
+        # print('{}: {}'.format(kpi_name, len(results_df)))
+        for result in results_df.itertuples():
+            identifier_result = {'kpi_fk': kpi_fk, numerator_id: getattr(result, numerator_id),
+                                 denominator_id: getattr(result, denominator_id)}
+            identifier_result.pop('store_id', None)
+            identifier_parent = {'kpi_fk': parent_fk, denominator_id: getattr(result, denominator_id)}
+            if context_id:
+                identifier_parent.update({context_id: getattr(result, context_id)})
+            identifier_parent.pop('store_id', None)
+            self.common.write_to_db_result(kpi_fk, numerator_id=getattr(result, numerator_id),
+                                           denominator_id=getattr(result, denominator_id),
+                                           context_id=getattr(result, str(context_id), None),
+                                           numerator_result=getattr(result, 'numerator', 0),
+                                           denominator_result=getattr(result, 'denominator', 0),
+                                           results_df=result.sos, identifier_parent=identifier_parent,
+                                           identifier_result=identifier_result, should_enter=True)
+
+    def _get_parent_kpi_fk_by_kpi_type(self, kpi_type):
+        try:
+            return self.common.get_kpi_fk_by_kpi_type(Const.HIERARCHY[kpi_type])
+        except:
+            Log.error('No parent found for {}'.format(kpi_type))
+            return 0
+
+    def calculate_total_kpis(self):
 
         united_df = self.scif[self.scif[self.manufacturer_attribute] == self.manufacturer_value]
 
@@ -75,348 +136,40 @@ class SOVIToolBox:
 
         sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
 
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TOTAL)
-        parent_identifier = self.common.get_dictionary(kpi_type=Const.TOTAL)
-        self.common.write_to_db_result(kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK, numerator_result=numerator_result,
-                                       result=sos_value, identifier_result=parent_identifier,
-                                       denominator_id=self.store_id, denominator_result=denominator_result)
+        total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TOTAL)
+        united_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.UNITED_TOTAL)
+        united_by_template_group_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.UNITED_TEMPLATE_GROUP)
+        manufacturer_total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.MANUFACTURER_TOTAL_STORE)
+        manufacturer_template_total_kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TEMPLATE_GROUP_MANUFACTURER)
 
-    def calculate_still_ssd(self):
-        for att4_value in Const.ATT4_VALUES:
-            united_df = self.scif[(self.scif[self.manufacturer_attribute] == self.manufacturer_value) &
-                                  (self.scif[Const.ATT4] == att4_value)]
-
-            numerator_result = united_df.facings.sum()
-            denominator_result = self.scif.facings.sum()
-
-            sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SSD)
-
-            if numerator_result != 0:
-                product_fk = united_df['product_fk'].iloc[0]
-
-            parent_identifier = self.common.get_dictionary(kpi_type=Const.TOTAL)
-            result_identifier = self.common.get_dictionary(kpi_type=Const.SHARE_SSD_TEMPLATE_GROUP, att4=att4_value)
-
-            self.common.write_to_db_result(kpi_fk, numerator_id=product_fk,
-                                           result=sos_value, identifier_result=result_identifier,
-                                           identifier_parent=parent_identifier,
-                                           denominator_id=self.store_id)
-
-    def calculate_category(self):
-        # Need to add att4 to contextid remove -1
-        for category_fk in self.scif.category_fk.to_list():
-            united_df = self.scif[(self.scif[self.manufacturer_attribute] == self.manufacturer_value) & (self.scif[Const.CATEGORY_FK] == category_fk )]
-
-            numerator_result = united_df.facings.sum()
-            denominator_result = self.scif.facings.sum()
-
-            sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.CATEGORY)
-
-            att4_value = -1
-            if numerator_result != 0:
-                att4_value = united_df['att4'].iloc[0]
-
-            parent_identifier = self.common.get_dictionary(kpi_type=Const.SHARE_SSD_TEMPLATE_GROUP, att4=att4_value)
-
-            self.common.write_to_db_result(kpi_fk, numerator_id=category_fk,
-                                           numerator_result=numerator_result,
-                                           result=sos_value,
-                                           identifier_parent=parent_identifier,
-                                           context_id=att4_value,
-                                           denominator_id=self.store_id)
-
-    def calculate_template_group(self):
-
-        united_df = self.scif[(self.scif[self.manufacturer_attribute] == self.manufacturer_value) &
-                              (self.scif[Const.template_group] == None)]
-
-        numerator_result = united_df.facings.sum()
-        denominator_result = self.scif.facings.sum()
-
-        sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-        result_identifier = self.common.get_dictionary(kpi_type=Const.TEMPLATE_GROUP)
-        parent_identifier = self.common.get_dictionary(kpi_type=Const.TOTAL)
-
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TEMPLATE_GROUP)
-        self.common.write_to_db_result(kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+        total_identifier = {'kpi_fk': total_kpi_fk}
+        self.common.write_to_db_result(total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                       numerator_result=numerator_result, result=sos_value,
+                                       identifier_result=total_identifier,
+                                       should_enter=True, denominator_id=self.store_id,
+                                       denominator_result=denominator_result)
+        self.common.write_to_db_result(united_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
                                        numerator_result=numerator_result,
-                                       result=sos_value,
-                                       denominator_id=self.store_id,
-                                       denominator_result=denominator_result,
-                                       identifier_result=result_identifier,
-                                       identifier_parent=parent_identifier,
-                                       )
-
-    def calculate_share_template_group(self):
-        for template_fk in self.scif.template_fk.to_list():
-            united_df = self.scif[(self.scif[self.manufacturer_attribute] == self.manufacturer_value) &
-                                  (self.scif[Const.TEMPLATE_FK] == template_fk)]
-
-            numerator_result = united_df.facings.sum()
-            denominator_result = self.scif.facings.sum()
-
-            sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-            result_identifier = self.common.get_dictionary(kpi_type=Const.SHARE_TEMPLATE_GROUP)
-            parent_identifier = self.common.get_dictionary(kpi_type=Const.TEMPLATE_GROUP)
-
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TEMPLATE_GROUP)
-            self.common.write_to_db_result(kpi_fk, numerator_id=template_fk,
-                                           result=sos_value,
-                                           denominator_id=self.store_id,
-                                           identifier_result=result_identifier,
-                                           identifier_parent=parent_identifier,
-                                           )
-
-    def calculate_ssd_template_group(self):
-        # change att4 in number id from -1
-        for template_fk in self.scif.template_fk.to_list():
-            for att4_value in Const.ATT4_VALUES:
-                united_df = self.scif[self.scif[self.manufacturer_attribute] == self.manufacturer_value]
-
-                numerator_result = united_df.facings.sum()
-                denominator_result = self.scif.facings.sum()
-
-                sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-                result_identifier = self.common.get_dictionary(kpi_type=Const.SHARE_SSD_TEMPLATE_GROUP,
-                                                               template_fk=template_fk, att4=att4_value)
-                parent_identifier = self.common.get_dictionary(kpi_type=Const.SHARE_TEMPLATE_GROUP,
-                                                               template_fk=template_fk)
-
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.SHARE_SSD_TEMPLATE_GROUP)
-                self.common.write_to_db_result(kpi_fk, numerator_id=-1,
-                                               result=sos_value,
-                                               denominator_id=template_fk,
-                                               identifier_result=result_identifier,
-                                               identifier_parent=parent_identifier,
-                                               )
-
-    def calculate_category_template_group(self):
-        # change att4 in context id from -1
-        for template_fk in self.scif.template_fk.to_list():
-            for category_fk in self.scif.category_fk.to_list():
-                united_df = self.scif[self.scif[self.manufacturer_attribute] == self.manufacturer_value]
-
-                numerator_result = united_df.facings.sum()
-                denominator_result = self.scif.facings.sum()
-
-                sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-                att4_value = -1
-                if numerator_result != 0:
-                    att4_value = united_df['att4'].iloc[0]
-
-                parent_identifier = self.common.get_dictionary(kpi_type=Const.SHARE_SSD_TEMPLATE_GROUP, template_fk=template_fk, att4=att4_value)
-
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TEMPLATE_GROUP)
-                self.common.write_to_db_result(kpi_fk, numerator_id=category_fk,
-                                               result=sos_value,
-                                               denominator_id=template_fk,
-                                               context_id=-1,
-                                               identifier_parent=parent_identifier,
-                                               )
-
-    def calculate_manufacturer_total_store(self):
-
-        result_identifier = self.common.get_dictionary(kpi_type=Const.MANUFACTURER_TOTAL_STORE)
-        parent_identifier = self.common.get_dictionary(kpi_type=Const.TOTAL)
-
-
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TEMPLATE_GROUP)
-        self.common.write_to_db_result(kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                       result=sos_value, identifier_result={'kpi_fk': united_kpi_fk},
+                                       identifier_parent=total_identifier, should_enter=True,
+                                       denominator_id=self.store_id, denominator_result=denominator_result)
+        self.common.write_to_db_result(united_by_template_group_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                       numerator_result=numerator_result,
+                                       result=sos_value, identifier_result={'kpi_fk': united_by_template_group_kpi_fk},
+                                       identifier_parent=total_identifier, should_enter=True,
+                                       denominator_id=self.store_id, denominator_result=denominator_result)
+        self.common.write_to_db_result(manufacturer_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
                                        numerator_result=1,
-                                       result=100,
-                                       denominator_id=self.store_id,
-                                       denominator_result=1,
-                                       identifier_result=result_identifier,
-                                       identifier_parent=parent_identifier,
-                                       )
-        
-
-    def calculate_manufacturer_share_store(self):
-        for manufacturer_fk in self.scif.manufacturer_fk.to_list():
-            united_df = self.scif[(self.scif[self.manufacturer_attribute] == self.manufacturer_value) & (self.scif[Const.MANUFACTURER_FK] == manufacturer_fk)]
-
-            numerator_result = united_df.facings.sum()
-            denominator_result = self.scif.facings.sum()
-
-            sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.MANUFACTURER_SHARE_STORE)
-
-
-            result_identifier = self.common.get_dictionary(kpi_type=Const.MANUFACTURER_SHARE_STORE, manufacturer_fk=manufacturer_fk)
-            parent_identifier = self.common.get_dictionary(kpi_type=Const.MANUFACTURER_TOTAL_STORE)
-
-            self.common.write_to_db_result(kpi_fk, numerator_id=manufacturer_fk,
-                                           numerator_result=numerator_result,
-                                           denominator_result=denominator_result,
-                                           result=sos_value,
-                                           identifier_parent=parent_identifier,
-                                           identifier_result=result_identifier,
-                                           denominator_id=self.store_id)
-
-    def calculate_manufacturer_brandshare_store(self):
-        for manufacturer_fk in self.scif.manufacturer_fk.to_list():
-            filtered_scif = self.scif[(self.scif[Const.MANUFACTURER_FK] == manufacturer_fk)]
-            for brand_fk in filtered_scif.brand_fk.to_list():
-                united_df = filtered_scif[(filtered_scif[Const.BRAND_FK] == brand_fk)]
-
-                numerator_result = united_df.facings.sum()
-                denominator_result = self.scif.facings.sum()
-
-                sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.BRAND_SHARE_MANUFACTURER)
-
-            result_identifier = self.common.get_dictionary(kpi_type=Const.BRAND_SHARE_MANUFACTURER, brand_fk=brand_fk)
-            parent_identifier = self.common.get_dictionary(kpi_type=Const.MANUFACTURER_SHARE_STORE, manufacturer_fk=manufacturer_fk)
-
-            self.common.write_to_db_result(kpi_fk, numerator_id=brand_fk,
-                                           numerator_result=numerator_result,
-                                           result=sos_value,
-                                           identifier_parent=parent_identifier,
-                                           identifier_result=result_identifier,
-                                           context_id=manufacturer_fk,
-                                           denominator_id=self.store_id)
-
-    def calculate_manufacturer_productshare_store(self):
-        for brand_fk in self.scif.brand_fk.to_list():
-            filtered_scif = self.scif[(self.scif[Const.BRAND_FK] == brand_fk)]
-            for product_fk in filtered_scif.product_fk.to_list():
-                united_df = filtered_scif[(filtered_scif[Const.PRODUCT_FK] == product_fk)]
-
-                numerator_result = united_df.facings.sum()
-                denominator_result = self.scif.facings.sum()
-
-                sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.CATEGORY)
-
-
-            parent_identifier = self.common.get_dictionary(kpi_type=Const.BRAND_SHARE_MANUFACTURER, brand_fk=brand_fk)
-
-            self.common.write_to_db_result(kpi_fk, numerator_id=product_fk,
-                                           numerator_result=numerator_result,
-                                           result=sos_value,
-                                           identifier_parent=parent_identifier,
-                                           context_id=brand_fk,
-                                           denominator_id=self.store_id)
-
-    def calculate_manufacturer_template_group(self):
-        result_identifier = self.common.get_dictionary(kpi_type=Const.MANUFACTURER_TOTAL_STORE)
-        parent_identifier = self.common.get_dictionary(kpi_type=Const.TOTAL)
-
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.MANUFACTURER_TEMPLATE_GROUP)
-        self.common.write_to_db_result(kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
+                                       result=100, identifier_result={'kpi_fk': manufacturer_total_kpi_fk},
+                                       identifier_parent=total_identifier, should_enter=True,
+                                       denominator_id=self.store_id, denominator_result=1)
+        self.common.write_to_db_result(manufacturer_template_total_kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK,
                                        numerator_result=1,
-                                       result=100,
-                                       denominator_id=self.store_id,
-                                       denominator_result=1,
-                                       identifier_result=result_identifier,
-                                       identifier_parent=parent_identifier,
-                                       )
+                                       result=100, identifier_result={'kpi_fk': manufacturer_template_total_kpi_fk},
+                                       identifier_parent=total_identifier, should_enter=True,
+                                       denominator_id=self.store_id, denominator_result=1)
+        return
 
-    def calculate_store_template_group(self):
-        for template_fk in self.scif.template_fk.to_list():
-            united_df = self.scif[(self.scif[Const.TEMPLATE_FK] == template_fk)]
-
-            numerator_result = united_df.facings.sum()
-            denominator_result = self.scif.facings.sum()
-
-            sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-            kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.MANUFACTURER_SHARE_STORE)
-
-
-            result_identifier = self.common.get_dictionary(kpi_type=Const.SHARE_TEMPLATE_GROUP, template_fk=template_fk)
-            parent_identifier = self.common.get_dictionary(kpi_type=Const.MANUFACTURER_TEMPLATE_GROUP)
-
-            self.common.write_to_db_result(kpi_fk, numerator_id=template_fk,
-                                           numerator_result=numerator_result,
-                                           denominator_result=denominator_result,
-                                           result=sos_value,
-                                           identifier_parent=parent_identifier,
-                                           identifier_result=result_identifier,
-                                           denominator_id=self.store_id)
-
-    def calculate_manufacturer_share_template_group(self):
-        for manufacturer_fk in self.scif.manufacturer_fk.to_list():
-            filtered_scif = self.scif[(self.scif[Const.MANUFACTURER_FK] == manufacturer_fk)]
-            for template_fk in filtered_scif.brand_fk.to_list():
-                united_df = filtered_scif[(filtered_scif[Const.TEMPLATE_FK] == template_fk)]
-
-                numerator_result = united_df.facings.sum()
-                denominator_result = self.scif.facings.sum()
-
-                sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.MANUFACTURER_SHARE_STORE)
-
-                parent_identifier = self.common.get_dictionary(kpi_type=Const.SHARE_TEMPLATE_GROUP, template_fk=template_fk)
-            result_identifier = self.common.get_dictionary(kpi_type=Const.SHARE_TEMPLATE_GROUP,template_fk=template_fk, manufacturer_fk=manufacturer_fk)
-
-            self.common.write_to_db_result(kpi_fk, numerator_id=manufacturer_fk,
-                                           numerator_result=numerator_result,
-                                           result=sos_value,
-                                           identifier_parent=parent_identifier,
-                                           identifier_result=result_identifier,
-                                           context_id=manufacturer_fk,
-                                           denominator_id=template_fk)
-
-    def calculate_brand_share_template_group(self):
-        for template_fk in self.scif.template_fk.to_list():
-            filtered_scif = self.scif[(self.scif[Const.TEMPLATE_FK] == template_fk)]
-            for brand_fk in filtered_scif.brand_fk.to_list():
-                united_df = filtered_scif[(filtered_scif[Const.BRAND_FK] == brand_fk)]
-
-                numerator_result = united_df.facings.sum()
-                denominator_result = self.scif.facings.sum()
-
-                sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.MANUFACTURER_SHARE_STORE)
-
-                manufacturer_fk = self.scif['manufacturer_fk'][self.scif[Const.BRAND_FK== brand_fk]].iloc[0]
-                parent_identifier = self.common.get_dictionary(kpi_type=Const.MANUFACTURER_TEMPLATE_GROUP, template_fk=template_fk, manufacturer_fk=manufacturer_fk)
-            result_identifier = self.common.get_dictionary(kpi_type=Const.BRAND_TEMPLATE_GROUP,template_fk=template_fk, brand_fk=brand_fk)
-
-            self.common.write_to_db_result(kpi_fk, numerator_id=brand_fk,
-                                           numerator_result=numerator_result,
-                                           result=sos_value,
-                                           identifier_parent=parent_identifier,
-                                           identifier_result=result_identifier,
-                                           context_id=template_fk,
-                                           denominator_id=template_fk)
-
-    def calculate_product_share_template_group(self):
-        for template_fk in self.scif.template_fk.to_list():
-            filtered_scif = self.scif[(self.scif[Const.TEMPLATE_FK] == template_fk)]
-            for product_fk in filtered_scif.product_fk.to_list():
-                united_df = filtered_scif[(filtered_scif[Const.PRODUCT_FK] == product_fk)]
-
-                numerator_result = united_df.facings.sum()
-                denominator_result = self.scif.facings.sum()
-
-                sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
-
-                kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.BRAND_SHARE_MANUFACTURER)
-
-                brand_fk = self.scif['brand_fk'][self.scif[Const.PRODUCT_FK== product_fk]].iloc[0]
-                parent_identifier = self.common.get_dictionary(kpi_type=Const.BRAND_SHARE_MANUFACTURER, template_fk=template_fk, brand_fk=brand_fk)
-
-
-            self.common.write_to_db_result(kpi_fk, numerator_id=product_fk,
-                                           numerator_result=numerator_result,
-                                           result=sos_value,
-                                           identifier_parent=parent_identifier,
-                                           context_id=brand_fk,
-                                           denominator_id=template_fk)
     # def calculate_entire_store_sos(self):
     #     # general_filters = {}  # entire session/store visit
     #     # sos_filters = {self.manufacturer_attribute: 'Y'}
@@ -432,7 +185,7 @@ class SOVIToolBox:
     #     # print('Entire store: {}%'.format(sos_value))
     #
     #     own_pk = self.pseudo_pk
-    #     kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.TOTAL)
+    #     kpi_fk = self.common.get_kpi_fk_by_kpi_type(Const.UNITED_TOTAL)
     #     self.common.write_to_db_result(kpi_fk, numerator_id=Const.OWN_MANUFACTURER_FK, numerator_result=numerator_result,
     #                                    result=sos_value, identifier_result=own_pk,
     #                                    denominator_id=self.store_id, denominator_result=denominator_result)

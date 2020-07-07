@@ -28,15 +28,16 @@ class Const(object):
     ATT4 = "att4"
     ATT4_VALUES = ['STILL', 'SSD']
 
-    TOTAL = "SOVI - United Total Store"
-    SSD = "SOVI - United Share of SSD Still"
-    CATEGORY = "SOVI - United Share of Category"
-    TEMPLATE_GROUP = "SOVI - United by Template Group"
-    SHARE_TEMPLATE_GROUP = "SOVI - United Share of Template Group"
-    SHARE_CATEGORY = "SOVI - United Share of Category"
-    SHARE_CATEGORY_TEMPLATE_GROUP = "SOVI - United Category Share of Template Group"
-    SHARE_SSD_TEMPLATE_GROUP = "SOVI - United SSD Still Share of Template Group"
+    TOTAL = "SOVI Total Store"
 
+    UNITED_TOTAL = "SOVI - United Total Store"
+    UNITED_SSD = "SOVI - United Share of SSD Still"
+    UNITED_CATEGORY = "SOVI - United Share of Category"
+
+    UNITED_TEMPLATE_GROUP = "SOVI - United by Template Group"
+    SHARE_TEMPLATE_GROUP = "SOVI - United Share of Template Group"
+    SHARE_SSD_TEMPLATE_GROUP = "SOVI - United SSD Still Share of Template Group"
+    SHARE_CATEGORY_TEMPLATE_GROUP = "SOVI - United Category Share of Template Group"
 
     MANUFACTURER_TOTAL_STORE = "SOVI - Manufacturer Total Store"
     MANUFACTURER_SHARE_STORE = "SOVI - Manufacturer Share of Store"
@@ -49,6 +50,26 @@ class Const(object):
     BRAND_TEMPLATE_GROUP = "SOVI - Brand Share of Template Group"
     PRODUCT_TEMPLATE_GROUP = "SOVI - Product Share of Template Group"
 
+    # child parent pairs
+    HIERARCHY = {
+        UNITED_TOTAL: TOTAL,
+        UNITED_SSD: UNITED_TOTAL,
+        UNITED_CATEGORY: UNITED_SSD,
 
+        UNITED_TEMPLATE_GROUP: TOTAL,
+        SHARE_TEMPLATE_GROUP: UNITED_TEMPLATE_GROUP,
+        SHARE_SSD_TEMPLATE_GROUP: SHARE_TEMPLATE_GROUP,
+        SHARE_CATEGORY_TEMPLATE_GROUP: SHARE_SSD_TEMPLATE_GROUP,
 
-    united_deliver_kpis =[]
+        MANUFACTURER_TOTAL_STORE: TOTAL,
+        MANUFACTURER_SHARE_STORE: MANUFACTURER_TOTAL_STORE,
+        BRAND_SHARE_MANUFACTURER: MANUFACTURER_SHARE_STORE,
+        PRODUCT_SHARE_MANUFACTURER: BRAND_SHARE_MANUFACTURER,
+
+        TEMPLATE_GROUP_MANUFACTURER: TOTAL,
+        TEMPLATE_GROUP_STORE: TEMPLATE_GROUP_MANUFACTURER,
+        MANUFACTURER_TEMPLATE_GROUP: TEMPLATE_GROUP_STORE,
+        BRAND_TEMPLATE_GROUP: MANUFACTURER_TEMPLATE_GROUP,
+        PRODUCT_TEMPLATE_GROUP: BRAND_TEMPLATE_GROUP
+
+    }

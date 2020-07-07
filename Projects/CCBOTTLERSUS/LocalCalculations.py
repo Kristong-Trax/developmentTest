@@ -6,8 +6,8 @@ from Projects.CCBOTTLERSUS.MSC.KPIToolBox import MSCToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
 if __name__ == '__main__':
-    LoggerInitializer.init('ccbottlersus calculations')
-    Config.init()
+    LoggerInitializer.init('KEngine')
+    Config.init('KEngine')
     project_name = 'ccbottlersus'
 
     # # MSC
@@ -41,6 +41,8 @@ if __name__ == '__main__':
         'ffdd7097-6081-4a50-9cea-2739d647341d'
     ]
 
+    sessions = ['fd4b1898-618c-4c74-a0f9-f8d2e12c2bd9']
+
     for session in sessions:
         print('***********************************************************************************')
         print('_______________________ {} ____________________'.format(session))
@@ -48,6 +50,6 @@ if __name__ == '__main__':
         data_provider.load_session_data(session)
         output = Output()
         common = Common(data_provider)
-        MSCToolBox(data_provider, output, common).main_calculation()
+        CCBOTTLERSUSCalculations(data_provider, output).run_project_calculations()
         common.commit_results_data()
 
