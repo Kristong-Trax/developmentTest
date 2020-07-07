@@ -54,7 +54,8 @@ class PNGJPGENERALToolBox:
     def _get_group_product_list(self, filters):
         products = self.data_provider.products.copy()
         # filter_.update({'Sub-section': filters['all']['Sub-section']})
-        product_list = products[self.get_filter_condition(products, **filters)]['product_fk'].tolist()
+        filter_condition = self.get_filter_condition(products, **filters)
+        product_list = products[filter_condition]['product_fk'].tolist()
         return product_list
 
     def get_products_by_filters(self, return_value='product_name', **filters):
