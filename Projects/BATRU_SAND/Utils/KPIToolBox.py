@@ -17,7 +17,7 @@ from Projects.BATRU_SAND.Utils.PositionGraph import BATRU_SANDPositionGraphs
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
 import numpy as np
 from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.Utils.Consts.DB import StaticKpis
+from Trax.Data.ProfessionalServices.PsConsts.DB import StaticKpis
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 __author__ = 'uri'

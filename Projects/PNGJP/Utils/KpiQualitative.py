@@ -1,8 +1,8 @@
 # coding=utf-8
 
-from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts, ProductTypeConsts, BasicConsts, HelperConsts
-from KPIUtils_v2.Utils.Consts.OldDB import KpiResults, KpkResults, KpsResults
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, StoreInfoConsts, SceneInfoConsts, \
+from Trax.Data.ProfessionalServices.PsConsts.Consts import HelperConsts, ProductTypeConsts, BasicConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.OldDB import KpiResults, KpkResults, KpsResults
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ProductsConsts, StoreInfoConsts, SceneInfoConsts, \
     TemplatesConsts
 from datetime import datetime
 import os

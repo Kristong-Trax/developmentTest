@@ -1,6 +1,6 @@
 from Projects.PNGJP_SAND2.KPIS.Util import PNGJP_SAND2Util
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ScifConsts
 import numpy as np
 
 

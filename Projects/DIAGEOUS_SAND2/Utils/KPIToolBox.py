@@ -1,8 +1,8 @@
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts, \
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts, \
     SceneInfoConsts
-from KPIUtils_v2.Utils.Consts.PS import ExternalTargetsConsts
+from Trax.Data.ProfessionalServices.PsConsts.PS import ExternalTargetsConsts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts, ProductTypeConsts, BasicConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import HelperConsts, ProductTypeConsts, BasicConsts
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider

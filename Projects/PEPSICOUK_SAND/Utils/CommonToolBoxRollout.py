@@ -11,7 +11,7 @@ from KPIUtils_v2.DB.Common import Common as CommonV1
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.PEPSICOUK_SAND.Utils.Fetcher import PEPSICOUK_Queries
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts, MatchesConsts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
 # from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes

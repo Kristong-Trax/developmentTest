@@ -17,7 +17,7 @@ from KPIUtils.Calculations.Survey import Survey
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts, MatchesConsts
 from Projects.CCZA_SAND.Utils.FlowToolBox import FlowTools as ToolBox
 
 __author__ = 'Elyashiv'

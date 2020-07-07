@@ -8,12 +8,12 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.TWEGAU.Data.LocalConsts import Consts
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
 from KPIUtils_v2.DB.CommonV2 import (Common, PSProjectConnector)
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
-from KPIUtils_v2.Utils.Consts.GlobalConsts import (HelperConsts, ProductTypeConsts)
+from Trax.Data.ProfessionalServices.PsConsts.Consts import (HelperConsts, ProductTypeConsts)
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
-from KPIUtils_v2.Utils.Consts.DataProvider import (SessionInfoConsts, ProductsConsts, ScifConsts, MatchesConsts)
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import (SessionInfoConsts, ProductsConsts, ScifConsts, MatchesConsts)
 
 
 __author__ = 'nidhin'

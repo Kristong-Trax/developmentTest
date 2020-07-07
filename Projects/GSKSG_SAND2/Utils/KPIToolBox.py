@@ -7,8 +7,8 @@ from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import Const
 from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Utils.Consts import GlobalConsts, DataProvider as DataProviderConsts, DB
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, TemplatesConsts
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts, TemplatesConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
 from KPIUtils_v2.Calculations.SequenceCalculationsV2 import Sequence
 from KPIUtils_v2.Calculations.CalculationsUtils.Constants import AdditionalAttr
 

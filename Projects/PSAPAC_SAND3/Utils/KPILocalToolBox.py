@@ -1,6 +1,6 @@
 from KPIUtils.GlobalProjects.GSK.Utils.KPIToolBox import GSKToolBox
 from Trax.Utils.Logging.Logger import Log
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts
 from KPIUtils.GlobalProjects.GSK.Data.LocalConsts import Consts
 import pandas as pd
 import numpy as np
