@@ -13,7 +13,7 @@ from Trax.Utils.Logging.Logger import Log
 from Projects.LIONJP.Data.Consts import Consts
 
 __author__ = 'satya'
-is_debug = True
+is_debug = False
 
 
 class LionJPSceneToolBox:
@@ -44,6 +44,8 @@ class LionJPSceneToolBox:
         self.kpi_sheet = self.get_setup(Consts.KPI_SHEET_NAME)
         self.kpi_template_file = "kpi_template.xlsx"
         self.kpi_template = self.get_kpi_template(Consts.KPI_CONFIG_SHEET)
+        self.custom_entity = self.get_custom_entity()
+        self.other_products = self.get_other_products()
 
     @staticmethod
     def get_minimum_facings(df, block_percentage):
@@ -65,25 +67,36 @@ class LionJPSceneToolBox:
             facings = int(facings)
         return facings
 
-    def get_custom_entity_fk(self, name):
+    def get_other_products(self):
         query = """
-            SELECT pk FROM static.custom_entity
-            WHERE name='{}'
-            """.format(name)
+            SELECT pk, ean_code FROM static_new.product
+            WHERE type='Other'
+            """
+        query = query.replace(",)", ")")
         data = pd.read_sql_query(query, self.rds_conn.db)
-        return None if data.empty else data.values[0][0]
+        return data
+
+    def get_custom_entity(self):
+        query = """select
+                    pk,
+                    name
+                    from 
+                    static.custom_entity 
+                    where 
+                    entity_type_fk in (select pk from static.kpi_entity_type where name ='adjacency')
+                    """
+        data = pd.read_sql_query(query, self.rds_conn.db)
+        return data
+
+    def get_custom_entity_fk(self, name):
+        return None if self.custom_entity.empty else self.custom_entity[self.custom_entity['name'] == name].iloc[0][0]
 
     def get_product_fks(self, ean_codes):
         product_pks = []
-        query = """
-            SELECT pk FROM static_new.product
-            WHERE ean_code in {}
-            """.format(ean_codes)
-        query = query.replace(",)", ")")
-        data = pd.read_sql_query(query, self.rds_conn.db)
-        if data.empty:
+        if self.other_products.empty:
             return product_pks
         else:
+            data = self.other_products[self.other_products['ean_code'].isin(ean_codes)]
             product_pks = list(data['pk'].unique())
         return product_pks
 
@@ -162,12 +175,12 @@ class LionJPSceneToolBox:
         include_empty = adj_config['include_empty']
         include_irrelevant = adj_config['include_irrelevant']
 
-        if include_empty == "exclude":
+        if include_empty == "include":
             allowed_filters.append("Empty")
         else:
             exclude_filters.append("Empty")
 
-        if include_irrelevant == "exclude":
+        if include_irrelevant == "include":
             allowed_filters.append("Irrelevant")
         else:
             exclude_filters.append("Irrelevant")
@@ -179,6 +192,10 @@ class LionJPSceneToolBox:
         else:
             allowed_products_filters = {"product_type": allowed_filters}
 
+        if not pd.isnull(adj_config['include_other_ean_codes']):
+            include_others_eans = ["{}".format(other.strip()) for other in adj_config['include_other_ean_codes'].split(",")]
+            allowed_products_filters["product_ean_code"] = include_others_eans
+
         if len(exclude_filters) == 0:
             exclude_products_filters = None
         else:
@@ -187,22 +204,6 @@ class LionJPSceneToolBox:
         return exclude_products_filters, allowed_products_filters
 
     def build_entity_groups(self, adj_config, scene_fk):
-        extra = []
-        # include_empty
-        if adj_config['include_empty'] == "exclude":
-            extra.append(Consts.GENERAL_EMPTY)
-            extra.append(Consts.EMPTY)
-
-        # include_irrelevant
-        if adj_config['include_irrelevant'] == "exclude":
-            extra.append(Consts.IRRELEVANT)
-
-        # include_others
-        if not pd.isnull(adj_config['include_other_ean_codes']):
-            include_others = tuple(["{}".format(other.strip()) for other in adj_config['include_other_ean_codes'].split(",")])
-            if len(include_others) != 0:
-                product_fks = self.get_product_fks(include_others)
-                extra.extend(product_fks)
 
         entity_1_type = adj_config['entity_1_type']
         entity_2_type = adj_config['entity_2_type']
@@ -237,6 +238,30 @@ class LionJPSceneToolBox:
                 return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
             df_entities = df_entities.append(df_entity)
 
+        # Adding include_other_ean_codes to entity groups if included
+        if not pd.isnull(adj_config['include_other_ean_codes']):
+            include_others = tuple(["{}".format(other.strip()) for other in adj_config['include_other_ean_codes'].split(",")])
+            include_others_pks = []
+            if len(include_others) != 0:
+                product_fks = self.get_product_fks(include_others)
+                include_others_pks.extend(product_fks)
+            if len(include_others_pks) > 0:
+                # add th ese product fks to both entity group
+                for others_product_fk in include_others_pks:
+                    row = {"entity": "other", "product_fk": others_product_fk}
+                    df_entities = df_entities.append(row, ignore_index=True)
+                    # emtpy
+                    row_general_empty = {"entity": "empty", "product_fk": 0}
+                    df_entities = df_entities.append(row_general_empty, ignore_index=True)
+                    row_empty = {"entity": "empty", "product_fk": 1478}
+                    df_entities = df_entities.append(row_empty, ignore_index=True)
+
+                    # for entity in entities:
+                    #     row = {"product_fk": others_product_fk, "entity": "other"}
+                    #     df_entities = df_entities.append(row,  ignore_index=True)
+                    # row = {"product_fk": others_product_fk}
+                    # df_entities = df_entities.append(row, ignore_index=True)
+
         df_entities = df_entities.reset_index(drop=True)
 
         product_pks = list(df_entities['product_fk'].unique())
@@ -263,10 +288,13 @@ class LionJPSceneToolBox:
             else:
                 overlap_percentage = 0.1
 
-            df = df_custom_matches[(~df_custom_matches['product_fk'].isin(extra)) &
-                                   (df_custom_matches['scene_fk'] == scene_fk)]
+            df_custom_matches = df_custom_matches.drop_duplicates()
+
+            df = df_custom_matches[(df_custom_matches['scene_fk'] == scene_fk)]
             minimum_tags_per_entity = self.get_minimum_facings(df, blocking_percentage)
-            population = {'entity': list(df_entities['entity'].unique())}
+            list_of_entities = list(df_entities['entity'].unique())
+            # list_of_entities.remove("other")
+            population = {'entity': list_of_entities}
             exclude_filter, allowed_products_filter = self.exclude_and_include_filter(adj_config)
 
         if adj_config['orientation'].lower() == "vertical":
@@ -309,7 +337,7 @@ class LionJPSceneToolBox:
             return
 
         for idx, adj_config in kpi_config.iterrows():
-            custom_entity_pk = self.get_custom_entity_fk(adj_config['report_label'])
+            custom_entity_fk = self.get_custom_entity_fk(adj_config['report_label'])
             scene_types = [x.strip() for x in adj_config['scene_type'].split(",")]
             df_scene_template = self.scif[['scene_fk', 'template_fk']][self.scif['template_name'].isin(scene_types)]
             df_scene_template = df_scene_template.drop_duplicates()
@@ -329,9 +357,16 @@ class LionJPSceneToolBox:
                     if sequence_params[AdditionalAttr.MIN_TAGS_OF_ENTITY] == 0:
                         continue
 
-                    seq = Sequence(self.data_provider, custom_matches)
+                    seq = Sequence(self.data_provider,
+                                   custom_matches,
+                                   report_label=adj_config['report_label'],
+                                   custom_entity_fk=custom_entity_fk,
+                                   is_debug=is_debug)
+
                     sequence_res = seq.calculate_sequence(population, location, sequence_params)
+
                     result_count = len(sequence_res)
+
                     result = 1 if result_count > 0 else 0
                     score = result
                     if result > 0:
@@ -341,7 +376,7 @@ class LionJPSceneToolBox:
                                                                                          result))
 
                     self.common.write_to_db_result(fk=kpi_level_2_fk,
-                                                   numerator_id=custom_entity_pk,
+                                                   numerator_id=custom_entity_fk,
                                                    denominator_id=template_fk,
                                                    context_id=self.store_id,
                                                    numerator_result=result_count,

@@ -1,7 +1,8 @@
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
-from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
-from KPIUtils_v2.Utils.Consts.GlobalConsts import ProductTypeConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
+# from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
+from Projects.GSKJP.Utils.KPILocalGenerator import GSKLocalGenerator as GSKGenerator
+from Trax.Data.ProfessionalServices.PsConsts.Consts import ProductTypeConsts, HelperConsts
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
@@ -55,12 +56,14 @@ class GSKJPToolBox:
         self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=Consts.KEY_FIELDS,
                                                                       data_fields=Consts.DATA_FIELDS)
         self.own_manufacturer = self.get_manufacturer
-        self.set_up_data = {(Consts.PLN_BLOCK, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
-                            (Consts.POSITION_SCORE, Const.KPI_TYPE_COLUMN):
-                                Const.NO_INFO, (Consts.ECAPS_FILTER_IDENT, Const.KPI_TYPE_COLUMN):
-                                Const.NO_INFO, (Consts.PLN_MSL, Const.KPI_TYPE_COLUMN):
-                                Const.NO_INFO, ("GSK_PLN_LSOS_SCORE",
-                                                Const.KPI_TYPE_COLUMN): Const.NO_INFO}
+        self.set_up_data = {
+            (Consts.PLN_BLOCK, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
+            (Consts.POSITION_SCORE, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
+            (Consts.ECAPS_FILTER_IDENT, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
+            (Consts.PLN_MSL, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
+            ("GSK_PLN_LSOS_SCORE",Const.KPI_TYPE_COLUMN): Const.NO_INFO,
+            (Consts.POSM, Const.KPI_TYPE_COLUMN): Const.NO_INFO
+        }
 
     @property
     def get_manufacturer(self):
@@ -104,6 +107,10 @@ class GSKJPToolBox:
         else:
             results_compliance = self.gsk_compliance()
             self.common.save_json_to_new_tables(results_compliance)
+
+        results_pos = self.gsk_pos_kpis()
+        self.common.save_json_to_new_tables(results_pos)
+
         self.common.commit_results_data()
         return
 
@@ -519,3 +526,94 @@ class GSKJPToolBox:
                      result_summary, SessionResultsConsts.SCORE: result_summary,
                  'identifier_result': identifier_ecaps_summary})
         return results_df
+
+    def gsk_pos_kpis(self):
+        """
+        Function calculate POSM Distribution
+        :return
+          - results :  array of dictionary, each dict contains kpi's result details
+        """
+        results = []
+        OOS= 1
+        DISTRIBUTED = 2
+
+        self.gsk_generator.tool_box.extract_data_set_up_file(
+            Consts.POSM, self.set_up_data, Consts.KPI_DICT
+        )
+        assortment_pos = self.msl_assortment(Consts.POSM_SKU, Consts.POSM)
+
+        kpi_gsk_pos_distribution_store_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GSK_POS_DISTRIBUTION_STORE)
+        kpi_gsk_pos_distribution_brand_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GSK_POS_DISTRIBUTION_BRAND)
+        kpi_gsk_pos_distribution_sku_fk = self.common.get_kpi_fk_by_kpi_type(Consts.GSK_POS_DISTRIBUTION_SKU)
+
+        if assortment_pos is None or assortment_pos.empty:
+            Log.info("Assortment df is empty. GSK_POS_DISTRIBUTION Kpis are not calculated")
+            return results
+
+        # Calculate KPI : GSK_POS_DISTRIBUTION_STORE
+        assortment_pos['in_store'] = assortment_pos['in_store'].astype('int')
+        Log.info("Dropping duplicate product_fks accros multiple-granular groups")
+        Log.info("Before : {}".format(len(assortment_pos)))
+        assortment_pos = assortment_pos.drop_duplicates(subset=[ProductsConsts.PRODUCT_FK])
+        Log.info("After : {}".format(len(assortment_pos)))
+
+        numerator_res = len(assortment_pos[assortment_pos['in_store'] == 1])
+        denominator_res = len(assortment_pos)
+
+        result = round((numerator_res / float(denominator_res)), 4) if denominator_res != 0 else 0
+
+        results.append(
+            {'fk': kpi_gsk_pos_distribution_store_fk,
+             SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer,
+             SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+             SessionResultsConsts.NUMERATOR_RESULT: numerator_res,
+             SessionResultsConsts.DENOMINATOR_RESULT: denominator_res,
+             SessionResultsConsts.RESULT: result,
+             SessionResultsConsts.SCORE: result,
+             # 'identifier_parent': identifier_ecaps_summary,
+             'identifier_result': "Gsk_Pos_Distribution_Store",
+             'should_enter': True}
+        )
+
+        # Calculate KPI: GSK_POS_DISTRIBUTION_BRAND
+        brands_group = assortment_pos.groupby([ProductsConsts.BRAND_FK])
+        for brand, assortment_pos_by_brand in brands_group:
+            numerator_res = len(assortment_pos_by_brand[assortment_pos_by_brand['in_store'] == 1])
+            denominator_res = len(assortment_pos_by_brand)
+            result = round((numerator_res / float(denominator_res)), 4) if denominator_res != 0 else 0
+
+            results.append(
+                {'fk': kpi_gsk_pos_distribution_brand_fk,
+                 SessionResultsConsts.NUMERATOR_ID: int(brand),
+                 SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+                 SessionResultsConsts.NUMERATOR_RESULT: numerator_res,
+                 SessionResultsConsts.DENOMINATOR_RESULT: denominator_res,
+                 SessionResultsConsts.RESULT: result,
+                 SessionResultsConsts.SCORE: result,
+                 'identifier_parent': "Gsk_Pos_Distribution_Store",
+                 'identifier_result': "Gsk_Pos_Distribution_Brand_" + str(int(brand)),
+                 'should_enter': True}
+            )
+
+            for idx, each_product in assortment_pos_by_brand.iterrows():
+                product_fk = each_product[ProductsConsts.PRODUCT_FK]
+                result = 1 if int(each_product['in_store']) == 1 else 0
+                result_status = DISTRIBUTED if result == 1 else OOS
+                last_status = self.gsk_generator.tool_box.get_last_status(
+                    kpi_gsk_pos_distribution_sku_fk,
+                    product_fk)
+
+                results.append(
+                    {'fk': kpi_gsk_pos_distribution_sku_fk,
+                     SessionResultsConsts.NUMERATOR_ID: product_fk,
+                     SessionResultsConsts.DENOMINATOR_ID: self.store_fk,
+                     SessionResultsConsts.NUMERATOR_RESULT: result,
+                     SessionResultsConsts.DENOMINATOR_RESULT: 1,
+                     SessionResultsConsts.RESULT: result_status,
+                     SessionResultsConsts.SCORE: last_status,
+                     'identifier_parent': "Gsk_Pos_Distribution_Brand_" + str(int(brand)),
+                     'identifier_result': "Gsk_Pos_Distribution_SKU_" + str(int(product_fk)),
+                     'should_enter': True}
+                )
+
+        return results

@@ -7,10 +7,10 @@ from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from Projects.TNUVAILV2_SAND.Utils.Consts import Consts
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Projects.TNUVAILV2_SAND.Utils.DataBaseHandler import DBHandler
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts, ScifConsts
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts
-from KPIUtils_v2.Utils.Consts.GlobalConsts import BasicConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import BasicConsts, HelperConsts
 
 __author__ = 'idanr'
 

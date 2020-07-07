@@ -16,8 +16,8 @@ from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils.Calculations.Assortment import Assortment
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider as DataProvider_v2
-from KPIUtils_v2.Utils.Consts.DB import StaticKpis, SessionResultsConsts
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, StoreInfoConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import StaticKpis, SessionResultsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts, StoreInfoConsts
 
 __author__ = 'Elyashiv'
 

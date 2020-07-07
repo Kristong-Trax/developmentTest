@@ -10,27 +10,36 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
         self.utils = StraussfritolayilUtil(None, data_provider)
 
     def calculate(self):
-        kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.LSOS_OWN_BRAND_OUT_OF_CATEGORY_KPI)
-        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['operation_type'] == Consts.SOS_KPIS]
-        # todo: implement category extraction
-        template_category_fks = [1, 2]
-        # todo: implement target
-        # target = self.utils.kpi_external_targets['taregt']
-        target = 30
-        categories = set(self.utils.match_product_in_scene_wo_hangers['category_fk'])
-        category_fks = set(template_category_fks) - categories
+        kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.LSOS_MANUFACTURER_OUT_OF_CATEGORY_KPI)
+        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
+                                                   Consts.LSOS_MANUFACTURER_OUT_OF_CATEGORY_KPI]
+        if template.empty:
+            template_categories = ['Crackers', 'Core Salty']
+        else:
+            template_categories = set(template[Consts.CATEGORY])
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['stacking_layer'] == 1]
-        for category_fk in categories:
+        all_store_matches = self.utils.match_product_in_scene_wo_hangers.copy()
+        all_store_matches = all_store_matches[all_store_matches['stacking_layer'] == 1]
+        for category in template_categories:
+            target = template[template[Consts.CATEGORY] == category][Consts.TARGET]
+            if not target.empty:
+                target = target.values[0] * 100
+            else:
+                target = None
+            category_fk = self.utils.all_products[self.utils.all_products['category'] == category][
+                'category_fk'].values[0]
             own_skus_category_df = own_manufacturer_matches[own_manufacturer_matches['category_fk'] == category_fk]
-            store_category_df = self.utils.match_product_in_scene_wo_hangers[
-                self.utils.match_product_in_scene_wo_hangers['category_fk'] == category_fk]
+            store_category_df = all_store_matches[all_store_matches['category_fk'] == category_fk]
             own_category_linear_length = own_skus_category_df['width_mm_advance'].sum()
             store_category_linear_length = store_category_df['width_mm_advance'].sum()
             sos_result = self.utils.calculate_sos_result(own_category_linear_length, store_category_linear_length)
-            kpi_score = 1 if (target <= sos_result) else 0
-            self.write_to_db_result(fk=kpi_fk, numerator_id=category_fk, denominator_id=self.utils.own_manuf_fk,
-                                    numerator_result=own_category_linear_length,
+            if not target:
+                kpi_score = Consts.NO_TARGET
+            else:
+                kpi_score = Consts.PASS if (target <= sos_result) else Consts.FAIL
+            self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, denominator_id=category_fk,
+                                    numerator_result=own_category_linear_length, target=target,
                                     denominator_result=store_category_linear_length,
                                     result=sos_result, score=kpi_score)
 

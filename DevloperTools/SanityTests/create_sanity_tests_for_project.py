@@ -431,8 +431,8 @@ if __name__ == '__main__':
     replace_configurations_file = True
     copy_configuration_file_to_traxexport(replace_configurations_file)
     projects = {
-        'marsru-prod':  {'fffe707c-55f6-4f57-b8d1-67c76638f654': [],
-                         'ffcd785d-c621-4f15-b202-581b8f73c13f': []}
+        'ccru':  {'F26E2E6B-D12B-415C-AC0C-CAB929BEFC9F': [],
+                  '3b8a8039-2c79-436d-b42f-c72f4ce3b183': []}
                 }
     for project in projects:
         try:
@@ -449,7 +449,7 @@ if __name__ == '__main__':
             # create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
             #                    create_test_script=True, create_test_results=True)
 
-            # # Create kpi test results only
+            # Create kpi test results only
             create_sanity_test(project=project, sessions_to_use=sessions, kpi_results=kpi_results,
                                create_test_script=False, create_test_results=True)
 

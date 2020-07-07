@@ -11,29 +11,44 @@ class LSOSOwnBrandOutOfCategoryKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.LSOS_OWN_BRAND_OUT_OF_CATEGORY_KPI)
-        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['operation_type'] == Consts.SOS_KPIS]
-        # todo: implement target
-        # target = self.utils.kpi_external_targets['taregt']
-        target = 30
-        target_range = 5
-        # todo: implement category extraction
-        category_fks = [1, 2]
+        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
+                                                   Consts.LSOS_OWN_BRAND_OUT_OF_CATEGORY_KPI]
+        if template.empty:
+            template_categories = ['Core Salty']
+        else:
+            template_categories = set(template[Consts.CATEGORY])
+        template = template.merge(self.utils.brand_mix_df, left_on=Consts.BRAND_MIX, right_on="entity_name", how="left")
+        target_range = 2.0
         own_manufacturer_matches = self.utils.own_manufacturer_matches_wo_hangers.copy()
         own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['stacking_layer'] == 1]
-        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches['category_fk'].isin(category_fks)]
-        categories = set(own_manufacturer_matches['category_fk'])
-        for category_fk in categories:
-            category_df = own_manufacturer_matches[own_manufacturer_matches['category_fk'] == category_fk]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches[
+            'category'].isin(template_categories)]
+        own_manufacturer_matches = own_manufacturer_matches[own_manufacturer_matches[
+            'product_type'].isin(['Empty', 'Other', 'SKU'])]
+        for category in template_categories:
+            category_fk = self.utils.all_products[self.utils.all_products['category'] == category][
+                'category_fk'].values[0]
+            category_df = own_manufacturer_matches[own_manufacturer_matches['category'] == category]
             category_linear_length = category_df['width_mm_advance'].sum()
-            # strauss are looking at sub_brand as brand in this KPI
-            sub_brands = set(category_df['sub_brand_fk'])
-            for sub_brand_fk in sub_brands:
-                sub_brand_df = category_df[category_df['sub_brand_fk'] == sub_brand_fk]
-                sub_brand_linear_length = sub_brand_df['width_mm_advance'].sum()
-                sos_result = self.utils.calculate_sos_result(sub_brand_linear_length, category_linear_length)
-                kpi_score = 1 if ((target - target_range) <= sos_result <= (target + target_range)) else 0
-                self.write_to_db_result(fk=kpi_fk, numerator_id=sub_brand_fk, denominator_id=category_fk,
-                                        numerator_result=sub_brand_linear_length,
+            # strauss are looking at brand_mix as brand in this KPI
+            brands_mix = set(category_df['brand_mix_fk'])
+            for brand_mix_fk in brands_mix:
+                target = template[template['brand_mix_fk'] == brand_mix_fk][Consts.TARGET]
+                if not target.empty:
+                    target = target.values[0] * 100
+                else:
+                    target = None
+                brand_mix_df = category_df[category_df['brand_mix_fk'] == brand_mix_fk]
+                brand_mix_linear_length = brand_mix_df['width_mm_advance'].sum()
+                sos_result = self.utils.calculate_sos_result(brand_mix_linear_length, category_linear_length)
+                if not target:
+                    kpi_score = Consts.NO_TARGET
+                else:
+                    kpi_score = Consts.PASS if ((target - target_range) <= sos_result <=
+                                                (target + target_range)) else Consts.FAIL
+                self.write_to_db_result(fk=kpi_fk, numerator_id=brand_mix_fk, denominator_id=self.utils.own_manuf_fk,
+                                        context_id=category_fk, numerator_result=brand_mix_linear_length,
+                                        target=target, weight=target_range,
                                         denominator_result=category_linear_length, result=sos_result, score=kpi_score)
 
     def kpi_type(self):

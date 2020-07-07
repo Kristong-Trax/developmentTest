@@ -16,7 +16,7 @@ from Projects.BATRU.Utils.GeneralToolBox import BATRUGENERALToolBox
 from Projects.BATRU.Utils.PositionGraph import BATRUPositionGraphs
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime, log_runtime
 from KPIUtils_v2.DB.CommonV2 import Common
-from KPIUtils_v2.Utils.Consts.DB import StaticKpis
+from Trax.Data.ProfessionalServices.PsConsts.DB import StaticKpis
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 
 

@@ -12,39 +12,53 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
 
     def calculate(self):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.NUMBER_OF_UNQIUE_SKUS_KPI)
-        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['operation_type'] == Consts.AVA_KPIS]
-        number_of_fields = {1: 10, 2: 20, 3: 30}
-        # todo: implement category extraction
-        category_fks = [1, 2]
-
+        template = self.utils.kpi_external_targets[self.utils.kpi_external_targets['kpi_type'] ==
+                                                   Consts.NUMBER_OF_UNQIUE_SKUS_KPI]
+        fields_df = template[[Consts.FIELD, Consts.TARGET_MIN, Consts.TARGET_MAX]]
+        if template.empty:
+            categories = ['Core Salty']
+        else:
+            categories = template.iloc[0][Consts.CATEGORY].split(",")
         sku_results = self.dependencies_data
         df = self.utils.match_product_in_scene_wo_hangers.copy()
         df['facings'] = 1
-        store_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
-            ['bay_number', 'shelf_number', 'facings']]
+        store_df = df.groupby(['scene_fk', 'bay_number', 'shelf_number']).sum().reset_index()[
+            ['scene_fk', 'bay_number', 'shelf_number', 'facings']]
         # filter only specific categories
-        df = df[df['category_fk'].isin(category_fks)]
-        category_df = df.groupby(['bay_number', 'shelf_number']).sum().reset_index()[
-            ['bay_number', 'shelf_number', 'facings']]
-        shelves_category_percentage = category_df / store_df
-        denominator = len(shelves_category_percentage)
+        df = df[(df['category'].isin(categories)) & (df['manufacturer_fk'] == self.utils.own_manuf_fk)]
+        category_df = df.groupby(['scene_fk', 'bay_number', 'shelf_number']).sum().reset_index()[
+            ['scene_fk', 'bay_number', 'shelf_number', 'facings']]
+        category_df.columns = ['scene_fk', 'bay_number', 'shelf_number', 'facings category']
+        join_df = store_df.merge(category_df, on=['scene_fk', 'bay_number', 'shelf_number'], how="left").fillna(0)
+        join_df['percentage'] = join_df['facings category'] / join_df['facings']
         # number of shelves with more than 50% strauss products
-        numerator = len(shelves_category_percentage[shelves_category_percentage['facings'] >= 0.5])
-
-        # number of strauss facings on all shelves
-        facings = sku_results['result'].sum()
-
-        # Adding 0.001 to prevent 0 sadot case
-        sadot = math.ceil((numerator + 0.001) / 5.0)
-        if sadot in number_of_fields.keys():
-            target = number_of_fields[sadot]
+        denominator = len(join_df)
+        numerator = len(join_df[join_df['percentage'] >= 0.5])
+        number_of_unique_skus = len(sku_results)
+        sadot = math.ceil(numerator / 5.0)
+        sadot = sadot if sadot != 0 else 1
+        target, upper_target = self.get_target(fields_df, sadot)
+        if not target:
+            score = Consts.NO_TARGET
+            ratio = None
         else:
-            target = 0
-        # todo: no target case
-        score = 1 if facings >= target else 2
+            score = Consts.PASS if target <= number_of_unique_skus <= upper_target else Consts.FAIL
+            ratio = self.utils.calculate_sos_result(number_of_unique_skus, upper_target)
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, denominator_id=self.utils.store_id,
-                                numerator_result=numerator, denominator_result=denominator, result=facings,
-                                target=target, weight=sadot, score=score)
+                                numerator_result=sadot, denominator_result=denominator, result=number_of_unique_skus,
+                                target=upper_target, weight=ratio, score=score)
+
+    @staticmethod
+    def get_target(fields_df, sadot):
+        if sadot in fields_df[Consts.FIELD].values:
+            target = fields_df[fields_df['Field'] == sadot][Consts.TARGET_MIN].values[0]
+            upper_target = fields_df[fields_df['Field'] == sadot][Consts.TARGET_MAX].values[0]
+        elif sadot >= fields_df[Consts.FIELD].max():
+            target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()][Consts.TARGET_MIN].values[0]
+            upper_target = fields_df[fields_df['Field'] == fields_df[Consts.FIELD].max()][Consts.TARGET_MAX].values[0]
+        else:
+            target = upper_target = None
+        return target, upper_target
 
     def kpi_type(self):
         pass

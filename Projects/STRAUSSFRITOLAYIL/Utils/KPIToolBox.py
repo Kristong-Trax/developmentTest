@@ -2,7 +2,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Projects.STRAUSSFRITOLAYIL.Data.LocalConsts import Consts
-from KPIUtils_v2.Utils.Consts.PS import ExternalTargetsConsts
+from Trax.Data.ProfessionalServices.PsConsts.PS import ExternalTargetsConsts
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
