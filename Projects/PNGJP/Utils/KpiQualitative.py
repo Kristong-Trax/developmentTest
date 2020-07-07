@@ -209,50 +209,50 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         for kpi in template_data['fixed KPI name'].unique().tolist():
             entity_kpis = template_data.loc[template_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
             entity_filters = filters
-
+            kpi_type = ""
             for p in xrange(len(entity_kpis)):
-                # try:
-                score = threshold = result = None
-                params = entity_kpis.iloc[p]
-                set_name = params[self.SET_NAME]
-                kpi_type = params[self.KPI_TYPE]
-                scenes_filters = self.get_scenes_filters(params)
-                kpi_filters = dict(scenes_filters, **entity_filters)
+                try:
+                    score = threshold = result = None
+                    params = entity_kpis.iloc[p]
+                    set_name = params[self.SET_NAME]
+                    kpi_type = params[self.KPI_TYPE]
+                    scenes_filters = self.get_scenes_filters(params)
+                    kpi_filters = dict(scenes_filters, **entity_filters)
 
-                if self.scene_type_not_exists(scenes_filters['template_name']):
-                    continue
+                    if self.scene_type_not_exists(scenes_filters['template_name']):
+                        continue
 
-                if kpi_type == self.GOLDEN_ZONE:
-                    kpi_params = self.golden_zone_data[
-                        self.golden_zone_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
-                    score, result, threshold = self.calculate_golden_zone(kpi, kpi_filters, kpi_params)
+                    if kpi_type == self.GOLDEN_ZONE:
+                        kpi_params = self.golden_zone_data[
+                            self.golden_zone_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+                        score, result, threshold = self.calculate_golden_zone(kpi, kpi_filters, kpi_params)
 
-                elif kpi_type == self.BLOCK:
-                    kpi_params = self.block_data[
-                        self.block_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
-                    score, result, threshold = self.calculate_block(kpi, kpi_filters, kpi_params)
+                    elif kpi_type == self.BLOCK:
+                        kpi_params = self.block_data[
+                            self.block_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+                        score, result, threshold = self.calculate_block(kpi, kpi_filters, kpi_params)
 
-                elif kpi_type == self.ANCHOR:
-                    kpi_params = self.anchor_data[
-                        self.anchor_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
-                    score, result, threshold = self.calculate_anchor(kpi, kpi_filters, kpi_params)
+                    elif kpi_type == self.ANCHOR:
+                        kpi_params = self.anchor_data[
+                            self.anchor_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+                        score, result, threshold = self.calculate_anchor(kpi, kpi_filters, kpi_params)
 
-                elif kpi_type == self.ADJACENCY:
-                    kpi_params = self.adjacency_data[
-                        self.adjacency_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
-                    score, result, threshold = self.calculate_adjacency(kpi, kpi_filters, kpi_params)
+                    elif kpi_type == self.ADJACENCY:
+                        kpi_params = self.adjacency_data[
+                            self.adjacency_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+                        score, result, threshold = self.calculate_adjacency(kpi, kpi_filters, kpi_params)
 
-                else:
-                    Log.debug("KPI type '{}' is not supported".format(kpi_type))
-                    continue
+                    else:
+                        Log.debug("KPI type '{}' is not supported".format(kpi_type))
+                        continue
 
-                extra_data = self.get_extra_data_from_params(kpi_params)
+                    extra_data = self.get_extra_data_from_params(kpi_params)
 
-                self.kpi_scores.update({kpi: score})
-                self.write_result(score, result, threshold, kpi,
-                                  category, set_name, template_data, extra_data=extra_data)
-                # except Exception as ex:
-                #     Log.warning("Exception:{} no score/result for '{}'".format(ex, kpi_type))
+                    self.kpi_scores.update({kpi: score})
+                    self.write_result(score, result, threshold, kpi,
+                                      category, set_name, template_data, extra_data=extra_data)
+                except Exception as ex:
+                    Log.warning("Exception:{} no score/result for '{}'".format(ex, kpi_type))
 
     def category_aggregation_calculation(self, category):
         template_data = self.template_data[
