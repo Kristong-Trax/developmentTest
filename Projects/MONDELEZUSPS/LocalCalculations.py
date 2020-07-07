@@ -57,7 +57,7 @@ if __name__ == '__main__':
         # '6555cf89-66b0-46e6-bf72-ea7c1e140bf4':[],
         # 'b4ce4e36-2df5-47a9-9951-53133c9bdebc':[],
         # 'a5216695-4828-48e2-971b-29cd2af42189' : []
-                    }  # leave empty for all scenes
+                    }  # leave empty for all scene s
     # session_list = ['a5216695-4828-48e2-971b-29cd2af42189']
     for session in session_list:
     #     scenes = session_list[session]
