@@ -92,7 +92,7 @@ class PNGJPPositionGraphs:
         else:
             scenes = self.match_product_in_scene[MatchesConsts.SCENE_FK].unique()
         for scene in scenes:
-            matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene]
+            matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene].copy()
             matches['distance_from_end_of_shelf'] = matches[MatchesConsts.N_SHELF_ITEMS] - matches[MatchesConsts.FACING_SEQUENCE_NUMBER]
             scene_graph = igraph.Graph(directed=True)
             edges = []
