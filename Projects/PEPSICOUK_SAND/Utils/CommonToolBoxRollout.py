@@ -86,6 +86,7 @@ class PEPSICOUKCommonToolBox:
         self.full_store_info = self.get_store_data_by_store_id()
         self.store_info_dict = self.full_store_info.to_dict('records')[0]
         self.store_policy_exclusion_template = self.get_store_policy_data_for_exclusion_template()
+        self.displays_template = self.get_display_parameters()
 
         self.toolbox = GENERALToolBox(data_provider)
         self.custom_entities = self.get_custom_entity_data()
@@ -101,7 +102,7 @@ class PEPSICOUKCommonToolBox:
         self.kpi_result_values = self.get_kpi_result_values_df()
         self.kpi_score_values = self.get_kpi_score_values_df()
 
-        self.displays_template = self.get_display_parameters()
+        # self.displays_template = self.get_display_parameters()
         self.full_pallet_len = self.displays_template[self.displays_template[self.DISPLAY_NAME_TEMPL] == \
                                                       'HO Agreed Full Pallet'][self.SHELF_LEN_DISPL].values[0]
         self.half_pallet_len = self.displays_template[self.displays_template[self.DISPLAY_NAME_TEMPL] == \
@@ -115,7 +116,90 @@ class PEPSICOUKCommonToolBox:
                                                                   self.filtered_matches_secondary)
 
     def add_sub_category_to_empty_and_other(self, scif, matches):
+        #exclude bin scenes
+        matches['include'] = 1
+        bin_scenes = self.displays_template[self.displays_template[self.KPI_LOGIC] == 'Bin']\
+            [self.DISPLAY_NAME_TEMPL].values
+        scenes_excluding_bins = scif[~scif['template_name'].isin(bin_scenes)][ScifConsts.SCENE_FK].unique()
+        matches.loc[~matches[MatchesConsts.SCENE_FK].isin(scenes_excluding_bins), 'include'] = 0
+
+        mix_scenes = self.displays_template[self.displays_template[self.KPI_LOGIC] == 'Mix']\
+            [self.DISPLAY_NAME_TEMPL].values
+        mix_scenes = scif[scif['template_name'].isin(mix_scenes)][ScifConsts.SCENE_FK].unique()
+
+        products_df = self.all_products[[ScifConsts.PRODUCT_FK, ScifConsts.SUB_CATEGORY_FK, ScifConsts.PRODUCT_TYPE,
+                                         ScifConsts.BRAND_FK, ScifConsts.CATEGORY_FK]]
+        matches = matches.merge(products_df, on=MatchesConsts.PRODUCT_FK, how='left')
+        matches['count_sub_cat'] = 1
+        scene_bay_shelves = matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
+                                            as_index=False).agg({MatchesConsts.SHELF_NUMBER: np.max})
+        scene_bay_shelves.rename(columns={MatchesConsts.SHELF_NUMBER: 'max_shelf'}, inplace=True)
+
+        matches = matches.merge(scene_bay_shelves, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
+                                how='left')
+        matches.loc[(matches[MatchesConsts.SCENE_FK].isin(mix_scenes)) &
+                    (matches[MatchesConsts.SHELF_NUMBER] == matches['max_shelf']), 'include'] = 0
+
+        matches_sum = matches[matches['include'] == 1]
+        scene_bay_sub_cat_sum = matches_sum.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER,
+                                             ScifConsts.SUB_CATEGORY_FK], as_index=False).agg({'count_sub_cat': np.sum})
+        scene_bay_sub_cat = scene_bay_sub_cat_sum.sort_values(by=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER,
+                                                                      'count_sub_cat'])
+        scene_bay_sub_cat = scene_bay_sub_cat.drop_duplicates(subset=[MatchesConsts.SCENE_FK,
+                                                                              MatchesConsts.BAY_NUMBER], keep='last')
+        scene_bay_sub_cat.rename(columns={ScifConsts.SUB_CATEGORY_FK: 'max_sub_cat',
+                                          'count_sub_cat': 'max_sub_cat_facings'}, inplace=True)
+
+        matches = matches.merge(scene_bay_sub_cat, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER], how='left')
+        matches.loc[matches[ScifConsts.PRODUCT_TYPE].isin(['Empty', 'Other']), ScifConsts.SUB_CATEGORY_FK] = \
+            matches['max_sub_cat']
+        matches['shelves_bay_before'] = None
+        matches['shelves_bay_after'] = None
+        if not matches.empty:
+            matches['shelves_bay_before'] = matches.apply(self.get_shelves_for_bay, args=(scene_bay_shelves, -1), axis=1)
+            matches['shelves_bay_after'] = matches.apply(self.get_shelves_for_bay, args=(scene_bay_shelves, 1), axis=1)
+            matches[ScifConsts.SUB_CATEGORY_FK] = matches.apply(self.get_subcategory_from_neighbour_bays,
+                                                                args=(scene_bay_sub_cat_sum,), axis=1)
         return scif, matches
+
+    def get_shelves_for_bay(self, row, scene_bay_shelves, bay_diff):
+        max_shelves_df = scene_bay_shelves[(scene_bay_shelves[MatchesConsts.BAY_NUMBER] == row[MatchesConsts.BAY_NUMBER]+bay_diff) &
+                                        (scene_bay_shelves[MatchesConsts.SCENE_FK] == row[MatchesConsts.SCENE_FK])]
+        max_shelves = max_shelves_df['max_shelf'].values[0] if not max_shelves_df.empty else None
+        return max_shelves
+
+    def get_subcategory_from_neighbour_bays(self, row, scene_bay_sub_cat_sum):
+        subcat = row[ScifConsts.SUB_CATEGORY_FK]
+        if row['include'] == 1:
+            if (str(subcat) == 'nan' or subcat is None) and (row[ScifConsts.PRODUCT_TYPE] in ['Empty', 'Other']):
+                if (row['shelves_bay_before'] == row['max_shelves'] and row['shelves_bay_after'] == row['max_shelves']) or \
+                    (row['shelves_bay_before'] != row['max_shelves'] and row['shelves_bay_after'] != row['max_shelves']):
+                    reduced_df = scene_bay_sub_cat_sum[(scene_bay_sub_cat_sum[MatchesConsts.BAY_NUMBER].
+                        isin([row[MatchesConsts.BAY_NUMBER + 1, MatchesConsts.BAY_NUMBER - 1]])) &
+                                            (scene_bay_sub_cat_sum[ScifConsts.SCENE_FK] == row[ScifConsts.SCENE_FK])]
+                    subcat_df = reduced_df.groupby([ScifConsts.SUB_CATEGORY_FK], as_index=False).agg({'count_sub_cat': np.sum})
+                    subcat = subcat_df[subcat_df['count_sub_cat'] == subcat_df['count_sub_cat'].max()]\
+                        [ScifConsts.SUB_CATEGORY_FK].values[0]
+                elif row['shelves_bay_before'] == row['max_shelves']:
+                    reduced_df = scene_bay_sub_cat_sum[(scene_bay_sub_cat_sum[MatchesConsts.BAY_NUMBER].
+                        isin([MatchesConsts.BAY_NUMBER - 1])) &
+                        (scene_bay_sub_cat_sum[ScifConsts.SCENE_FK] == row[ScifConsts.SCENE_FK])]
+                    subcat_df = reduced_df.groupby([ScifConsts.SUB_CATEGORY_FK], as_index=False).agg({'count_sub_cat': np.sum})
+                    subcat = subcat_df[subcat_df['count_sub_cat'] == subcat_df['count_sub_cat'].max()]\
+                        [ScifConsts.SUB_CATEGORY_FK].values[0]
+                elif row['shelves_bay_after'] == row['max_shelves']:
+                    reduced_df = scene_bay_sub_cat_sum[(scene_bay_sub_cat_sum[MatchesConsts.BAY_NUMBER].
+                        isin([MatchesConsts.BAY_NUMBER + 1])) &
+                        (scene_bay_sub_cat_sum[ScifConsts.SCENE_FK] == row[ScifConsts.SCENE_FK])]
+                    subcat_df = reduced_df.groupby([ScifConsts.SUB_CATEGORY_FK], as_index=False).agg({'count_sub_cat': np.sum})
+                    subcat = subcat_df[subcat_df['count_sub_cat'] == subcat_df['count_sub_cat'].max()]\
+                        [ScifConsts.SUB_CATEGORY_FK].values[0]
+                else:
+                    subcat = None
+                return subcat
+            else:
+                return subcat
+        return subcat
 
     def get_store_areas(self):
         query = PEPSICOUK_Queries.get_all_store_areas()
@@ -409,6 +493,8 @@ class PEPSICOUKCommonToolBox:
                                                                                            matches)
                 scif, matches = self.update_scif_and_matches_for_smart_attributes(scif, matches)
                 scif, matches = self.recalculate_display_product_length(scif, matches)
+                scif, matches = self.add_sub_category_to_empty_and_other(scif, matches)
+
                 self.filtered_scif_secondary = scif
                 self.filtered_matches_secondary = matches
 
@@ -500,6 +586,8 @@ class PEPSICOUKCommonToolBox:
                 template_filters = self.get_filters_dictionary(excl_template_all_kpis)
                 scif, matches = self.filter_scif_and_matches_for_scene_and_product_filters(template_filters, scif, matches)
                 scif, matches = self.update_scif_and_matches_for_smart_attributes(scif, matches)
+                scif, matches = self.add_sub_category_to_empty_and_other(scif, matches)
+                matches['facings_matches'] = 1
                 self.filtered_scif = scif
                 self.filtered_matches = matches
 

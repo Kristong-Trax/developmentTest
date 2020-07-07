@@ -1,6 +1,6 @@
 from Projects.PEPSICOUK_SAND.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
 import pandas as pd
 import numpy as np
 
@@ -26,17 +26,17 @@ class SosBrandOfSegmentKpi(UnifiedCalculationsScript):
         location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
             [ScifConsts.LOCATION_TYPE_FK].values[0]
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.BRAND_SOS_OF_SEGMENT)
-        filtered_scif = self.util.filtered_scif
-        sub_cat_df = filtered_scif.groupby([ScifConsts.SUB_CATEGORY_FK],
-                                           as_index=False).agg({'updated_gross_length': np.sum})
-        sub_cat_df.rename(columns={'updated_gross_length': 'sub_cat_len'}, inplace=True)
-        brand_sub_cat_df = filtered_scif.groupby([ScifConsts.BRAND_FK, ScifConsts.SUB_CATEGORY_FK],
-                                                 as_index=False).agg({'updated_gross_length': np.sum})
+        filtered_matches = self.util.filtered_matches
+        sub_cat_df = filtered_matches.groupby([ScifConsts.SUB_CATEGORY_FK],
+                                              as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
+        sub_cat_df.rename(columns={MatchesConsts.WIDTH_MM_ADVANCE: 'sub_cat_len'}, inplace=True)
+        brand_sub_cat_df = filtered_matches.groupby([ScifConsts.BRAND_FK, ScifConsts.SUB_CATEGORY_FK],
+                                                    as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
         brand_sub_cat_df = brand_sub_cat_df.merge(sub_cat_df, on=ScifConsts.SUB_CATEGORY_FK, how='left')
-        brand_sub_cat_df['sos'] = brand_sub_cat_df['updated_gross_length'] / brand_sub_cat_df['sub_cat_len']
+        brand_sub_cat_df['sos'] = brand_sub_cat_df[MatchesConsts.WIDTH_MM_ADVANCE] / brand_sub_cat_df['sub_cat_len']
         for i, row in brand_sub_cat_df.iterrows():
             self.write_to_db_result(fk=kpi_fk, numerator_id=row[ScifConsts.BRAND_FK],
-                                    numerator_result=row['updated_gross_length'],
+                                    numerator_result=row[MatchesConsts.WIDTH_MM_ADVANCE],
                                     denominator_id=row[ScifConsts.SUB_CATEGORY_FK],
                                     denominator_result=row['sub_cat_len'], result=row['sos'] * 100,
                                     context_id=location_type_fk)
