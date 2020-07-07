@@ -40,7 +40,7 @@ def run_sessions(session_list):
         data_provider.load_session_data(session_uid=session)
         output = Output()
         Calculations(data_provider, output).run_project_calculations()
-        record_session(session)
+        # record_session(session)
 
 
 def record_session(session):
@@ -87,9 +87,18 @@ if __name__ == '__main__':
     data_provider = KEngineDataProvider(project_name='ccnayarmx')
 
     check_sessions = [
-        '2cb0ec65-2803-413e-8a7b-6734bc98781a',
-        'a5662f4b-6122-49f6-823e-358758eda37a',
-        'b7faec9b-4c34-496b-b78a-d2748c034f99',
+        # 'd5613cbc-6f10-46a2-9e99-acb6c8c21edb',
+        # 'cf12065b-e383-4009-a1e8-c8d9ced9bbf9',
+        # 'b974cb3b-a609-4610-ab14-ae94163d0c76',
+        'f8f413dc-7a9c-47d6-813b-dadd7f834a5f',
+        # 'a25897ed-412a-4c13-a65a-7e89a143f08f',
+        # 'd64cbf6a-c1eb-4c10-a880-668617dd38ac'
+        # '77acfbe0-347e-4f23-bab6-f93781515b31',
+
+
+
+        # 'aa743d1f-07af-494d-83f8-daaa508a8b01',
+
         # 'e4aa24a5-d13e-4b6a-8941-0a195d589070',  # error
         # '5f20ba65-63ae-4057-a8b0-3491accf7869',  # fine
         # '69b028e2-5119-4c11-a846-94ca29adede4',
@@ -116,5 +125,5 @@ if __name__ == '__main__':
     completed_sessions = []
 
     run_sessions(check_sessions)
-    run_sessions(read_sessions('test_sessions'))
-    run_sessions(read_sessions('tested_sessions'))
+    # run_sessions(read_sessions('test_sessions'))
+    # run_sessions(read_sessions('tested_sessions'))

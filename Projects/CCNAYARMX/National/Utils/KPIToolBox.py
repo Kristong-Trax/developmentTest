@@ -461,6 +461,9 @@ class NationalToolBox(GlobalSessionToolBox):
             if result_dict['result'] == result_dict['score'] and ((result_dict['result'] > 0) and (result_dict['result'] < 1)):
                 result_dict['score'] = result_dict['score'] * 100
 
+        if pd.isnull(row.score_same_as_result) and 'score' in result_dict.keys(): #last minute change request by client
+            result_dict.pop('score', None)
+
         return result_dict
 
     def calculate_combo(self, row):

@@ -514,6 +514,9 @@ class ToolBox(GlobalSessionToolBox):
         if 'score' in result_dict.keys():
             if result_dict['result'] == result_dict['score'] and ((result_dict['result'] > 0) and (result_dict['result'] < 1)):
                 result_dict['score'] = result_dict['score'] * 100
+
+        if pd.isnull(row.score_same_as_result) and 'score' in result_dict.keys(): #last minute change request by client
+            result_dict.pop('score', None)
         return result_dict
 
     def calculate_combo(self, row):
@@ -1370,6 +1373,7 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_availability(self, row):
+        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         relevant_scif = self._filter_scif(row, self.scif)
         result = 0 if relevant_scif.empty else 1
         if pd.notna(row[RELEVANT_QUESTION_FK]):
@@ -1377,7 +1381,6 @@ class ToolBox(GlobalSessionToolBox):
             result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
             result = float(result) / 3
 
-        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': return_holder[2],
                        'denominator_id': return_holder[3],
                        'result': result}
