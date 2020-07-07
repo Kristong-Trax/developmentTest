@@ -29,6 +29,8 @@ class SosVsTargetSegmentKpi(UnifiedCalculationsScript):
     def calculate_pepsico_segment_space_sos(self):
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.PEPSICO_SEGMENT_SOS)
         filtered_matches = self.util.filtered_matches
+        products_df = self.util.all_products[[MatchesConsts.PRODUCT_FK, ScifConsts.BRAND_FK, ScifConsts.CATEGORY_FK]]
+        filtered_matches = filtered_matches.merge(products_df, on=MatchesConsts.PRODUCT_FK, how='left')
         cat_df = filtered_matches.groupby([ScifConsts.CATEGORY_FK],
                                            as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
         cat_df.rename(columns={MatchesConsts.WIDTH_MM_ADVANCE: 'cat_len'}, inplace=True)

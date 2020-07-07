@@ -21,8 +21,11 @@ class ProductBlockingKpi(UnifiedCalculationsScript):
                 self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif,
                                                                                      self.util.filtered_matches,
                                                                                      self.util.PRODUCT_BLOCKING)
+            filtered_matches = self.util.filtered_matches.copy()
+            if 'sub_category_fk' in filtered_matches.columns:
+                filtered_matches = filtered_matches.drop(columns=['sub_category_fk'])
             self.block = Block(self.data_provider, custom_scif=self.util.filtered_scif,
-                               custom_matches=self.util.filtered_matches)
+                               custom_matches=filtered_matches)
             if not self.util.filtered_matches.empty:
                 self.calculate_product_blocking()
             self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
