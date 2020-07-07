@@ -45,14 +45,13 @@ class DIAGEOGTRSceneToolBox:
                                                           'set_up.xlsx'), sheet_name='Functional KPIs',
                                              keep_default_na=False)
 
-
     def parse_config_from_setup(self, kpi_details):
         targets = {}
         relev_setup_template = self.set_up_template[
             self.set_up_template['KPI Type'] == kpi_details.iloc[0][KPI_TYPE_COL]
             ]
         if not relev_setup_template.empty:
-            boolean_columns = ['Include Empty', "Include Others", "Include Stacking"]
+            boolean_columns = ['Include Empty', "Include Others", "Include Stacking", "Include Irrelevant"]
             for column in boolean_columns:
                 value = relev_setup_template[column].iloc[0]
                 if not pd.isnull(value) and value.lower().strip() == "exclude":
@@ -61,7 +60,7 @@ class DIAGEOGTRSceneToolBox:
                     is_include = True
                 targets[column] = is_include
 
-            string_columns = ['Scene type / Tasks', "Exclude SKUs"]
+            string_columns = ['Scene type / Tasks']
             for column in string_columns:
                 value = relev_setup_template[column].iloc[0]
                 if not pd.isnull(value) and value != '':
@@ -115,6 +114,9 @@ class DIAGEOGTRSceneToolBox:
             # Ignore Empty
             if not targets.get("Include Empty"):
                 scif = scif[~(scif["product_type"] == 'Empty')]
+            # Ignore Irrelevant
+            if not targets.get("Include Irrelevant"):
+                scif = scif[~(scif["product_type"] == 'Irrelevant')]
 
             facings_field = 'facings' if targets.get("Include Stacking") else 'facings_ign_stack'
             total_sku_facings_in_scene = int(scif[facings_field].sum())
