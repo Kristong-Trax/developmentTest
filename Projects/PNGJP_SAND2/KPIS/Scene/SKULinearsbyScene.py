@@ -38,7 +38,7 @@ class SKULinearbySceneKpi(UnifiedCalculationsScript):
                     result_df = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SHELF_NUMBER,
                                                  MatchesConsts.BAY_NUMBER],
                                                 as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum,
-                                                                     MatchesConsts.WIDTH_MM_NET: np.sum})
+                                                                     MatchesConsts.WIDTH_MM_X: np.sum})
                     result_df = result_df.merge(max_shelf, on=MatchesConsts.BAY_NUMBER, how='left')
                 for i, row in result_df.iterrows():
                     self.write_to_db_result(fk=kpi_fk, numerator_id=row[MatchesConsts.PRODUCT_FK],
@@ -46,5 +46,6 @@ class SKULinearbySceneKpi(UnifiedCalculationsScript):
                                             denominator_id=template_fk,
                                             denominator_result=row[MatchesConsts.SHELF_NUMBER],
                                             result=row[MatchesConsts.WIDTH_MM_ADVANCE],
-                                            score=row[self.util.MAX_SHELF], target=[MatchesConsts.WIDTH_MM_NET],
+                                            score=row[self.util.MAX_SHELF],
+                                            weight=row[MatchesConsts.WIDTH_MM_X],
                                             by_scene=True)

@@ -162,7 +162,7 @@ class ToolBox(GlobalSessionToolBox):
                                                                              Consts.SOS_BY_CAT_BRAND))
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_CAT_BRAND_SKU))
         calculation_param = "facings_ign_stack" if calculation_type == 'FACINGS' else "gross_len_ign_stack"
-        sos_df = self.parser.filter_df(conditions={'rlv_sos_sc': 1, 'product_type': ['SKU', 'Empty']},
+        sos_df = self.parser.filter_df(conditions={'rlv_sos_sc': 1, 'product_type': ['SKU', 'Empty', 'Other']},
                                        data_frame_to_filter=self.scif)
         # brand level sos
         session_brands = set(sos_df['brand_fk'])

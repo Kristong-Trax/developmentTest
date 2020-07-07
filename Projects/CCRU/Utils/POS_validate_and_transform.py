@@ -1788,6 +1788,10 @@ class CCRUKPIS:
 
 
 if __name__ == '__main__':
+    from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+    from Trax.Utils.Conf.Configuration import Config
+    LoggerInitializer.init('KEngine')
+    Config.init()
     kpis_list = CCRUKPIS()
     # kpis_list.transform_top_line()
     # kpis_list.validate_benchmark()
