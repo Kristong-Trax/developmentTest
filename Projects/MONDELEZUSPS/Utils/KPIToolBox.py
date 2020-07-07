@@ -96,8 +96,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
-        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
-        # relevant_kpi_types = [Consts.DIAMOND_POSITION]
+        # relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
+        relevant_kpi_types = [Consts.DISTRIBUTION]
         targets = self.targets[(self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)) & (
             self.targets[Consts.GRANULAR_GROUP_NAME].isnull())]
 
@@ -156,8 +156,6 @@ class ToolBox(GlobalSessionToolBox):
         for unique_denominator_type in set(df[denominator_type]):
             denominator_filtered_df = self._filter_df(df, {denominator_type: unique_denominator_type})
             for unique_numerator_id in set(denominator_filtered_df[numerator_type]):
-                if unique_numerator_id == 106:
-                    a = 1
                 filtered_numerator_df = self._filter_df(denominator_filtered_df, {numerator_type: unique_numerator_id})
                 groupby_numerator_df = self._df_groupby_logic(filtered_numerator_df, ['scene_fk', numerator_type],
                                                               {'facings': 'count'})  # may cause issue
