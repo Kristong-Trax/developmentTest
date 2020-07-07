@@ -1,7 +1,7 @@
 from Projects.PEPSICOUK_SAND.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 import numpy as np
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
 import pandas as pd
 from Trax.Utils.Logging.Logger import Log
 

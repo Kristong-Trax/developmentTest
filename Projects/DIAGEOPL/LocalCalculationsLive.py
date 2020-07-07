@@ -9,7 +9,7 @@ if __name__ == '__main__':
     project_name = 'diageopl'
     session_uids = [
 
-        'fff1f912-b88a-4950-a845-08dba345ae48'
+        'EF020137-3C4B-4B52-9B3B-1D44DDBBF73A'
     ]
     data_provider = KEngineSessionDataProviderLive(project_name, None, None)
     output = None

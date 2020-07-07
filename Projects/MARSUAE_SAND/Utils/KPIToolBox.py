@@ -23,7 +23,7 @@ from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 from Projects.MARSUAE_SAND.Utils.Fetcher import MARSUAE_SAND_Queries
 from Projects.MARSUAE_SAND.Utils.Nodes import Node
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
 
 
 __author__ = 'natalyak'

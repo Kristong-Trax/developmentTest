@@ -1,6 +1,6 @@
 
-from KPIUtils_v2.Utils.Consts.PS import AssortmentProductConsts, AssortmentGroupConsts
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts
+from Trax.Data.ProfessionalServices.PsConsts.PS import AssortmentProductConsts, AssortmentGroupConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from Projects.HBCDE.Data.LocalConsts import Consts

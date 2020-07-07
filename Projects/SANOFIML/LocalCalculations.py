@@ -5,11 +5,11 @@ from Projects.SANOFIML.Calculations import Calculations
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('sanofiml calculations')
+    LoggerInitializer.init('Kengine')
     Config.init()
     project_name = 'sanofiml'
     data_provider = KEngineDataProvider(project_name)
-    session = '9CF0B856-0D61-4456-8F2A-AC588457FD13'
+    session = '9e5cc77e-c3b7-48b8-a874-4d7d9f761d9c'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()

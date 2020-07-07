@@ -1,5 +1,5 @@
 # from mock import MagicMock, mock
-# from KPIUtils_v2.Utils.Consts.OldDB import KpiResults
+# from Trax.Data.ProfessionalServices.PsConsts.OldDB import KpiResults
 # from Projects.PNGJP.Utils.KpiQualitative import PNGJPKpiQualitative_ToolBox
 # from Trax.Utils.Testing.Case import TestCase
 #

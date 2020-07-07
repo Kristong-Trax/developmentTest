@@ -1,4 +1,4 @@
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ScifConsts
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
@@ -92,7 +92,7 @@ class PNGJPPositionGraphs:
         else:
             scenes = self.match_product_in_scene[MatchesConsts.SCENE_FK].unique()
         for scene in scenes:
-            matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene]
+            matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene].copy()
             matches['distance_from_end_of_shelf'] = matches[MatchesConsts.N_SHELF_ITEMS] - matches[MatchesConsts.FACING_SEQUENCE_NUMBER]
             scene_graph = igraph.Graph(directed=True)
             edges = []

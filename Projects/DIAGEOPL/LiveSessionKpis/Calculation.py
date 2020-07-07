@@ -7,7 +7,7 @@ from KPIUtils_v2.DB.CommonV3 import Common
 from KPIUtils_v2.GlobalDataProvider.LivePsDataProvider import PsDataProvider
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Consts import Consts
 
-from Trax.Utils.Logging.Logger import Log
+# from Trax.Utils.Logging.Logger import Log
 
 
 class CalculateKpi(LiveSessionBaseClass):

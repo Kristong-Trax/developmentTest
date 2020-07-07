@@ -14,7 +14,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.PNGJP_SAND2.Utils.Fetcher import PNGJP_SAND2Queries
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ScifConsts, ProductsConsts, SceneInfoConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ScifConsts, ProductsConsts, SceneInfoConsts
 
 
 class PNGJP_SAND2Util(UnifiedKPISingleton):

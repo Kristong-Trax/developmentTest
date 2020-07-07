@@ -12,7 +12,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCRU_SAND.Utils.Consts import CCRU_SANDConsts
 from Projects.CCRU_SAND.Utils.JSON import CCRU_SANDJsonGenerator
 from Projects.CCRU_SAND.Utils.ToolBox import CCRU_SANDKPIToolBox
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
 
 
 __author__ = 'sergey'
