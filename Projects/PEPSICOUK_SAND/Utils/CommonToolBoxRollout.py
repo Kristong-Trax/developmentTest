@@ -182,21 +182,21 @@ class PEPSICOUKCommonToolBox:
                                             (scene_bay_sub_cat_sum[ScifConsts.SCENE_FK] == row[ScifConsts.SCENE_FK])]
                     subcat_df = reduced_df.groupby([ScifConsts.SUB_CATEGORY_FK], as_index=False).agg({'count_sub_cat': np.sum})
                     subcat = subcat_df[subcat_df['count_sub_cat'] == subcat_df['count_sub_cat'].max()]\
-                        [ScifConsts.SUB_CATEGORY_FK].values[0]
+                        [ScifConsts.SUB_CATEGORY_FK].values[0] if not subcat_df.empty else None
                 elif row['shelves_bay_before'] == row['max_shelf']:
                     reduced_df = scene_bay_sub_cat_sum[(scene_bay_sub_cat_sum[MatchesConsts.BAY_NUMBER].
                         isin([[row[MatchesConsts.BAY_NUMBER] - 1]])) &
                         (scene_bay_sub_cat_sum[ScifConsts.SCENE_FK] == row[ScifConsts.SCENE_FK])]
                     subcat_df = reduced_df.groupby([ScifConsts.SUB_CATEGORY_FK], as_index=False).agg({'count_sub_cat': np.sum})
                     subcat = subcat_df[subcat_df['count_sub_cat'] == subcat_df['count_sub_cat'].max()]\
-                        [ScifConsts.SUB_CATEGORY_FK].values[0]
+                        [ScifConsts.SUB_CATEGORY_FK].values[0] if not subcat_df.empty else None
                 elif row['shelves_bay_after'] == row['max_shelf']:
                     reduced_df = scene_bay_sub_cat_sum[(scene_bay_sub_cat_sum[MatchesConsts.BAY_NUMBER].
                         isin([row[MatchesConsts.BAY_NUMBER] + 1])) &
                         (scene_bay_sub_cat_sum[ScifConsts.SCENE_FK] == row[ScifConsts.SCENE_FK])]
                     subcat_df = reduced_df.groupby([ScifConsts.SUB_CATEGORY_FK], as_index=False).agg({'count_sub_cat': np.sum})
                     subcat = subcat_df[subcat_df['count_sub_cat'] == subcat_df['count_sub_cat'].max()]\
-                        [ScifConsts.SUB_CATEGORY_FK].values[0]
+                        [ScifConsts.SUB_CATEGORY_FK].values[0] if not subcat_df.empty else None
                 else:
                     subcat = None
                 return subcat
