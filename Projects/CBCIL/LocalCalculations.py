@@ -6,11 +6,11 @@ from Projects.CBCIL.Calculations import CBCILCalculations
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('CBCIL calculations')
+    LoggerInitializer.init('KEngine')
     Config.init()
     project_name = 'cbcil'
     data_provider = KEngineDataProvider(project_name)
-    session_uids = ['ff54af18-601a-478a-9b5c-2e2a7ee104b3']
+    session_uids = ['ff27c9ab-6c61-4137-bc15-d6049774ace1']
     for session in session_uids:
         data_provider.load_session_data(session)
         output = Output()
