@@ -1379,12 +1379,24 @@ class ToolBox(GlobalSessionToolBox):
         if pd.notna(row[RELEVANT_QUESTION_FK]):
             relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
             result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
-            result = float(result) / 3
+            result = float(result) / self._get_relevant_passing_result_for_materiales_fijos(self.att2)
+            result = 1 if result > 1 else result
 
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': return_holder[2],
                        'denominator_id': return_holder[3],
                        'result': result}
         return result_dict
+
+    @staticmethod
+    def _get_relevant_passing_result_for_materiales_fijos(store_size):
+        if store_size == 'Chico':
+            threshold = 1
+        elif store_size == 'Mediano':
+            threshold = 2
+        elif store_size == 'Grande':
+            threshold = 3
+        return threshold
+
         # kpi_name = row[KPI_NAME]
         # kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         # template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])

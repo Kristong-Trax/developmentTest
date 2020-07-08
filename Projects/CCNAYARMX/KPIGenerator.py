@@ -39,10 +39,10 @@ class Generator:
         if self.data_provider['scene_item_facts'].empty:
             Log.warning('Scene item facts is empty for this session')
         else:
-            # ComidasToolBox(self.data_provider, self.output, self.common).main_calculation()
-            # EspecializadoToolBox(self.data_provider,self.output, self.common).main_calculation()
-            # FONDASToolBox(self.data_provider, self.output, self.common).main_calculation()
-            # NationalToolBox(self.data_provider, self.output, self.common).main_calculation()
+            ComidasToolBox(self.data_provider, self.output, self.common).main_calculation()
+            EspecializadoToolBox(self.data_provider,self.output, self.common).main_calculation()
+            FONDASToolBox(self.data_provider, self.output, self.common).main_calculation()
+            NationalToolBox(self.data_provider, self.output, self.common).main_calculation()
             ToolBox(self.data_provider, self.output, self.common).main_calculation()
             self.common.commit_results_data()
 

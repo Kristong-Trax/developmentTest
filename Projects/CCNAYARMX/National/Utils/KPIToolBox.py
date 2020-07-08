@@ -1442,18 +1442,30 @@ class NationalToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_availability(self, row):
+        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         relevant_scif = self._filter_scif(row, self.scif)
         result = 0 if relevant_scif.empty else 1
         if pd.notna(row[RELEVANT_QUESTION_FK]):
             relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
             result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
-            result = float(result) / 3
+            result = float(result) / self._get_relevant_passing_result_for_materiales_fijos(self.att2)
+            result = 1 if result > 1 else result
 
-        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': return_holder[2],
                        'denominator_id': return_holder[3],
                        'result': result}
         return result_dict
+
+    @staticmethod
+    def _get_relevant_passing_result_for_materiales_fijos(store_size):
+        if store_size == 'Chico':
+            threshold = 1
+        elif store_size == 'Mediano':
+            threshold = 2
+        elif store_size == 'Grande':
+            threshold = 3
+        return threshold
+
 
     def _filter_scif(self, row, df):
         columns_in_scif = row.index[np.in1d(row.index, df.columns)]

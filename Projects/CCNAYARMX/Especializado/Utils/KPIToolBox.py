@@ -104,7 +104,7 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
                               MERCADEO_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplateEspecializado2020v0.6.xlsx')
+                             'CCNayarTemplateEspecializado2020v0.7.xlsx')
 PORTAFOLIO_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                'CCNayarEspecializado_Portafolio.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
@@ -212,8 +212,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
     # 'Enfriador Rojo - NCBs - Especializado'
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
-            if row[KPI_NAME] == 'Enfriador Rojo - NCBs - Especializado':
-                a = 1
+
             calculation_function = self._get_calculation_function_by_kpi_type(row[KPI_TYPE])
             try:
                 kpi_row = self.templates[row[KPI_TYPE]][
@@ -221,8 +220,8 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                     0]
             except IndexError:
                 pass
-            if kpi_row[KPI_NAME] == 'Enfriador Rojo - NCBs - Especializado':
-                a = 1
+            # if kpi_row[KPI_NAME] == 'Enfriador Rojo - NCBs - Especializado':
+            #     a = 1
             result_data = calculation_function(kpi_row)
             if result_data:
                 if isinstance(result_data, dict):
@@ -1329,18 +1328,30 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_availability(self, row):
+        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         relevant_scif = self._filter_scif(row, self.scif)
         result = 0 if relevant_scif.empty else 1
         if pd.notna(row[RELEVANT_QUESTION_FK]):
             relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
             result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
-            result = float(result) / 3
+            result = float(result) / self._get_relevant_passing_result_for_materiales_fijos(self.att2)
+            result = 1 if result > 1 else result
 
-        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': return_holder[2],
                        'denominator_id': return_holder[3],
                        'result': result}
         return result_dict
+
+    @staticmethod
+    def _get_relevant_passing_result_for_materiales_fijos(store_size):
+        if store_size == 'Chico':
+            threshold = 1
+        elif store_size == 'Mediano':
+            threshold = 2
+        elif store_size == 'Grande':
+            threshold = 3
+        return threshold
+
         # kpi_name = row[KPI_NAME]
         # kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         # template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])
