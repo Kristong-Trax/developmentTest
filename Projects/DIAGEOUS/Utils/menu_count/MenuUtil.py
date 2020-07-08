@@ -1,9 +1,9 @@
 import pandas as pd
 from Trax.Cloud.Services.Connector.Logger import Log
-from Projects.DIAGEOUS_SAND2.Utils.menu_count.consts import Consts
+from Projects.DIAGEOUS.Utils.menu_count.consts import Consts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
-from Projects.DIAGEOUS_SAND2.Utils.menu_count.Fetcher import DiageoQueries
+from Projects.DIAGEOUS.Utils.menu_count.Fetcher import DiageoQueries
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 
