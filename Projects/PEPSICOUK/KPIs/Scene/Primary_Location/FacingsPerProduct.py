@@ -45,7 +45,8 @@ class FacingsPerProductKpi(UnifiedCalculationsScript):
 
             for i, row in result_df.iterrows():
                 self.write_to_db_result(fk=kpi_fk, numerator_result=row[MatchesConsts.SHELF_NUMBER], result=row['count'],
-                                        numerator_id=row[MatchesConsts.PRODUCT_FK], denominator_id=row['bay_fk'],
+                                        numerator_id=row[MatchesConsts.PRODUCT_FK],
+                                        denominator_id=row[MatchesConsts.PRODUCT_FK],
                                         denominator_result=row[MatchesConsts.BAY_NUMBER],
                                         context_id=row['shelf_fk'],
                                         by_scene=True)
