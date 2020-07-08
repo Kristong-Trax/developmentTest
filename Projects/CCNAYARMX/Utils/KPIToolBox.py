@@ -111,16 +111,16 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
                               MERCADEO_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplate2020v1.1.xlsx')
+                             'CCNayarTemplate2020v1.2.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_v11.xlsx')
+                                         'CCNayar_POS_Options_v12.xlsx')
 
 ASSORTMENT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                         'TemplateAssortmentCCNAYARMX_V4.xlsx')
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                           'CCNayar_Portafolios_y_Precios.xlsx')
 GENERAL_ASSORTMENTS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                        'CCNayar_Assortment_Templates_V4.xlsx')
+                                        'CCNayar_Assortment_Templates_V5.xlsx')
 def log_runtime(description, log_start=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -735,7 +735,7 @@ class ToolBox(GlobalSessionToolBox):
         relevant_scif = pd.concat([sku_scif, other_scif])
         scene_products = relevant_scif['product_short_name'].unique().tolist()
         flat_assortment = [product for subgroup in assortment_groups for product in subgroup]
-        if any(product not in flat_assortment for product in scene_products):
+        if any(product not in flat_assortment for product in scene_products) or 'Irrelevant' in scene_scif.product_type.unique():
             return 0
         else:
             return 1

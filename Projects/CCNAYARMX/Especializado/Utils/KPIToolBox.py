@@ -104,11 +104,11 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
                               MERCADEO_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplateEspecializado2020v0.5.xlsx')
+                             'CCNayarTemplateEspecializado2020v0.6.xlsx')
 PORTAFOLIO_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                'CCNayarEspecializado_Portafolio.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_Especializado_v8.xlsx')
+                                         'CCNayar_POS_Options_Especializado_v10.xlsx')
 GENERAL_ASSORTMENTS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                         'CCNayar_Assortment_Templates_V3.xlsx')
 
@@ -209,8 +209,11 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         for result in results:
             self.write_to_db(**result)
 
+    # 'Enfriador Rojo - NCBs - Especializado'
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
+            if row[KPI_NAME] == 'Enfriador Rojo - NCBs - Especializado':
+                a = 1
             calculation_function = self._get_calculation_function_by_kpi_type(row[KPI_TYPE])
             try:
                 kpi_row = self.templates[row[KPI_TYPE]][
@@ -218,6 +221,8 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                     0]
             except IndexError:
                 pass
+            if kpi_row[KPI_NAME] == 'Enfriador Rojo - NCBs - Especializado':
+                a = 1
             result_data = calculation_function(kpi_row)
             if result_data:
                 if isinstance(result_data, dict):
@@ -1011,8 +1016,11 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         try:
             manufacturer_name = [row[MANUFACTURER_NAME]]
         except:
+            pass
+        try:
+            tamano_del_producto = row[TAMANDO_DEL_PRODUCTO]
+        except:
             a = 1
-        tamano_del_producto = row[TAMANDO_DEL_PRODUCTO]
         sub_category = self.sanitize_values(row[SUB_CATEGORY])
         iterate_by = row[ITERATE_BY]
 
