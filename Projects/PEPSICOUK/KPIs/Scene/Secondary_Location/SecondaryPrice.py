@@ -37,6 +37,7 @@ class SecondaryPriceKpi(UnifiedCalculationsScript):
                 if prices_list:
                     price = max(prices_list)
                 self.write_to_db_result(fk=kpi_fk, numerator_id=row[MatchesConsts.PRODUCT_FK],
-                                        denominator_id=row['display_id'], denominator_result=row['display_id'],
+                                        denominator_id=row[MatchesConsts.PRODUCT_FK],
+                                        denominator_result=row['display_id'],
                                         context_id=store_area, result=price)
         self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()
