@@ -13,4 +13,5 @@ class Consts(object):
     DISTRIBUTION = 'Distribution'
     SCENE_FK = 'scene_fk'
     GRANULAR_GROUP_NAME = 'Granular Group Name'
-    EAN_CODE = 'EAN Code'
+    EAN_CODE = 'EAN Original'
+    ASSORTMENT_TYPE = 'Assortment type'

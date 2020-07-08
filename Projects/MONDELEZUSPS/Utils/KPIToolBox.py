@@ -73,11 +73,11 @@ class ToolBox(GlobalSessionToolBox):
         self.final_custom_entity_table = self.custom_entity_table.copy()
         self.store_area = self.get_store_area_df()
         # self.targets = self.ps_data_provider.get_kpi_external_targets()
-        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=['KPI Type', 'store_type'],
+        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=['KPI Type', 'store_type', 'EAN Original', 'Assortment type'],
                                                                       data_fields=['Granular Group Name',
                                                                                    'Location: JSON',
                                                                                    'Config Params: JSON',
-                                                                                   'Dataset 1: JSON', 'EAN Code'])
+                                                                                   'Dataset 1: JSON'])
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result', 'context_id',
                                                 'denominator_id', 'denominator_result', 'result', 'score'])
 
@@ -96,8 +96,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
-        # relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
-        relevant_kpi_types = [Consts.DISTRIBUTION]
+        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
+        # relevant_kpi_types = [Consts.DISTRIBUTION]
         targets = self.targets[(self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)) & (
             self.targets[Consts.GRANULAR_GROUP_NAME].isnull())]
 
@@ -429,13 +429,20 @@ class ToolBox(GlobalSessionToolBox):
     def calculate_distribution(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
         child_sku = self._get_sku_name_and_fk(return_holder[0])
-        relevant_template_for_distribution = self.targets[
-            (~ self.targets[Consts.GRANULAR_GROUP_NAME].isnull()) & (self.targets[Consts.KPI_NAME] == return_holder[0])]
-
         result_dict_list = []
+
+        relevant_template_for_distribution = self.targets[
+            (~ self.targets[Consts.GRANULAR_GROUP_NAME].isnull()) & (self.targets[Consts.ASSORTMENT_TYPE] == return_holder[0])]
+
+        if relevant_template_for_distribution.empty:
+            return result_dict_list
+
         relevant_template_for_distribution.dropna(subset=[Consts.EAN_CODE], inplace=True)
-        relevant_template_for_distribution[Consts.EAN_CODE] = relevant_template_for_distribution[
-            Consts.EAN_CODE].astype(int)
+        try:
+            relevant_template_for_distribution[Consts.EAN_CODE] = relevant_template_for_distribution[
+                Consts.EAN_CODE].astype(int) #fails if issue in the original ean code
+        except:
+            return []
 
         product_df = self.all_products[['product_ean_code', 'product_fk', 'category_fk']].dropna()
         product_df.product_ean_code = product_df.product_ean_code.astype(int)
@@ -445,6 +452,9 @@ class ToolBox(GlobalSessionToolBox):
         df['product_ean_code'] = df['product_ean_code'].astype(int)
         df = df[df.product_ean_code.isin(relevant_template_for_distribution[Consts.EAN_CODE])]
         final_df = df[['product_ean_code', 'product_fk', Consts.FINAL_FACINGS]]
+
+        if final_df.empty:
+            return result_dict_list
 
         for unique_assortment in relevant_template_for_distribution[Consts.GRANULAR_GROUP_NAME].unique():
             assortment_relevant_template = relevant_template_for_distribution[
