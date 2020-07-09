@@ -36,7 +36,7 @@ if __name__ == '__main__':
         #  "scene_uid": "5F002B6D-BE99-41CD-81B0-887A88D50DD0"
         #  },
         {"session_uid": "E2C4A7B5-AF2B-40BA-9D35-932FC1826568",
-         "scene_uid": "3D67F452-52D4-42F6-8FDF-893326C18DB8"
+         "scene_uid": "3C77CC9B-C41B-4382-AD12-C503B3C75724"
          },
         # {"session_uid": "86A09858-6B90-454B-9547-8C33CD12688C",
         #  "scene_uid": "64FF34E4-82E9-4860-8759-B65B4C55BFB6"
