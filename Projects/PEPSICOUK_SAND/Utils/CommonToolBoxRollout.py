@@ -131,7 +131,7 @@ class PEPSICOUKCommonToolBox:
                                          ScifConsts.BRAND_FK, ScifConsts.CATEGORY_FK]]
         matches = matches.merge(products_df, on=MatchesConsts.PRODUCT_FK, how='left')
         matches['count_sub_cat'] = 1
-        scene_bay_shelves = matches.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
+        scene_bay_shelves = self.match_product_in_scene.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
                                             as_index=False).agg({MatchesConsts.SHELF_NUMBER: np.max})
         scene_bay_shelves.rename(columns={MatchesConsts.SHELF_NUMBER: 'max_shelf'}, inplace=True)
 
@@ -185,7 +185,7 @@ class PEPSICOUKCommonToolBox:
                         [ScifConsts.SUB_CATEGORY_FK].values[0] if not subcat_df.empty else None
                 elif row['shelves_bay_before'] == row['max_shelf']:
                     reduced_df = scene_bay_sub_cat_sum[(scene_bay_sub_cat_sum[MatchesConsts.BAY_NUMBER].
-                        isin([[row[MatchesConsts.BAY_NUMBER] - 1]])) &
+                        isin([row[MatchesConsts.BAY_NUMBER] - 1])) &
                         (scene_bay_sub_cat_sum[ScifConsts.SCENE_FK] == row[ScifConsts.SCENE_FK])]
                     subcat_df = reduced_df.groupby([ScifConsts.SUB_CATEGORY_FK], as_index=False).agg({'count_sub_cat': np.sum})
                     subcat = subcat_df[subcat_df['count_sub_cat'] == subcat_df['count_sub_cat'].max()]\
