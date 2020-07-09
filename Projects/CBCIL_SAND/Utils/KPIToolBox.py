@@ -137,7 +137,7 @@ class CBCILCBCIL_ToolBox(object):
         self.additional_attribute_6 = self.store_data[self.ADDITIONAL_ATTRIBUTE_6].str.encode('utf-8').tolist()
         self.template_data = self.kpis_data[
             (self.kpis_data[self.STORE_TYPE].str.encode('utf-8').isin(self.store_type)) &
-            (self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(self.additional_attribute_1))]
+            ((self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(self.additional_attribute_1))| self.kpis_data[self.ADDITIONAL_ATTRIBUTE_1].str.encode('utf-8').isin(['']))]
         if self.ADDITIONAL_ATTRIBUTE_6 in self.kpis_data:
             self.template_data = self.template_data[self.template_data[
                 self.ADDITIONAL_ATTRIBUTE_6].str.encode('utf-8').isin(self.additional_attribute_6)]
@@ -204,151 +204,151 @@ class CBCILCBCIL_ToolBox(object):
         self.common.save_json_to_new_tables(sos_results)
         self.calculate_oos()
 
-        # if not self.template_data.empty:
-            # competitor_coolers, cbc_coolers, relevant_scenes = self.get_coolers('מקרר חברה מרכזית',
-            #                                                                     ['מקרר מתחרה', 'מקרר קמעונאי'])
-            # kpi_scores = {}
-            # kpi_set = self.template_data[self.KPI_SET].values[0]
-            # self.kpi_static_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode('utf-8') ==
-            #                                             kpi_set.encode('utf-8')]
-            # kpis = self.template_data[self.template_data[self.KPI_SET].str.encode('utf-8') ==
-            #                           kpi_set.encode('utf-8')][self.KPI_NAME].unique()
-            # kpis_without_score = {}
-            # all_kpis_in_set = []
-            #
-            # identifier_result_set = self.get_identifier_result_set()
-            #
-            # for kpi in kpis:
-            #     identifier_result_kpi = self.get_identifier_result_kpi_by_name(kpi)
-            #
-            #     atomics = self.template_data[self.template_data[self.KPI_NAME].str.encode('utf-8') ==
-            #                                  kpi.encode('utf-8')]
-            #     scores = []
-            #
-            #     for i in xrange(len(atomics)):
-            #         atomic = atomics.iloc[i]
-            #         kpi_type = atomic[self.KPI_TYPE]
-            #         score = None
-            #         general_filters = self.get_general_filters(atomic)
-            #         if self.validate_atomic_kpi(**general_filters):
-            #             if kpi_type == self.BLOCK_BY_TOP_SHELF:
-            #                 shelf_number = int(general_filters.get(self.TARGET, 1))
-            #                 general_filters['filters']['All'].update({'shelf_number': range(shelf_number + 1)[1:]})
-            #                 score = self.calculate_block_by_shelf(**general_filters)
-            #             elif kpi_type == self.SOS:
-            #                 score = self.calculate_sos(**general_filters)
-            #             elif kpi_type == self.SOS_COOLER:
-            #                 score = self.calculate_sos_cooler(competitor_coolers, cbc_coolers, relevant_scenes,
-            #                                                   **general_filters)
-            #             elif kpi_type == self.AVAILABILITY:
-            #                 score = self.calculate_availability(**general_filters)
-            #             elif kpi_type == self.AVAILABILITY_FROM_MID_AND_UP:
-            #                 score = self.calculate_availability(**general_filters)
-            #             elif kpi_type == self.AVAILABILITY_BY_SEQUENCE:
-            #                 score = self.calculate_availability_by_sequence(**general_filters)
-            #             elif kpi_type == self.AVAILABILITY_BY_TOP_SHELF:
-            #                 score = self.calculate_availability_by_top_shelf(**general_filters)
-            #             elif kpi_type == self.AVAILABILITY_FROM_BOTTOM:
-            #                 shelf_number = int(general_filters.get(self.TARGET, 1))
-            #                 general_filters['filters']['All'].update({'shelf_number_from_bottom': range(shelf_number + 1)[1:]})
-            #                 score = self.calculate_availability(**general_filters)
-            #             elif kpi_type == self.MIN_2_AVAILABILITY:
-            #                 score = self.calculate_min_2_availability(**general_filters)
-            #             elif kpi_type == self.SURVEY:
-            #                 score = self.calculate_survey(**general_filters)
-            #             else:
-            #                 Log.warning("KPI of type '{}' is not supported".format(kpi_type))
-            #                 continue
-            #
-            #         atomic_weight = float(atomic[self.WEIGHT]) if atomic[self.WEIGHT] else 0
-            #         if score is not None:
-            #             atomic_fk = self.kpi_static_data[
-            #                 self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic[
-            #                     self.KPI_ATOMIC_NAME].encode('utf-8')]['atomic_kpi_fk'].values[0]
-            #             self.write_to_db_result(atomic_fk, self.LEVEL3, score, score)
-            #             if isinstance(score, tuple):
-            #                 score = score[0]
-            #             if score == 0:
-            #                 self.add_gap(atomic, score)
-            #             atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(atomic[self.KPI_ATOMIC_NAME])
-            #             self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=self.cbcil_id,
-            #                                            denominator_id=self.store_id,
-            #                                            weight=round(atomic_weight * 100, 2),
-            #                                            identifier_parent=identifier_result_kpi,
-            #                                            result=score, score=round(score * atomic_weight, 2),
-            #                                            should_enter=True)
-            #
-            #         scores.append((score, atomic_weight))
-            #
-            #     kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode('utf-8') ==
-            #                                   kpi.encode('utf-8')]['kpi_fk'].values[0]
-            #     denominator_weight = self.get_kpi_weight(kpi, kpi_set)
-            #
-            #     kpi_details = self.combine_kpi_details(kpi_fk, scores, denominator_weight)
-            #     all_kpis_in_set.append(kpi_details)
-            #
-            #     if all(map(lambda x: x[0] is None, scores)):
-            #         kpis_without_score[kpi_fk] = float(denominator_weight)
-            #
-            # all_kpis_in_set = self.reallocate_weights_to_kpis_with_results(kpis_without_score, all_kpis_in_set)
-            #
-            # for kpi in filter(lambda x: x['denominator_weight'] != 0, all_kpis_in_set):
-            #     pass_atomics = filter(lambda x: x[0] is not None, kpi['atomic_scores_and_weights'])
-            #     if len(pass_atomics):
-            #         add_weights = sum(map(lambda y: y[1], filter(lambda x: x[0] is None and x[1] is not None,
-            #                                                      kpi['atomic_scores_and_weights']))) / len(pass_atomics)
-            #     else:
-            #         add_weights = 0
-            #
-            #     weights = sum(map(lambda x: x[1] is not None and x[1], pass_atomics))
-            #     denominator_weight = kpi['denominator_weight']
-            #
-            #     if weights:
-            #         kpi_score = sum(map(lambda x: x[0] * (x[1] + add_weights) * 100, pass_atomics)) / 100
-            #     else:
-            #         if len(pass_atomics):
-            #             score_weight = float(denominator_weight) / len(pass_atomics)
-            #         else:
-            #             score_weight = 0
-            #         kpi_score = sum(map(lambda x: x[0] * score_weight, pass_atomics))
-            #
-            #     kpi_scores[kpi['kpi_fk']] = kpi_score
-            #     self.write_to_db_result(kpi['kpi_fk'], self.LEVEL2, kpi_scores[kpi['kpi_fk']],
-            #                             float(kpi['denominator_weight']) * 100)
-            #
-            #     kpi_name = self.get_kpi_name_by_pk(kpi['kpi_fk'])
-            #     kpi_lvl_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-            #     identifier_res_kpi_2 = self.get_identifier_result_kpi_by_pk(kpi_lvl_2_fk)
-            #     kpi_weight = float(kpi['denominator_weight']) * 100
-            #     self.common.write_to_db_result(fk=kpi_lvl_2_fk, numerator_id=self.cbcil_id,
-            #                                    denominator_id=self.store_id,
-            #                                    identifier_parent=identifier_result_set,
-            #                                    identifier_result=identifier_res_kpi_2,
-            #                                    weight=kpi_weight,  target=kpi_weight,
-            #                                    score=kpi_scores[kpi['kpi_fk']],
-            #                                    should_enter=True, result=kpi_scores[kpi['kpi_fk']])
-            #
-            # final_score = sum([score for score in kpi_scores.values()])
-            # set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode('utf-8') ==
-            #                               kpi_set.encode('utf-8')]['kpi_set_fk'].values[0]
-            # self.write_to_db_result(set_fk, self.LEVEL1, final_score)
-            # self.write_gaps_to_db()
-            #
-            # total_score_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE)
-            # self.common.write_to_db_result(fk=total_score_fk, numerator_id=self.cbcil_id, denominator_id=self.store_id,
-            #                                identifier_result=identifier_result_set, result=round(final_score, 2),
-            #                                weight=round(100, 2), target=round(80, 2), score=final_score,
-            #                                should_enter=True)
-            #
-            # # requested for dashboard
-            # total_score_fk_for_dashboard = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE_FOR_DASHBOARD)
-            #
-            # self.common.write_to_db_result(fk=total_score_fk_for_dashboard, numerator_id=self.cbcil_id,
-            #                                denominator_id=self.store_id,
-            #                                identifier_result=identifier_result_set, result=round(final_score, 2),
-            #                                weight=round(100, 2), target=round(80, 2), score=final_score,
-            #                                should_enter=True)
-            # self.commit_results_data()
+        if not self.template_data.empty:
+            competitor_coolers, cbc_coolers, relevant_scenes = self.get_coolers('מקרר חברה מרכזית',
+                                                                                ['מקרר מתחרה', 'מקרר קמעונאי'])
+            kpi_scores = {}
+            kpi_set = self.template_data[self.KPI_SET].values[0]
+            self.kpi_static_data = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode('utf-8') ==
+                                                        kpi_set.encode('utf-8')]
+            kpis = self.template_data[self.template_data[self.KPI_SET].str.encode('utf-8') ==
+                                      kpi_set.encode('utf-8')][self.KPI_NAME].unique()
+            kpis_without_score = {}
+            all_kpis_in_set = []
+
+            identifier_result_set = self.get_identifier_result_set()
+
+            for kpi in kpis:
+                identifier_result_kpi = self.get_identifier_result_kpi_by_name(kpi)
+
+                atomics = self.template_data[self.template_data[self.KPI_NAME].str.encode('utf-8') ==
+                                             kpi.encode('utf-8')]
+                scores = []
+
+                for i in xrange(len(atomics)):
+                    atomic = atomics.iloc[i]
+                    kpi_type = atomic[self.KPI_TYPE]
+                    score = None
+                    general_filters = self.get_general_filters(atomic)
+                    if self.validate_atomic_kpi(**general_filters):
+                        if kpi_type == self.BLOCK_BY_TOP_SHELF:
+                            shelf_number = int(general_filters.get(self.TARGET, 1))
+                            general_filters['filters']['All'].update({'shelf_number': range(shelf_number + 1)[1:]})
+                            score = self.calculate_block_by_shelf(**general_filters)
+                        elif kpi_type == self.SOS:
+                            score = self.calculate_sos(**general_filters)
+                        elif kpi_type == self.SOS_COOLER:
+                            score = self.calculate_sos_cooler(competitor_coolers, cbc_coolers, relevant_scenes,
+                                                              **general_filters)
+                        elif kpi_type == self.AVAILABILITY:
+                            score = self.calculate_availability(**general_filters)
+                        elif kpi_type == self.AVAILABILITY_FROM_MID_AND_UP:
+                            score = self.calculate_availability(**general_filters)
+                        elif kpi_type == self.AVAILABILITY_BY_SEQUENCE:
+                            score = self.calculate_availability_by_sequence(**general_filters)
+                        elif kpi_type == self.AVAILABILITY_BY_TOP_SHELF:
+                            score = self.calculate_availability_by_top_shelf(**general_filters)
+                        elif kpi_type == self.AVAILABILITY_FROM_BOTTOM:
+                            shelf_number = int(general_filters.get(self.TARGET, 1))
+                            general_filters['filters']['All'].update({'shelf_number_from_bottom': range(shelf_number + 1)[1:]})
+                            score = self.calculate_availability(**general_filters)
+                        elif kpi_type == self.MIN_2_AVAILABILITY:
+                            score = self.calculate_min_2_availability(**general_filters)
+                        elif kpi_type == self.SURVEY:
+                            score = self.calculate_survey(**general_filters)
+                        else:
+                            Log.warning("KPI of type '{}' is not supported".format(kpi_type))
+                            continue
+
+                    atomic_weight = float(atomic[self.WEIGHT]) if atomic[self.WEIGHT] else 0
+                    if score is not None:
+                        atomic_fk = self.kpi_static_data[
+                            self.kpi_static_data['atomic_kpi_name'].str.encode('utf-8') == atomic[
+                                self.KPI_ATOMIC_NAME].encode('utf-8')]['atomic_kpi_fk'].values[0]
+                        self.write_to_db_result(atomic_fk, self.LEVEL3, score, score)
+                        if isinstance(score, tuple):
+                            score = score[0]
+                        if score == 0:
+                            self.add_gap(atomic, score)
+                        atomic_fk_lvl_2 = self.common.get_kpi_fk_by_kpi_type(atomic[self.KPI_ATOMIC_NAME])
+                        self.common.write_to_db_result(fk=atomic_fk_lvl_2, numerator_id=self.cbcil_id,
+                                                       denominator_id=self.store_id,
+                                                       weight=round(atomic_weight * 100, 2),
+                                                       identifier_parent=identifier_result_kpi,
+                                                       result=score, score=round(score * atomic_weight, 2),
+                                                       should_enter=True)
+
+                    scores.append((score, atomic_weight))
+
+                kpi_fk = self.kpi_static_data[self.kpi_static_data['kpi_name'].str.encode('utf-8') ==
+                                              kpi.encode('utf-8')]['kpi_fk'].values[0]
+                denominator_weight = self.get_kpi_weight(kpi, kpi_set)
+
+                kpi_details = self.combine_kpi_details(kpi_fk, scores, denominator_weight)
+                all_kpis_in_set.append(kpi_details)
+
+                if all(map(lambda x: x[0] is None, scores)):
+                    kpis_without_score[kpi_fk] = float(denominator_weight)
+
+            all_kpis_in_set = self.reallocate_weights_to_kpis_with_results(kpis_without_score, all_kpis_in_set)
+
+            for kpi in all_kpis_in_set:
+                pass_atomics = filter(lambda x: x[0] is not None, kpi['atomic_scores_and_weights'])
+                if len(pass_atomics):
+                    add_weights = sum(map(lambda y: y[1], filter(lambda x: x[0] is None and x[1] is not None,
+                                                                 kpi['atomic_scores_and_weights']))) / len(pass_atomics)
+                else:
+                    add_weights = 0
+
+                weights = sum(map(lambda x: x[1] is not None and x[1], pass_atomics))
+                denominator_weight = kpi['denominator_weight']
+
+                if weights:
+                    kpi_score = sum(map(lambda x: x[0] * (x[1] + add_weights) * 100, pass_atomics)) / 100
+                else:
+                    if len(pass_atomics):
+                        score_weight = float(denominator_weight) / len(pass_atomics)
+                    else:
+                        score_weight = 0
+                    kpi_score = sum(map(lambda x: x[0] * score_weight, pass_atomics))
+
+                kpi_scores[kpi['kpi_fk']] = kpi_score
+                self.write_to_db_result(kpi['kpi_fk'], self.LEVEL2, kpi_scores[kpi['kpi_fk']],
+                                        float(kpi['denominator_weight']) * 100)
+
+                kpi_name = self.get_kpi_name_by_pk(kpi['kpi_fk'])
+                kpi_lvl_2_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+                identifier_res_kpi_2 = self.get_identifier_result_kpi_by_pk(kpi_lvl_2_fk)
+                kpi_weight = float(kpi['denominator_weight']) * 100
+                self.common.write_to_db_result(fk=kpi_lvl_2_fk, numerator_id=self.cbcil_id,
+                                               denominator_id=self.store_id,
+                                               identifier_parent=identifier_result_set,
+                                               identifier_result=identifier_res_kpi_2,
+                                               weight=kpi_weight,  target=kpi_weight,
+                                               score=kpi_scores[kpi['kpi_fk']],
+                                               should_enter=True, result=kpi_scores[kpi['kpi_fk']])
+
+            final_score = sum([score for score in kpi_scores.values()])
+            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'].str.encode('utf-8') ==
+                                          kpi_set.encode('utf-8')]['kpi_set_fk'].values[0]
+            self.write_to_db_result(set_fk, self.LEVEL1, final_score)
+            self.write_gaps_to_db()
+
+            total_score_fk = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE)
+            self.common.write_to_db_result(fk=total_score_fk, numerator_id=self.cbcil_id, denominator_id=self.store_id,
+                                           identifier_result=identifier_result_set, result=round(final_score, 2),
+                                           weight=round(100, 2), target=round(80, 2), score=final_score,
+                                           should_enter=True)
+
+            # requested for dashboard
+            total_score_fk_for_dashboard = self.common.get_kpi_fk_by_kpi_type(self.TOTAL_SCORE_FOR_DASHBOARD)
+
+            self.common.write_to_db_result(fk=total_score_fk_for_dashboard, numerator_id=self.cbcil_id,
+                                           denominator_id=self.store_id,
+                                           identifier_result=identifier_result_set, result=round(final_score, 2),
+                                           weight=round(100, 2), target=round(80, 2), score=final_score,
+                                           should_enter=True)
+            self.commit_results_data()
         self.common.commit_results_data()
 
     # --------new tables functionality--------#
