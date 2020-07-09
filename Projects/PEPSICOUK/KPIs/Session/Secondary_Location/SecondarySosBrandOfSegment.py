@@ -16,12 +16,13 @@ class SecondarySosBrandOfSegmentKpi(UnifiedCalculationsScript):
         pass
 
     def calculate(self):
-        self.util.filtered_scif_secondary, self.util.filtered_matches_secondary = \
-            self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif_secondary,
-                                                                                 self.util.filtered_matches_secondary,
-                                                                                 self.kpi_name)
-        self.calculate_brand_out_of_sub_category_sos()
-        self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()
+        if self.util.commontools.are_all_bins_tagged:
+            self.util.filtered_scif_secondary, self.util.filtered_matches_secondary = \
+                self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif_secondary,
+                                                                                     self.util.filtered_matches_secondary,
+                                                                                     self.kpi_name)
+            self.calculate_brand_out_of_sub_category_sos()
+            self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_brand_out_of_sub_category_sos(self):
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
