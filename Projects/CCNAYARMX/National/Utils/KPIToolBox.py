@@ -322,8 +322,9 @@ class NationalToolBox(GlobalSessionToolBox):
 
         plat_template = self.templates[PLATFORMAS]
         plataformas = self.platformas_data
-        relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values)) & (
-                plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
+        relevant_platformas = plataformas[
+            (plataformas['Platform Name'].isin(df['Platform'].values))] if not df.empty else pd.DataFrame()
+
         if not relevant_platformas.empty:
             relevant_platformas = df.merge(relevant_platformas, how='left', on='scene_id')
 

@@ -380,8 +380,7 @@ class ToolBox(GlobalSessionToolBox):
 
         plat_template = self.templates[PLATFORMAS]
         plataformas = self.platformas_data
-        relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values)) & (
-                    plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
+        relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values))] if not df.empty else pd.DataFrame()
         if not relevant_platformas.empty:
             relevant_platformas = df.merge(relevant_platformas, how='left', on='scene_id')
 
@@ -419,6 +418,7 @@ class ToolBox(GlobalSessionToolBox):
             result_dict['score'] = 0
         else:
             result_dict['denominator_id'] = df.scene_id.iloc[0]
+            result_dict['denominator_result'] = df.scene_id.iloc[0]
             result_dict['result'] = df.result.iloc[0]
             result_dict['score'] = df.actual_score.iloc[0]
 
