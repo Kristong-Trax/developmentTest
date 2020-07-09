@@ -110,10 +110,10 @@ class PEPSICOUKCommonToolBox:
         self.shelf_len_mixed_shelves = self.calculate_shelf_len_for_mixed_shelves()
         self.scene_display = self.get_match_display_in_scene()
         self.are_all_bins_tagged = self.check_if_all_bins_are_recognized()
+        self.filtered_scif_secondary = self.get_initial_secondary_scif()
+        self.filtered_matches_secondary = self.get_initial_secondary_matches()
         if self.are_all_bins_tagged:
             self.assign_bays_to_bins()
-            self.filtered_scif_secondary = self.get_initial_secondary_scif()
-            self.filtered_matches_secondary = self.get_initial_secondary_matches()
             self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
                                                                       self.filtered_matches_secondary)
 
@@ -124,8 +124,8 @@ class PEPSICOUKCommonToolBox:
             [self.DISPLAY_NAME_TEMPL].unique()
         scenes_with_bin_logic = set(self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(tasks_with_bin_logic)]\
             [ScifConsts.SCENE_FK].unique())
-        scenes_with_tagged_bins = set(self.scene_display[self.scene_display[ScifConsts.SCENE_FK]].unique()) if \
-            self.scene_display[self.scene_display[ScifConsts.SCENE_FK]].unique() else [0]
+        scenes_with_tagged_bins = set(self.scene_display[ScifConsts.SCENE_FK].unique()) if \
+            self.scene_display[ScifConsts.SCENE_FK].unique() else set([0])
         missing_bin_tags = scenes_with_bin_logic.difference(scenes_with_tagged_bins)
         flag = False if missing_bin_tags else True
         return flag
