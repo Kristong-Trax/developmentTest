@@ -42,7 +42,7 @@ class MenuToolBox(GlobalSessionToolBox):
         if self.targets.empty:
             return
         try:
-            menu_product_fks = self.targets.product_fk.unique().tolist()
+            menu_product_fks = [t for t in self.targets.product_fk.unique().tolist() if pd.notna(t)]
         except AttributeError:
             Log.warning('Menu Count targets are corrupt for this store')
             return
