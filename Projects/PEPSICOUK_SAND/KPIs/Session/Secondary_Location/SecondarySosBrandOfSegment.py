@@ -26,6 +26,7 @@ class SecondarySosBrandOfSegmentKpi(UnifiedCalculationsScript):
     def calculate_brand_out_of_sub_category_sos(self):
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
         filtered_matches = self.util.filtered_matches_secondary
+        filtered_matches = filtered_matches[~(filtered_matches[ScifConsts.SUB_CATEGORY_FK].isnull())]
         products_df = self.util.all_products[[MatchesConsts.PRODUCT_FK, ScifConsts.BRAND_FK, ScifConsts.CATEGORY_FK]]
         filtered_matches = filtered_matches.merge(products_df, on=MatchesConsts.PRODUCT_FK, how='left')
         sub_cat_df = filtered_matches.groupby([ScifConsts.SUB_CATEGORY_FK],

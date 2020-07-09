@@ -26,8 +26,9 @@ class SosBrandOfSegmentKpi(UnifiedCalculationsScript):
         location_type_fk = self.util.all_templates[self.util.all_templates[ScifConsts.LOCATION_TYPE] == 'Primary Shelf'] \
             [ScifConsts.LOCATION_TYPE_FK].values[0]
         kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.util.BRAND_SOS_OF_SEGMENT)
-        filtered_matches = self.util.filtered_matches
-        products_df = self.util.all_products[[MatchesConsts.PRODUCT_FK, ScifConsts.BRAND_FK, ScifConsts.CATEGORY_FK]]
+        filtered_matches = self.util.filtered_matches[~(self.util.filtered_matches[ScifConsts.SUB_CATEGORY_FK].isnull())]
+        products_df = self.util.all_products[[MatchesConsts.PRODUCT_FK, ScifConsts.BRAND_FK, ScifConsts.CATEGORY_FK,
+                                              ScifConsts.PRODUCT_TYPE]]
         filtered_matches = filtered_matches.merge(products_df, on=MatchesConsts.PRODUCT_FK, how='left')
         sub_cat_df = filtered_matches.groupby([ScifConsts.SUB_CATEGORY_FK],
                                               as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum})
