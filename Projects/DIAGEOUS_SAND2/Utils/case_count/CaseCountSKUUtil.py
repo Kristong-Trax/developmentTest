@@ -230,14 +230,16 @@ class CaseCountCalculator(GlobalSessionToolBox):
         It identify the closest SKU tag to every case and using it to define the case's brand
         """
         total_res, results_for_db, kpi_fk = Counter(), list(), self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI)
+        results = []
         matches = self.matches[~((self.matches['product_type'] == 'Other') &
                                 (self.matches[Consts.MPIPS_FK] == Consts.PACK_FK))]
-        # get results for all cases that aren't considered branded other
-        results = list(matches.groupby(Consts.DISPLAY_IN_SCENE_FK, as_index=False)[Sc.SUBSTITUTION_PRODUCT_FK].apply(
-            list).values)
-        # add results from branded other cases
-        branded_other_results = self._get_results_for_branded_other_cases()
-        results.extend(branded_other_results)
+        if not self.filtered_mdis.empty:
+            # get results for all cases that aren't considered branded other
+            results = list(matches.groupby(Consts.DISPLAY_IN_SCENE_FK, as_index=False)[Sc.SUBSTITUTION_PRODUCT_FK].apply(
+                list).values)
+            # add results from branded other cases
+            branded_other_results = self._get_results_for_branded_other_cases()
+            results.extend(branded_other_results)
 
         orphan_results = self._calculate_orphan_tag_cases()
 

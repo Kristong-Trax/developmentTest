@@ -58,6 +58,15 @@ if __name__ == '__main__':
     sessions = [
         'CB1B5FE5-F346-4B8C-A28B-EFE23BF37EA4'
     ]
+    # menu sessions
+    sessions = [
+        'da59bdc3-97fc-4828-a7b2-55531a4cb92d',
+        'ced6fabd-cb30-4c23-8183-091a12012900'
+    ]
+    # display share sessions
+    sessions = [
+        '7285B363-889A-4116-A551-4F8AD23B9B16'
+    ]
     for session in sessions:
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
