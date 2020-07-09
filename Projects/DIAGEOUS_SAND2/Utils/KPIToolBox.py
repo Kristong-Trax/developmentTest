@@ -1369,9 +1369,9 @@ class ToolBox:
             ScifConsts.PRODUCT_FK].tolist()
         product_non_cases = [product_fk]
         product_non_cases += \
-        self.all_products[(self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] == product_fk) &
-                          (self.all_products[ProductsConsts.SKU_TYPE].str.lower() != 'case')][
-            ScifConsts.PRODUCT_FK].tolist()
+            self.all_products[(self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] == product_fk) &
+                              (self.all_products[ProductsConsts.SKU_TYPE].str.lower() != 'case')][
+                ScifConsts.PRODUCT_FK].tolist()
         for scene in relevant_products[ScifConsts.SCENE_FK].unique().tolist():
             scene_type = self.scif[self.scif[ScifConsts.SCENE_FK] == scene][ScifConsts.TEMPLATE_NAME].iloc[0]
             scene_mpis = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene]
