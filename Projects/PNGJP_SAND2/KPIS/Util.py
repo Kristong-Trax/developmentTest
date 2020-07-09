@@ -143,7 +143,7 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
         return entity_type_fk
 
     def sync_bay_shelf_combination_to_custom_entity(self, bay_no, shelf_no):
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         # entity_type_fk = 1601
         insert_query = PNGJP_SAND2Queries.insert_into_custom_entity_query(bay_no, shelf_no,
                                                                           self.bay_shelf_entity_type_fk)
