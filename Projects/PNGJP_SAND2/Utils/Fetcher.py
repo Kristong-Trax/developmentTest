@@ -60,3 +60,26 @@ class PNGJP_SAND2Queries(object):
                       LEFT JOIN static.kpi_level_2 kpi on ext.kpi_level_2_fk = kpi.pk
                       WHERE (ext.start_date<='{}' and ext.end_date is null) or 
                       (ext.start_date<='{}' and ext.end_date>='{}')""".format(visit_date, visit_date, visit_date)
+
+    @staticmethod
+    def insert_into_custom_entity_query(bay_no, shelf_no, entity_type_fk):
+        return """
+            INSERT INTO static.custom_entity (name, entity_type_fk, parent_id) 
+            VALUES ('{bay}:{shelf}', {entity_type_fk}, NULL);
+            """.format(bay=int(bay_no), shelf=int(shelf_no), entity_type_fk=entity_type_fk)
+
+    @staticmethod
+    def get_all_custom_entities_query():
+        return """
+                select ce.pk, 
+                ce.name bay_shelf_combination, 
+                ce.entity_type_fk, 
+                ket.name entity_type 
+                from static.custom_entity ce
+                join static.kpi_entity_type ket on ket.pk = ce.entity_type_fk
+                where ket.name = 'bay_shelf';
+                """
+
+    @staticmethod
+    def get_entity_type_fk_query():
+        return """select pk, name from static.kpi_entity_type where name = 'bay_shelf';"""
