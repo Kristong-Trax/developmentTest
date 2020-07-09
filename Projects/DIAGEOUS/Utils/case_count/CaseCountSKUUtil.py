@@ -7,11 +7,11 @@ from plotly.offline import iplot
 from consts import Consts
 from collections import Counter
 from Trax.Cloud.Services.Connector.Logger import Log
-from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts as Src
+from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts as Src
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
-from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts as Mc, ProductsConsts as Pc, ScifConsts as Sc
+from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts as Mc, ProductsConsts as Pc, ScifConsts as Sc
 
 
 class CaseCountCalculator(GlobalSessionToolBox):
