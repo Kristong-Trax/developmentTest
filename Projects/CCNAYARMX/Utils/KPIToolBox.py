@@ -242,7 +242,7 @@ class ToolBox(GlobalSessionToolBox):
                         result_data['identifier_parent'] = parent_kpi_name
                     if 'identifier_result' not in result_data.keys():
                         result_data['identifier_result'] = result_data['kpi_name']
-                    if result_data['result'] <= 1 and result_data['result'] > 0:
+                    if result_data['result'] <= 1 and result_data['result'] > 0 and (result_data['kpi_name'] not in ['Comunicacion','Plataformas']):
                         result_data['result'] = result_data['result'] * 100
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
                 else:  # must be a list
@@ -499,7 +499,7 @@ class ToolBox(GlobalSessionToolBox):
                 result_dict['score'] = relevant_results['score'].sum()
                 if 'result' not in result_dict.keys():
                     if row['score_based_result'] == 'y':
-                        result_dict['result'] = 0 if result_dict['score'] == 0 else result_dict['score'] / row['Score']
+                        result_dict['result'] = 0 if result_dict['score'] == 0 else float(result_dict['score']) / row['Score']
                     elif row['composition_based_result'] == 'y':
                         result_dict['result'] = 0 if passing_results.empty else float(len(passing_results)) / len(
                             relevant_results)

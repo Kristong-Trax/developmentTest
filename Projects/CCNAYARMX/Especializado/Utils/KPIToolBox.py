@@ -236,7 +236,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                         result_data['identifier_parent'] = parent_kpi_name
                     if 'identifier_result' not in result_data.keys():
                         result_data['identifier_result'] = result_data['kpi_name']
-                    if result_data['result'] <= 1:
+                    if result_data['result'] <= 1 and (result_data['kpi_name'] not in ['Comunicacion - Especializado', 'Plataformas - Especializado']):
                         result_data['result'] = result_data['result'] * 100
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
                 else:  # must be a list
