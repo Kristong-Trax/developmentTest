@@ -2,8 +2,11 @@ from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.CCBOTTLERSUS.Calculations import CCBOTTLERSUSCalculations
+from Projects.CCBOTTLERSUS.KPIGenerator import CCBOTTLERSUSGenerator
 from Projects.CCBOTTLERSUS.MSC.KPIToolBox import MSCToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
+
+
 
 if __name__ == '__main__':
     LoggerInitializer.init('ccbottlersus calculations')
@@ -41,13 +44,17 @@ if __name__ == '__main__':
         'ffdd7097-6081-4a50-9cea-2739d647341d'
     ]
 
+    sessions = [
+        '826ace9e-abec-4660-9b65-96d7a4604bf8',  # Contact Center
+    ]
+
     for session in sessions:
         print('***********************************************************************************')
         print('_______________________ {} ____________________'.format(session))
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
-        common = Common(data_provider)
-        MSCToolBox(data_provider, output, common).main_calculation()
-        common.commit_results_data()
-
+        # common = Common(data_provider)
+        CCBOTTLERSUSGenerator(data_provider, output).main_function()
+        # MSCToolBox(data_provider, output, common).main_calculation()
+        # common.commit_results_data()

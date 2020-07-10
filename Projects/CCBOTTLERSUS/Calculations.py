@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
 
 from Projects.CCBOTTLERSUS.KPIGenerator import CCBOTTLERSUSGenerator
@@ -11,6 +10,3 @@ class CCBOTTLERSUSCalculations(BaseCalculationsScript):
         self.timer.start()
         CCBOTTLERSUSGenerator(self.data_provider, self.output).main_function()
         self.timer.stop('KPICCBOTTLERSUSGenerator.run_project_calculations')
-
-
-
