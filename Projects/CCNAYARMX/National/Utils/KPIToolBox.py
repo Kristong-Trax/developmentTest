@@ -429,7 +429,7 @@ class NationalToolBox(GlobalSessionToolBox):
                                            (relevant_results['score'] != 0)]
         nan_results = relevant_results[relevant_results['result'].isna()]
         if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
-            result_dict['result'] = pd.np.nan
+            result_dict['result'] = 0
         elif row['Component aggregation'] == 'one-passed':
             if len(relevant_results) > 0 and len(passing_results) > 0:
                 result_dict['result'] = 1
@@ -457,13 +457,6 @@ class NationalToolBox(GlobalSessionToolBox):
                 result_dict['result'] = 1
             else:
                 result_dict['result'] = 0
-
-        if 'score' in result_dict.keys():
-            if result_dict['result'] == result_dict['score'] and ((result_dict['result'] > 0) and (result_dict['result'] < 1)):
-                result_dict['score'] = result_dict['score'] * 100
-
-        if pd.isnull(row.score_same_as_result) and 'score' in result_dict.keys(): #last minute change request by client
-            result_dict.pop('score', None)
 
         return result_dict
 
@@ -923,7 +916,7 @@ class NationalToolBox(GlobalSessionToolBox):
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                 return result_dict
         else:
-            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
+            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,SCENE_FK,
                                      FACINGS_IGN_STACK] + \
                                     [denominator_entity, numerator_entity] + self.delete_filter_nan(
                 [numerator_param1, denominator_param1])
@@ -961,6 +954,14 @@ class NationalToolBox(GlobalSessionToolBox):
                 if denominator_scif.empty:
                     result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                     return result_dict
+
+                if row['remove irrelevant logic'] == 'y':
+                    relevant_scene_for_removal = denominator_scif[denominator_scif.template_group == 'Enfriadores CC'].scene_fk.unique()
+                    if 'Irrelevant' in self.scif[self.scif.scene_fk.isin(relevant_scene_for_removal)].product_type.unique():
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                        return result_dict
+
+
                 denominator_id = denominator_scif[denominator_entity].mode()[0]
                 denominator_result = denominator_scif[FINAL_FACINGS].sum()
 
@@ -1548,7 +1549,7 @@ class NationalToolBox(GlobalSessionToolBox):
         return result
 
     def calculate_relevant_availability_survey_result(self, relevant_question_fk):
-        result = 0
+        final_result = 0
         survey_response_df = self.get_scene_survey_response()
         if survey_response_df.empty:
             return 0
@@ -1557,10 +1558,15 @@ class NationalToolBox(GlobalSessionToolBox):
         for question_fk in relevant_question_fk:
             relevant_survey_response = survey_response_df[survey_response_df['question_fk'].isin([question_fk])]
             if not relevant_survey_response.empty:
-                if relevant_survey_response.iloc[0, 2] in accepted_results:
-                    result = result + 1
+                survey_answer = relevant_survey_response.iloc[0, 2]
+                if survey_answer in accepted_results:
+                    if survey_answer in accepted_results:
+                        result = int(survey_answer) if survey_answer.isnumeric() else 1
+                    else:
+                        result = 0
+                    final_result = final_result + result
 
-        return result
+        return final_result
 
     @staticmethod
     def calculate_targets_for_availability_kpi(store_size):

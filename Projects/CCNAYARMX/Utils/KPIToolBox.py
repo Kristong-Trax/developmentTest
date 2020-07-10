@@ -111,7 +111,7 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
                               MERCADEO_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplate2020v1.2.xlsx')
+                             'CCNayarTemplate2020v1.3.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                          'CCNayar_POS_Options_v12.xlsx')
 
@@ -310,22 +310,29 @@ class ToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_bonus_and_penalties(self, row):
+        return_holder = self._get_kpi_name_and_fk(row)
         result = 0
         if row['availability'] == 'Y':
             facings_dict = self._filter_facing_targets(row)
-            result = self.logic_for_result_availability_bonus_and_penalties(self.scif, facings_dict)
+            relevant_scif = self.scif[self.scif.template_group == 'Enfriadores CC']
+            result = self.logic_for_result_availability_bonus_and_penalties(relevant_scif, facings_dict) if not relevant_scif.empty else 0
         elif row['RETORNABILIDAD'] == 'Y':
-            sum_of_bays = self.find_the_total_number_of_bays_in_relevant_scene(self.scif, self.match_product_in_scene)
-            minimum_num_of_bays_required = row['Doors Target']
-            if sum_of_bays >= minimum_num_of_bays_required:
-                all_product_df = self.all_products[['product_name', 'product_fk', 'product_type', 'RETORNABILIDAD']]
-                all_product_df = all_product_df[all_product_df.product_type != 'Empty']
-                transform_retornabilidad = np.where(all_product_df.RETORNABILIDAD == 'Y', 1, 0)
-                all_product_df['RETORNABILIDAD'] = transform_retornabilidad
-                merged_mpis_all_prod = self.match_product_in_scene.merge(all_product_df, how='inner', on='product_fk')
-                grouped_merge_mpis_prod = merged_mpis_all_prod.groupby(['scene_fk', 'bay_number']).agg(
-                    {'RETORNABILIDAD': 'mean'})
-                result = 1 if 1 in grouped_merge_mpis_prod.values else 0
+            relevant_scif = self.scif[self.scif.template_group == 'Enfriadores CC']
+            if relevant_scif.empty:
+                result = 0
+            else:
+                relevant_mpis = self.match_product_in_scene[self.match_product_in_scene.scene_fk.isin(relevant_scif.scene_fk.unique())]
+                sum_of_bays = self.find_the_total_number_of_bays_in_relevant_scene(relevant_scif, relevant_mpis)
+                minimum_num_of_bays_required = row['Doors Target']
+                if sum_of_bays >= minimum_num_of_bays_required:
+                    all_product_df = self.all_products[['product_name', 'product_fk', 'product_type', 'RETORNABILIDAD']]
+                    all_product_df = all_product_df[~ all_product_df.product_type.isin(['Empty', 'Other', 'POS'])]
+                    transform_retornabilidad = np.where(all_product_df.RETORNABILIDAD == 'Y', 1, 0)
+                    all_product_df['RETORNABILIDAD'] = transform_retornabilidad
+                    merged_mpis_all_prod = relevant_mpis.merge(all_product_df, how='inner', on='product_fk')
+                    grouped_merge_mpis_prod = merged_mpis_all_prod.groupby(['scene_fk', 'bay_number']).agg(
+                        {'RETORNABILIDAD': 'mean'})
+                    result = 1 if 1 in grouped_merge_mpis_prod.values else 0
         else:
             hidratacion_df = self.results_df[self.results_df.kpi_name.isin(['Hidratacion'])]
             if not hidratacion_df.empty:
@@ -334,7 +341,6 @@ class ToolBox(GlobalSessionToolBox):
                 result = 0
             # DO THE FORTH ROW OF THE SHEET
 
-        return_holder = self._get_kpi_name_and_fk(row)
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': self.own_manuf_fk,
                        'denominator_id': self.store_id, 'result': result}
         return result_dict
@@ -482,7 +488,7 @@ class ToolBox(GlobalSessionToolBox):
                                            (relevant_results['score'] != 0)]
         nan_results = relevant_results[relevant_results['result'].isna()]
         if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
-            result_dict['result'] = pd.np.nan
+            result_dict['result'] = 0
         elif row['Component aggregation'] == 'one-passed':
             if len(relevant_results) > 0 and len(passing_results) > 0:
                 result_dict['result'] = 1
@@ -511,12 +517,6 @@ class ToolBox(GlobalSessionToolBox):
             else:
                 result_dict['result'] = 0
 
-        if 'score' in result_dict.keys():
-            if result_dict['result'] == result_dict['score'] and ((result_dict['result'] > 0) and (result_dict['result'] < 1)):
-                result_dict['score'] = result_dict['score'] * 100
-
-        if pd.isnull(row.score_same_as_result) and 'score' in result_dict.keys(): #last minute change request by client
-            result_dict.pop('score', None)
         return result_dict
 
     def calculate_combo(self, row):
@@ -894,7 +894,7 @@ class ToolBox(GlobalSessionToolBox):
 
         if pd.notna(additional_scene_type):
             if additional_scene_type in set(self.scif.template_name):
-                relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
+                relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,SCENE_FK,
                                          FACINGS_IGN_STACK] + \
                                         [denominator_entity, numerator_entity] + self.delete_filter_nan(
                     [numerator_param1, denominator_param1])
@@ -971,7 +971,7 @@ class ToolBox(GlobalSessionToolBox):
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                 return result_dict
         else:
-            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
+            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,SCENE_FK,
                                      FACINGS_IGN_STACK] + \
                                     [denominator_entity, numerator_entity] + self.delete_filter_nan(
                 [numerator_param1, denominator_param1])
@@ -1009,6 +1009,12 @@ class ToolBox(GlobalSessionToolBox):
                 if denominator_scif.empty:
                     result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                     return result_dict
+                if row['remove irrelevant logic'] == 'y':
+                    relevant_scene_for_removal = denominator_scif[denominator_scif.template_group == 'Enfriadores CC'].scene_fk.unique()
+                    if 'Irrelevant' in self.scif[self.scif.scene_fk.isin(relevant_scene_for_removal)].product_type.unique():
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                        return result_dict
+
                 denominator_id = denominator_scif[denominator_entity].mode()[0]
                 denominator_result = denominator_scif[FINAL_FACINGS].sum()
 
@@ -1527,7 +1533,10 @@ class ToolBox(GlobalSessionToolBox):
             if not relevant_survey_response.empty:
                 survey_answer = relevant_survey_response.iloc[0, 2]
                 if survey_answer in accepted_results:
-                    result = 1 if survey_answer in accepted_results else 0
+                    if survey_answer in accepted_results:
+                        result = int(survey_answer) if survey_answer.isnumeric() else 1
+                    else:
+                        result = 0
                     final_result = final_result + result
 
         return final_result

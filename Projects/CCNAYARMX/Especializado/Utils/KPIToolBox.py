@@ -517,7 +517,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                                            (relevant_results['score'] != 0)]
         nan_results = relevant_results[relevant_results['result'].isna()]
         if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
-            result_dict['result'] = pd.np.nan
+            result_dict['result'] = 0
         elif row['Component aggregation'] == 'one-passed':
             if len(relevant_results) > 0 and len(passing_results) > 0:
                 result_dict['result'] = 1
@@ -545,10 +545,6 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                 result_dict['result'] = 1
             else:
                 result_dict['result'] = 0
-
-        if 'score' in result_dict.keys():
-            if result_dict['result'] == result_dict['score'] and ((result_dict['result'] > 0) and (result_dict['result'] < 1)):
-                result_dict['score'] = result_dict['score'] * 100
 
         return result_dict
 
@@ -936,7 +932,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                 return result_dict
         else:
-            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
+            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,SCENE_FK,
                                      FACINGS_IGN_STACK] + \
                                     [denominator_entity, numerator_entity] + self.delete_filter_nan(
                 [numerator_param1, denominator_param1])
@@ -974,6 +970,13 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                 if denominator_scif.empty:
                     result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                     return result_dict
+
+                if row['remove irrelevant logic'] == 'y':
+                    relevant_scene_for_removal = denominator_scif[denominator_scif.template_group == 'Enfriadores CC'].scene_fk.unique()
+                    if 'Irrelevant' in self.scif[self.scif.scene_fk.isin(relevant_scene_for_removal)].product_type.unique():
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                        return result_dict
+
                 denominator_id = denominator_scif[denominator_entity].mode()[0]
                 denominator_result = denominator_scif[FINAL_FACINGS].sum()
 
