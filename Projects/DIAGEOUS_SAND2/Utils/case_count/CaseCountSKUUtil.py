@@ -578,11 +578,11 @@ class CaseCountCalculator(GlobalSessionToolBox):
         return scif
 
     def _get_excluded_product_fks(self):
-        if self.filtered_scif.empty:
+        if self.scif.empty:
             return []
-        other_products = self.filtered_scif[self.filtered_scif[Sc.PRODUCT_TYPE] == 'Other'][
+        other_products = self.scif[self.scif[Sc.PRODUCT_TYPE] == 'Other'][
             Sc.PRODUCT_FK].unique().tolist()
-        substitution_products = self.filtered_scif[self.filtered_scif[Sc.FACINGS] == 0][Sc.PRODUCT_FK].unique().tolist()
+        substitution_products = self.scif[self.scif[Sc.FACINGS] == 0][Sc.PRODUCT_FK].unique().tolist()
         return other_products + substitution_products
 
     def _get_scenes_with_relevant_displays(self):
@@ -604,12 +604,14 @@ if __name__ == '__main__':
     from KPIUtils_v2.DB.CommonV2 import Common
     from Trax.Utils.Conf.Configuration import Config
     from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-    Config.init()
-    test_data_provider = KEngineDataProvider('diageous-sand2')
-    sessions = ['b660518b-bcb8-470e-b9fc-0528b38c46bf']
+    from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+    LoggerInitializer.init('KEngine')
+    Config.init('KEngine')
+    test_data_provider = KEngineDataProvider('diageous')
+    sessions = ['2087F0BA-E12A-458A-83D0-0713E9DF1EBA']
     for session in sessions:
         print(session)
-        test_data_provider.load_session_data(session_uid=session)
+        test_data_provider.load_session_data(session)
         test_common = Common(test_data_provider)
         case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
         case_counter_calculator.main_case_count_calculations()
