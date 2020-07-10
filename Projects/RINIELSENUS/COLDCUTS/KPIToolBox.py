@@ -1,4 +1,3 @@
-
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
@@ -20,6 +19,7 @@ from KPIUtils_v2.Calculations.AMER.CalculationsUtils.CalculationUtils import Eye
 from KPIUtils_v2.Calculations.AMER.BlockAdjacencyCalculations import BlockAdjacency
 import collections
 import json
+import numpy
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
@@ -57,7 +57,7 @@ PRICE_KPI = 'Price Class'  # to be written as it is on the database
 SCIF_SUB_CATEOGRY = 'Nestle_Purina_Sub-category'
 # SCIF_SUB_BRAND = 'Nestle_Purina_Subbrand'
 SCIF_PRICE = 'Nestle_Purina_Price_Class'
-SCIF_CATEOGRY= 'Nestle_Purina_Category'
+SCIF_CATEOGRY = 'Nestle_Purina_Category'
 LINEAR_SIZE = u'gross_len_add_stack'
 # gross_len_ign_stack
 # gross_len_split_stack
@@ -66,6 +66,7 @@ PURINA_KPI = [MANUFACTUR, BRAND, SUB_CATEGORY, CATEGORY, PRICE_KPI]
 PET_FOOD_CATEGORY = 13
 PURINA_SET = 'Purina'
 OTHER = 'OTHER'
+
 
 class ColdCutToolBox:
     LEVEL1 = 1
@@ -94,6 +95,8 @@ class ColdCutToolBox:
         self.session_fk = self.session_info['pk'].values[0]
         self.kpi_results_queries = []
         self.kpi_static_queries = []
+        self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
+
         self.adjacency = BlockAdjacency(self.data_provider, ps_data_provider=self.ps_data_provider, common=self.common,
                                         rds_conn=self.rds_conn)
         self.eyelight = Eyelight(self.data_provider, self.common, self.ps_data_provider)
@@ -101,7 +104,8 @@ class ColdCutToolBox:
                                                                   left_on=['scene_fk', 'product_fk'],
                                                                   right_on=['scene_fk', 'product_fk'])
         # self.purina_scif = self.scif.loc[self.scif['category_fk'] == PET_FOOD_CATEGORY]
-        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields =["KPI Type", "Location: JSON", "Config Params: JSON", "Dataset 1: JSON", "Dataset 2: JSON"])
+        self.targets = self.ps_data_provider.get_kpi_external_targets(
+            key_fields=["KPI Type", "Location: JSON", "Config Params: JSON", "Dataset 1: JSON", "Dataset 2: JSON"])
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result', 'context_id',
                                                 'denominator_id', 'denominator_result', 'result', 'score'])
         self.custom_entity_table = self.get_kpi_custom_entity_table()
@@ -112,19 +116,19 @@ class ColdCutToolBox:
         """
         relevant_kpi_types = [
             # Consts.SOS,
-                              # Consts.SCENE_LOCATION,
-                              # Consts.HORIZONTAL_SHELF_POSITION,
-                              # Consts.VERTICAL_SHELF_POSITION,
-                              Consts.BLOCKING,
-            Consts.BLOCK_ADJ
-                              # Consts.BAY_POSITION, Consts.DIAMOND_POSITION
-                              ]
+            # Consts.SCENE_LOCATION,
+            Consts.HORIZONTAL_SHELF_POSITION,
+            Consts.VERTICAL_SHELF_POSITION,
+            Consts.BLOCKING,
+            Consts.BLOCK_ADJ,
+            Consts.BLOCKING_ORIENTATION
+            # Consts.BAY_POSITION, Consts.DIAMOND_POSITION
+        ]
 
         targets = self.targets[self.targets[Consts.ACTUAL_TYPE].isin(relevant_kpi_types)]
         self._calculate_kpis_from_template(targets)
         self.save_results_to_db()
         pass
-
 
     def calculate_blocking(self, row, df):
         addtional_data = row['Config Params: JSON']
@@ -132,9 +136,9 @@ class ColdCutToolBox:
         kpi_fk = row['kpi_fk']
         # population_data = {'population': row['Dataset 1: JSON']}
         population_data = row['Dataset 1: JSON']['include'][0]
-        df.rename(columns={'pk': 'custom_entity_fk'}, inplace= True)
+        df.rename(columns={'pk': 'custom_entity_fk'}, inplace=True)
         result_dict_list = self._logic_for_blocking(kpi_fk, population_data, location_data, addtional_data)
-        #if dataframe empty do we save the kpi?
+        # if dataframe empty do we save the kpi?
 
         return result_dict_list
 
@@ -142,18 +146,28 @@ class ColdCutToolBox:
         additional_data = row['Config Params: JSON']
         location_data = row['Location: JSON']
         kpi_fk = row['kpi_fk']
-        anchor_data= row['Dataset 1: JSON']['include'][0]
-        target_data= row['Dataset 2: JSON']['include'][0]
+        anchor_data = row['Dataset 1: JSON']['include'][0]
+        target_data = row['Dataset 2: JSON']['include'][0]
 
-        df.rename(columns={'pk': 'custom_entity_fk'}, inplace= True)
-        result_dict_list = self._logic_for_adj( kpi_fk, anchor_data, target_data, location_data, additional_data)
-        #if dataframe empty do we save the kpi?
+        df.rename(columns={'pk': 'custom_entity_fk'}, inplace=True)
+        is_adjacent_result = self._logic_for_adj(kpi_fk, anchor_data, target_data, location_data, additional_data)
+        # if dataframe empty do we save the kpi?
+        result = 0
 
-        return result_dict_list
+        if is_adjacent_result:
+            result = 1
 
+        result_dict = {'kpi_fk': kpi_fk,
+                       'numerator_id': self.own_manufacturer_fk,
+                       'denominator_id': self.store_id,
+                       # 'denominator_result': 1,
+                       'result': result,
+                       'score': 0}
+        return result_dict
 
     def _logic_for_adj(self, kpi_fk, anchor_data, target_data, location_data, additional_data):
-        result = self.adjacency.evaluate_block_adjacency(anchor_data, target_data, location=location_data, additional=additional_data, kpi_fk=kpi_fk)
+        result = self.adjacency.evaluate_block_adjacency(anchor_data, target_data, location=location_data,
+                                                         additional=additional_data, kpi_fk=kpi_fk)
 
         return result
 
@@ -161,7 +175,6 @@ class ColdCutToolBox:
         result_dict_list = []
         block = self.block.network_x_block_together(population=population_data, location=location_data,
                                                     additional=addtional_data)
-
 
         for row in block.itertuples():
             scene_match_fks = list(row.cluster.nodes[list(row.cluster.nodes())[0]]['scene_match_fk'])
@@ -180,11 +193,11 @@ class ColdCutToolBox:
         # numerator_id = df.custom_entity_fk.iloc[0]
 
         result_dict = {'kpi_fk': kpi_fk,
-                       'numerator_id': self.manufa, 'numerator_result': numerator_result,
+                       'numerator_id': self.own_manufacturer_fk, 'numerator_result': numerator_result,
                        'denominator_id': self.store_id,
                        'denominator_result': 1,
                        'result': result,
-                        'score': 0}
+                       'score': 0}
 
         result_dict_list.append(result_dict)
         return result_dict_list
@@ -198,49 +211,62 @@ class ColdCutToolBox:
     def calculate_blocking_orientation(self):
         pass
 
-    def calculate_block_adjacency(self):
-        pass
-
     def calculate_vertical_position(self, row, df):
-        return_holder = self._get_kpi_name_and_fk(row)
-        numerator_type, denominator_type = self._get_numerator_and_denominator_type(
-            row['Config Params: JSON'], context_relevant=False)
-        df.dropna(subset=[numerator_type], inplace=True)
+        result_dict_list = []
+        mpis = df  # get this from the external target filter_df method thingy
+        scene_facings_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['facings'].max()
+        scene_facings_df.rename(columns={'facings': 'scene_facings'}, inplace=True)
+        shelf_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['shelf_number'].max()
+        shelf_df.rename(columns={'shelf_number': 'shelf_count'}, inplace=True)
 
-        result_dict_list = self._logic_for_horizontal_shelf(return_holder, df, numerator_type, denominator_type)
+        pre_sort_mpis = pd.merge(mpis, scene_facings_df, how='left', on=['scene_fk', 'product_fk'])
+        scene_facings_df_sorted = pre_sort_mpis.sort_values('scene_facings')
+        mpis = scene_facings_df_sorted.drop_duplicates(['scene_fk', 'product_fk'], keep="last")
 
+        mpis = pd.merge(mpis, shelf_df, how='left', on=['scene_fk', 'product_fk'])
+
+        mpis['position'] = mpis.apply(self._calculate_vertical_position, axis=1)
+        mpis['result_type_fk'] = mpis['position'].apply(lambda x: Consts.CUSTOM_RESULT.get(x, 0))
+        mpis = mpis.groupby(['product_fk'], as_index=False)['result_type_fk'].agg(pd.Series.mode)
+
+        for result in mpis.itertuples():
+            custom_fk_result = result.result_type_fk
+
+            if type(custom_fk_result) == numpy.ndarray:
+                custom_fk_result = result.result_type_fk[0]
+
+            result_item = {'kpi_fk': row.kpi_fk,
+                           'numerator_id': result.product_fk, 'numerator_result': 1,
+                           'denominator_id': self.store_id,
+                           'denominator_result': 1,
+                           'result': custom_fk_result,
+                           'score': 0}
+
+            result_dict_list.append(result_item)
         return result_dict_list
-
-    # def calculate_horizontal_position(self, row, df):
-    #     return_holder = self._get_kpi_name_and_fk(row)
-    #     numerator_type, denominator_type = self._get_numerator_and_denominator_type(
-    #         row['Config Params: JSON'], context_relevant=False)
-    #     df.dropna(subset=[numerator_type], inplace=True)
-    #
-    #     result_dict_list = self._logic_for_horizontal_shelf(return_holder, df, numerator_type, denominator_type)
-    #
-    #     return result_dict_list
-
-
 
     def calculate_horizontal_position(self, row, df):
         result_dict_list = []
         mpis = df  # get this from the external target filter_df method thingy
         bay_df = mpis.groupby('scene_fk', as_index=False)['bay_number'].max()
-        bay_df.rename({'bay_number': 'bay_count'}, inplace=True)
+        bay_df.rename(columns={'bay_number': 'bay_count'}, inplace=True)
         mpis = pd.merge(mpis, bay_df, how='left', on='scene_fk')
         mpis['position'] = mpis.apply(self._calculate_horizontal_position, axis=1)
         mpis['result_type_fk'] = mpis['position'].apply(lambda x: Consts.CUSTOM_RESULT.get(x, 0))
-        mpis = mpis.groupby(['product_fk'], as_index=False)['result_type_fk'].mode()
-
+        mpis = mpis.groupby(['product_fk'], as_index=False)['result_type_fk'].agg(pd.Series.mode)
 
         for result in mpis.itertuples():
-            result_item = { 'kpi_fk': row.kpi_fk,
-              'numerator_id': result.product_fk, 'numerator_result': 1,
-              'denominator_id': self.store_id,
-              'denominator_result': 1,
-              'result': result.result_type_fk,
-              'score': 0}
+            custom_fk_result = result.result_type_fk
+
+            if type(custom_fk_result) == numpy.ndarray:
+                custom_fk_result = result.result_type_fk[0]
+
+            result_item = {'kpi_fk': row.kpi_fk,
+                           'numerator_id': result.product_fk, 'numerator_result': 1,
+                           'denominator_id': self.store_id,
+                           'denominator_result': 1,
+                           'result': custom_fk_result,
+                           'score': 0}
 
             result_dict_list.append(result_item)
         return result_dict_list
@@ -253,42 +279,18 @@ class ColdCutToolBox:
         factor = round(bay_count / float(3))
         if row.bay_number <= factor:
             return 'Left'
-        elif row.bay_number > factor:
+        elif row.bay_number > (bay_count - factor):
             return 'Right'
         return 'Center'
 
+    @staticmethod
+    def _calculate_vertical_position(row):
+        shelf_number = str(row.shelf_number)
+        shelf_count = str(row.shelf_count)
 
+        pos_value = Consts.shelf_map[shelf_count][shelf_number]
 
-    def _logic_for_horizontal_shelf(self, return_holder, df, numerator_type, denominator_type):
-
-        result_list = []
-        for num_item in df[numerator_type].dropna().unique().tolist():
-
-            numerator_scif = df[df[numerator_type] == num_item]
-
-            for scene in numerator_scif.scene_fk.unique().tolist():
-                result = 'center'
-                bay_length = len(self.merged_scif_mpis['bay_number'][self.merged_scif_mpis['scene_fk'] == scene ].unique())
-                if bay_length != 1:
-                    factor = math.ceil(bay_length/float(3))
-
-                    product_bay_count = len(numerator_scif['bay_number'][numerator_scif['scene_fk'] == scene].unique())
-                    if product_bay_count <= factor:
-                        result = 'left'
-                    elif product_bay_count > (bay_length - factor):
-                        result = 'right'
-                    else:
-                        result = 'center'
-
-            test_custom = {'left': 2, 'right':3, 'center': 1 }
-            custom_result = test_custom[result]
-            result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-                           'numerator_id': num_item, 'numerator_result': 1,
-                           'denominator_id': self.store_id,
-                           'denominator_result': 1,
-                           'result': custom_result}
-            result_list.append(result_dict)
-        return result_list
+        return pos_value
 
     def calculate_facings_sos(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
@@ -298,11 +300,9 @@ class ColdCutToolBox:
         result_dict_list = self._logic_for_sos(return_holder, df, numerator_type, denominator_type)
         return result_dict_list
 
-
     def _logic_for_sos(self, return_holder, df, numerator_type, denominator_type):
         result_list = []
         for num_item in self.merged_scif_mpis[numerator_type].dropna().unique().tolist():
-
             numerator_scif = self.merged_scif_mpis[self.merged_scif_mpis[numerator_type] == num_item]
             numerator_result = numerator_scif.facings.sum()
             denominator_result = self.merged_scif_mpis.facings.sum()
@@ -320,43 +320,43 @@ class ColdCutToolBox:
             result_list.append(result_dict)
         return result_list
 
-
     def _get_calculation_function_by_kpi_type(self, kpi_type):
         if kpi_type == Consts.SOS:
             pass
             # return self.calculate_facings_sos
-        # elif kpi_type == Consts.HORIZONTAL_SHELF_POSITION:
-        #     return self.calculate_horizontal_position
-        # elif kpi_type == Consts.VERTICAL_SHELF_POSITION:
-        #     return self.calculate_vertical_position
+        elif kpi_type == Consts.HORIZONTAL_SHELF_POSITION:
+            return self.calculate_horizontal_position
+        elif kpi_type == Consts.VERTICAL_SHELF_POSITION:
+            return self.calculate_vertical_position
         # elif kpi_type == Consts.SHELF_POSITION:
         #     return self.calculate_shelf_position
-        # elif kpi_type == Consts.BLOCKING:
-        #     return self.calculate_blocking
+        elif kpi_type == Consts.BLOCKING:
+            return self.calculate_blocking
         elif kpi_type == Consts.BLOCK_ADJ:
             return self.calculate_blocking_adj
-        # elif kpi_type == Consts.DISTRIBUTION:
-        #     return self.calculate_distribution
-        # elif kpi_type == Consts.BAY_POSITION:
-        #     return self.calculate_bay_position
-        # elif kpi_type == Consts.DIAMOND_POSITION:
-        #     return self.calculate_diamond_position
 
-    def get_denominator(self,denominator_value):
+    def get_denominator(self, denominator_value):
         if denominator_value == 'store_fk':
             return self.store_id
 
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
-            calculation_function = self._get_calculation_function_by_kpi_type(row[Consts.ACTUAL_TYPE])
-            row = self.apply_json_parser(row)
-            merged_scif_mpis = self._parse_json_filters_to_df(row)
-            result_data = calculation_function(row, merged_scif_mpis)
-            if result_data and isinstance(result_data, list):
-                for result in result_data:
-                    self.results_df.loc[len(self.results_df), result.keys()] = result
-            elif result_data and isinstance(result_data, dict):
-                self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
+            try:
+
+                calculation_function = self._get_calculation_function_by_kpi_type(row[Consts.ACTUAL_TYPE])
+                row = self.apply_json_parser(row)
+                merged_scif_mpis = self._parse_json_filters_to_df(row)
+                result_data = calculation_function(row, merged_scif_mpis)
+                if result_data and isinstance(result_data, list):
+                    for result in result_data:
+                        self.results_df.loc[len(self.results_df), result.keys()] = result
+                elif result_data and isinstance(result_data, dict):
+                    self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
+            except:
+
+                pass
+                # Print log error for kpi
+                # row['kpi_type'] ERROR for this
 
     def _parse_json_filters_to_df(self, row):
         JSON = row[row.index.str.contains('JSON') & (~ row.index.str.contains('Config Params'))]
@@ -373,7 +373,8 @@ class ColdCutToolBox:
         return filtered_scif_mpis
 
     def apply_json_parser(self, row):
-        json_relevent_rows_with_parse_logic = row[(row.index.str.contains('JSON')) & (row.notnull())].apply(self.parse_json_row)
+        json_relevent_rows_with_parse_logic = row[(row.index.str.contains('JSON')) & (row.notnull())].apply(
+            self.parse_json_row)
         row = row[~ row.index.isin(json_relevent_rows_with_parse_logic.index)].append(
             json_relevent_rows_with_parse_logic)
         return row
@@ -385,13 +386,16 @@ class ColdCutToolBox:
         The function will be in conjunction with apply. The function will applied on the row(pandas series). This is
             meant to convert the json comprised of improper format of strings and lists to a proper dictionary value.
         '''
+
         if item:
             try:
                 container = self.prereq_parse_json_row(item)
             except:
-                pass #add log warning
+                container = None
+                pass  # add log warning
         else:
             container = None
+
         return container
 
     def save_results_to_db(self):
@@ -417,7 +421,6 @@ class ColdCutToolBox:
             json_str_fixed = json_str.replace("'", '"')
             container = json.loads(json_str_fixed)
 
-
         # container = dict(container)
         # if isinstance(item, list):
         #     container = OrderedDict()
@@ -439,8 +442,6 @@ class ColdCutToolBox:
         # else:
         #     container = ast.literal_eval(item)
         return container
-
-
 
     @staticmethod
     def _get_numerator_and_denominator_type(config_param, context_relevant=False):
