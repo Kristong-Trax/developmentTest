@@ -15,6 +15,7 @@ from Projects.CCBOTTLERSUS.SOVI.KPIToolBox import SOVIToolBox
 from Projects.CCBOTTLERSUS.MSC.KPIToolBox import MSCToolBox
 from Projects.CCBOTTLERSUS.LIBERTY.KPIToolBox import LIBERTYToolBox
 from Projects.CCBOTTLERSUS.CONTACT_CENTER.KPIToolBox import ContactCenterToolBox
+from Projects.CCBOTTLERSUS.FACINGS_BY_SHELF.KPIToolBox import FacingsToolBox
 
 from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
@@ -35,16 +36,17 @@ class CCBOTTLERSUSGenerator:
         It calculates the score for every KPI set and saves it to the DB.
         """
         Common(self.data_provider).commit_results_data()
-        # self.calculate_red_score()
-        # # self.calculate_bci()
-        # # self.calculate_manufacturer_displays()
-        # self.calculate_cma_compliance()
-        # # self.calculate_cma_compliance_sw()
-        # self.calculate_warehouse_juice()
-        # self.calculate_sovi()
-        # self.calculate_msc()
-        # self.calculate_liberty()
+        self.calculate_red_score()
+        # self.calculate_bci()
+        # self.calculate_manufacturer_displays()
+        self.calculate_cma_compliance()
+        # self.calculate_cma_compliance_sw()
+        self.calculate_warehouse_juice()
+        self.calculate_sovi()
+        self.calculate_msc()
+        self.calculate_liberty()
         self.calculate_contact_center()
+        self.calculate_facings_by_shelf()
         self.common_v2.commit_results_data()  # saves results to new tables
 
     @log_runtime('Manufacturer Displays CCBOTTLERSUSCalculations')
@@ -148,8 +150,17 @@ class CCBOTTLERSUSGenerator:
     @log_runtime('Contact Center CCBOTTLERUSCalculations')
     def calculate_contact_center(self):
         Log.info('starting calculate_contact_center')
-        # try:
-        tool_box = ContactCenterToolBox(self.data_provider, self.output, self.common_v2)
-        tool_box.main_calculation()
-        # except Exception as e:
-        #     Log.error('failed to calculate Contact Center due to: {}'.format(e.message))
+        try:
+            tool_box = ContactCenterToolBox(self.data_provider, self.output, self.common_v2)
+            tool_box.main_calculation()
+        except Exception as e:
+            Log.error('failed to calculate Contact Center due to: {}'.format(e.message))
+
+    @log_runtime('Facings By Shelf CCBOTTLERUSCalculations')
+    def calculate_facings_by_shelf(self):
+        Log.info('starting calculate_facings_by_shelf')
+        try:
+            tool_box = FacingsToolBox(self.data_provider, self.output, self.common_v2)
+            tool_box.main_calculation()
+        except Exception as e:
+            Log.error('failed to calculate Facings By Shelf KPIs due to: {}'.format(e.message))

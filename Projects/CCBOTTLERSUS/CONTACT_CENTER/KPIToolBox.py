@@ -47,10 +47,6 @@ class ContactCenterToolBox(GlobalSessionToolBox):
         self.save_to_db()
 
     def calculate_purity(self, kpi):
-        """
-        :param kpi:
-        """
-
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi['name'])
         den_df = self._filter_df(self.mpis, kpi['den_filters']) \
             .rename(columns={'scene_match_fk': 'den_count'})
@@ -155,10 +151,3 @@ class ContactCenterToolBox(GlobalSessionToolBox):
 
     def _get_template_fks(self, templates):
         return self._filter_df(self.templates, filters={'template_name': templates})['template_fk']
-
-    def _get_brand_fks(self, brands):
-        brands = [brand.lower() for brand in brands]
-        products = self.all_products[['brand_fk', 'brand_name']] \
-            .str.lower() \
-            .drop_duplicates()
-        return self._filter_df(products, filters={'brand_name': brands})['brand_fk'].unique()
