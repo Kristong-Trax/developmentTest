@@ -38,7 +38,7 @@ class CBCDAIRYILToolBox:
         self.block = Block(self.data_provider)
         self.general_toolbox = GENERALToolBox(self.data_provider)
         self.visit_date = self.data_provider[Data.VISIT_DATE]
-        self.template_path = self.get_relevant_template()
+        self.template_path = self.get_relevant_template
         self.gap_data = self.get_gap_data()
         self.kpi_weights = parse_template(self.template_path, Consts.KPI_WEIGHT, lower_headers_row_index=0)
         self.template_data = self.parse_template_data()
@@ -49,6 +49,7 @@ class CBCDAIRYILToolBox:
         self.parser = Parser
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
 
+    @property
     def get_relevant_template(self):
         """
         This function returns the relevant template according to it's visit date.
@@ -58,12 +59,15 @@ class CBCDAIRYILToolBox:
         if self.visit_date <= datetime.date(datetime(2019, 12, 31)):
             return "{}/{}/{}".format(Consts.TEMPLATE_PATH, Consts.PREVIOUS_TEMPLATES,
                                      Consts.PROJECT_TEMPLATE_NAME_UNTIL_2019_12_31)
-        elif self.visit_date <= datetime.date(datetime(2020, 02, 01)):
+        elif self.visit_date <= datetime.date(datetime(2020, 02, 1)):
             return "{}/{}/{}".format(Consts.TEMPLATE_PATH, Consts.PREVIOUS_TEMPLATES,
                                      Consts.PROJECT_TEMPLATE_NAME_UNTIL_2020_02_01)
         elif self.visit_date <= datetime.date(datetime(2020, 02, 10)):
             return "{}/{}/{}".format(Consts.TEMPLATE_PATH, Consts.PREVIOUS_TEMPLATES,
                                      Consts.PROJECT_TEMPLATE_NAME_UNTIL_2020_02_10)
+        elif self.visit_date <= datetime.date(datetime(2020, 07, 8)):
+            return "{}/{}/{}".format(Consts.TEMPLATE_PATH, Consts.PREVIOUS_TEMPLATES,
+                                     Consts.PROJECT_TEMPLATE_NAME_UNTIL_2020_07_08)
         else:
             return "{}/{}".format(Consts.TEMPLATE_PATH, Consts.CURRENT_TEMPLATE)
 
