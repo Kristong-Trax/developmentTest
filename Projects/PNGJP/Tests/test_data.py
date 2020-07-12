@@ -1,4 +1,4 @@
-#from KPIUtils_v2.Utils.Consts.OldDB import KpiResults, KpsResults
+#from Trax.Data.ProfessionalServices.PsConsts.OldDB import KpiResults, KpsResults
 # import pandas as pd
 #
 #

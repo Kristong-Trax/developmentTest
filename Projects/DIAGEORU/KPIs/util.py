@@ -1,5 +1,5 @@
 from KPIUtils.Calculations.Assortment import Assortment
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
 from OutOfTheBox.Calculations.SOSBase import BaseFieldRetriever
 from Trax.Algo.Calculations.Core.KPI.UnifiedKpiSingleton import UnifiedKPISingleton
 from KPIUtils.GlobalProjects.DIAGEO.Utils.TemplatesUtil import TemplateHandler

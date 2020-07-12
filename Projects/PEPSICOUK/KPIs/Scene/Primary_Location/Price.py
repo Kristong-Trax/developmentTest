@@ -1,6 +1,6 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts, MatchesConsts
 
 
 class PriceKpi(UnifiedCalculationsScript):
@@ -36,5 +36,5 @@ class PriceKpi(UnifiedCalculationsScript):
             prices_list = filter(lambda v: v is not None, prices_list)
             if prices_list:
                 price = max(prices_list)
-        self.write_to_db_result(fk=kpi_fk, numerator_id=sku, result=price)
+        self.write_to_db_result(fk=kpi_fk, numerator_id=sku, denominator_id=sku,result=price)
         self.util.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None, None])

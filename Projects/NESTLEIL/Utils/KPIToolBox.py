@@ -9,12 +9,12 @@ from Projects.NESTLEIL.Utils.Consts import Consts
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
-from KPIUtils_v2.Utils.Consts.DB import StaticKpis, SessionResultsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import StaticKpis, SessionResultsConsts
 from Projects.NESTLEIL_SAND.Utils.Fetcher import NestleilQueries
 from Trax.Utils.Conf.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
-from KPIUtils_v2.Utils.Consts.PS import ExternalTargetsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.PS import ExternalTargetsConsts
 
 
 __author__ = 'idanr'

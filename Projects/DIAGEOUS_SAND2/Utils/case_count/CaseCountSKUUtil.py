@@ -7,11 +7,11 @@ from plotly.offline import iplot
 from consts import Consts
 from collections import Counter
 from Trax.Cloud.Services.Connector.Logger import Log
-from KPIUtils_v2.Utils.Consts.DB import SessionResultsConsts as Src
+from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts as Src
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts as Mc, ProductsConsts as Pc, ScifConsts as Sc
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts as Mc, ProductsConsts as Pc, ScifConsts as Sc
 
 
 class CaseCountCalculator(GlobalSessionToolBox):
@@ -99,17 +99,16 @@ class CaseCountCalculator(GlobalSessionToolBox):
             results_list.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: result, 'fk': kpi_fk, Src.TARGET: 0})
         return results_list
 
-    @staticmethod
-    def _generate_placeholder_results(facings_res, sku_cases_res, unshoppable_cases_res, implied_cases_res):
+    def _generate_placeholder_results(self, facings_res, sku_cases_res, unshoppable_cases_res, implied_cases_res):
         """This method creates KPI results with zeroes to give the illusion that all KPIs were calculated"""
         placeholder_res = []
         total_res = facings_res+sku_cases_res+unshoppable_cases_res+implied_cases_res
         total_product_fks = list(set([res[Sc.PRODUCT_FK] for res in total_res]))
-        for res_list in [facings_res, sku_cases_res, unshoppable_cases_res, implied_cases_res]:
-            if not res_list:
-                continue
+        for kpi_fk, res_list in [(self.get_kpi_fk_by_kpi_type(Consts.FACINGS_KPI), facings_res),
+                                 (self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI), sku_cases_res),
+                                 (self.get_kpi_fk_by_kpi_type(Consts.NON_SHOPPABLE_CASES_KPI), unshoppable_cases_res),
+                                 (self.get_kpi_fk_by_kpi_type(Consts.IMPLIED_SHOPPABLE_CASES_KPI), implied_cases_res)]:
             res_product_fks = [res[Sc.PRODUCT_FK] for res in res_list]
-            kpi_fk = res_list[0]['fk']
             for missing_product_fk in [fk for fk in total_product_fks if fk not in res_product_fks]:
                 placeholder_res.append({Pc.PRODUCT_FK: missing_product_fk, Src.RESULT: 0, 'fk': kpi_fk})
         return placeholder_res
@@ -231,14 +230,16 @@ class CaseCountCalculator(GlobalSessionToolBox):
         It identify the closest SKU tag to every case and using it to define the case's brand
         """
         total_res, results_for_db, kpi_fk = Counter(), list(), self.get_kpi_fk_by_kpi_type(Consts.SHOPPABLE_CASES_KPI)
+        results = []
         matches = self.matches[~((self.matches['product_type'] == 'Other') &
                                 (self.matches[Consts.MPIPS_FK] == Consts.PACK_FK))]
-        # get results for all cases that aren't considered branded other
-        results = list(matches.groupby(Consts.DISPLAY_IN_SCENE_FK, as_index=False)[Sc.SUBSTITUTION_PRODUCT_FK].apply(
-            list).values)
-        # add results from branded other cases
-        branded_other_results = self._get_results_for_branded_other_cases()
-        results.extend(branded_other_results)
+        if not self.filtered_mdis.empty:
+            # get results for all cases that aren't considered branded other
+            results = list(matches.groupby(Consts.DISPLAY_IN_SCENE_FK, as_index=False)[Sc.SUBSTITUTION_PRODUCT_FK].apply(
+                list).values)
+            # add results from branded other cases
+            branded_other_results = self._get_results_for_branded_other_cases()
+            results.extend(branded_other_results)
 
         orphan_results = self._calculate_orphan_tag_cases()
 
@@ -577,11 +578,11 @@ class CaseCountCalculator(GlobalSessionToolBox):
         return scif
 
     def _get_excluded_product_fks(self):
-        if self.filtered_scif.empty:
+        if self.scif.empty:
             return []
-        other_products = self.filtered_scif[self.filtered_scif[Sc.PRODUCT_TYPE] == 'Other'][
+        other_products = self.scif[self.scif[Sc.PRODUCT_TYPE] == 'Other'][
             Sc.PRODUCT_FK].unique().tolist()
-        substitution_products = self.filtered_scif[self.filtered_scif[Sc.FACINGS] == 0][Sc.PRODUCT_FK].unique().tolist()
+        substitution_products = self.scif[self.scif[Sc.FACINGS] == 0][Sc.PRODUCT_FK].unique().tolist()
         return other_products + substitution_products
 
     def _get_scenes_with_relevant_displays(self):
@@ -603,12 +604,14 @@ if __name__ == '__main__':
     from KPIUtils_v2.DB.CommonV2 import Common
     from Trax.Utils.Conf.Configuration import Config
     from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider
-    Config.init()
-    test_data_provider = KEngineDataProvider('diageous-sand2')
-    sessions = ['b660518b-bcb8-470e-b9fc-0528b38c46bf']
+    from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
+    LoggerInitializer.init('KEngine')
+    Config.init('KEngine')
+    test_data_provider = KEngineDataProvider('diageous')
+    sessions = ['2087F0BA-E12A-458A-83D0-0713E9DF1EBA']
     for session in sessions:
         print(session)
-        test_data_provider.load_session_data(session_uid=session)
+        test_data_provider.load_session_data(session)
         test_common = Common(test_data_provider)
         case_counter_calculator = CaseCountCalculator(test_data_provider, test_common)
         case_counter_calculator.main_case_count_calculations()

@@ -1,6 +1,6 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, MatchesConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts, MatchesConsts
 
 
 class SeondaryPromoPriceKpi(UnifiedCalculationsScript):
@@ -33,6 +33,7 @@ class SeondaryPromoPriceKpi(UnifiedCalculationsScript):
                     price = 1
                 result = self.util.commontools.get_yes_no_result(price)
                 self.write_to_db_result(fk=kpi_fk,numerator_id=row[MatchesConsts.PRODUCT_FK],
-                                        denominator_id=row['display_id'], denominator_result=row['display_id'],
+                                        denominator_id=row[MatchesConsts.PRODUCT_FK],
+                                        denominator_result=row['display_id'],
                                         context_id=store_area, result=result)
         self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()

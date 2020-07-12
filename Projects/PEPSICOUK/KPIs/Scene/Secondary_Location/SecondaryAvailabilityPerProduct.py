@@ -1,6 +1,6 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts
 import numpy as np
 
 
@@ -26,6 +26,7 @@ class SecondaryAvailabilityPerProductKpi(UnifiedCalculationsScript):
             product_display = filtered_matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, 'display_id'])
             for i, row in product_display.iterrows():
                 self.write_to_db_result(fk=kpi_fk, result=1,  numerator_id=row[MatchesConsts.PRODUCT_FK],
-                                        denominator_id=row['display_id'], denominator_result=row['display_id'],
+                                        denominator_id=row[MatchesConsts.PRODUCT_FK],
+                                        denominator_result=row['display_id'],
                                         context_id=store_area)
         self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()

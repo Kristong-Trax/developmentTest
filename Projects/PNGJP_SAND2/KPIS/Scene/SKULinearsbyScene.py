@@ -1,6 +1,6 @@
 from Projects.PNGJP_SAND2.KPIS.Util import PNGJP_SAND2Util
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ScifConsts
 import numpy as np
 
 
@@ -41,10 +41,15 @@ class SKULinearbySceneKpi(UnifiedCalculationsScript):
                                                                      MatchesConsts.WIDTH_MM_X: np.sum})
                     result_df = result_df.merge(max_shelf, on=MatchesConsts.BAY_NUMBER, how='left')
                 for i, row in result_df.iterrows():
+                    bay_shelf_comb_fk = self.util.get_context_fk_from_custom_entity(
+                        bay_no=row[MatchesConsts.BAY_NUMBER],
+                        shelf_no=row[MatchesConsts.SHELF_NUMBER]
+                    )
                     self.write_to_db_result(fk=kpi_fk, numerator_id=row[MatchesConsts.PRODUCT_FK],
                                             numerator_result=row[MatchesConsts.BAY_NUMBER],
                                             denominator_id=template_fk,
                                             denominator_result=row[MatchesConsts.SHELF_NUMBER],
+                                            context_id=bay_shelf_comb_fk,
                                             result=row[MatchesConsts.WIDTH_MM_ADVANCE],
                                             score=row[self.util.MAX_SHELF],
                                             weight=row[MatchesConsts.WIDTH_MM_X],

@@ -1,6 +1,6 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts
 import numpy as np
 
 
@@ -46,7 +46,8 @@ class LinearSpacePerProductKpi(UnifiedCalculationsScript):
             for i, row in result_df.iterrows():
                 self.write_to_db_result(fk=kpi_fk, numerator_result=row[MatchesConsts.SHELF_NUMBER],
                                         result=row[MatchesConsts.WIDTH_MM_ADVANCE],
-                                        numerator_id=row[MatchesConsts.PRODUCT_FK], denominator_id=row['bay_fk'],
+                                        numerator_id=row[MatchesConsts.PRODUCT_FK],
+                                        denominator_id=row[MatchesConsts.PRODUCT_FK],
                                         denominator_result=row[MatchesConsts.BAY_NUMBER], context_id=row['shelf_fk'],
                                         by_scene=True)
                 self.util.add_kpi_result_to_kpi_results_df(

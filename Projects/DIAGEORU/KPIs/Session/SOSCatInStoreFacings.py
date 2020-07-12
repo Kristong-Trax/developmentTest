@@ -1,6 +1,6 @@
 from OutOfTheBox.Calculations.SOSBase import SOSfCalculationBase
 from Projects.DIAGEORU.KPIs.util import SimpleFacingsRetriever
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
 
 
 class CategoryFacingsSOSInWholeStore(SOSfCalculationBase):

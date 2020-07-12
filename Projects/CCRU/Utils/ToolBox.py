@@ -20,7 +20,7 @@ from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
 
 from Projects.CCRU.Utils.Fetcher import CCRUCCHKPIFetcher
 from Projects.CCRU.Utils.Consts import CCRUConsts
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, StoreInfoConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts, StoreInfoConsts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 

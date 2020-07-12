@@ -12,7 +12,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 from Projects.CCRU.Utils.Consts import CCRUConsts
 from Projects.CCRU.Utils.JSON import CCRUJsonGenerator
 from Projects.CCRU.Utils.ToolBox import CCRUKPIToolBox
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
 
 
 __author__ = 'sergey'

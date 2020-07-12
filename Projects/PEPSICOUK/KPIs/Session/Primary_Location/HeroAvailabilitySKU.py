@@ -1,6 +1,6 @@
 from Projects.PEPSICOUK.KPIs.Util import PepsicoUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
 import numpy as np
 import pandas as pd
 from Trax.Utils.Logging.Logger import Log
@@ -32,13 +32,15 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
 
         if not self.util.filtered_scif.empty:
             products_in_session = self.util.filtered_scif.loc[self.util.filtered_scif['facings'] > 0]['product_fk'].values
+            products_df = self.util.all_products[[ScifConsts.PRODUCT_FK, ScifConsts.MANUFACTURER_FK]]
             lvl3_ass_res.loc[lvl3_ass_res['product_fk'].isin(products_in_session), 'in_store'] = 1
+            lvl3_ass_res = lvl3_ass_res.merge(products_df, on=ScifConsts.PRODUCT_FK, how='left')
             for i, result in lvl3_ass_res.iterrows():
                 score = result.in_store * 100
                 custom_res = self.util.commontools.get_yes_no_result(score)
                 self.write_to_db_result(fk=result.kpi_fk_lvl3, numerator_id=result.product_fk,
                                         numerator_result=result.in_store, result=custom_res,
-                                        denominator_id=self.util.own_manuf_fk, denominator_result=1, score=score,
+                                        denominator_id=result.manufacturer_fk, denominator_result=1, score=score,
                                         context_id=location_type_fk)
                 self.util.add_kpi_result_to_kpi_results_df(
                     [result['kpi_fk_lvl3'], result['product_fk'], self.util.store_id, custom_res,

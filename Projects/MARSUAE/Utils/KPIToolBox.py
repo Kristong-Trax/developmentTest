@@ -24,7 +24,7 @@ from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from KPIUtils_v2.Utils.Parsers.ParseInputKPI import filter_df
 from Projects.MARSUAE.Utils.Fetcher import MARSUAE_Queries
 from Projects.MARSUAE.Utils.Nodes import Node
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts
 
 
 __author__ = 'natalyak'
