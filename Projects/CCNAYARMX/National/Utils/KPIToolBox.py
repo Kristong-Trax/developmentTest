@@ -105,11 +105,11 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                              'CCNayarTemplate2020Nacionalv0.6.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_v11.xlsx')
+                                         'CCNayar_POS_Options_v12.xlsx')
 PORTAFOLIO_Y_PRECIOUS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                           'CCNayarNational_Portafolios_y_Precios.xlsx')
 GENERAL_ASSORTMENTS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                        'CCNayar_Assortment_Templates_V3.xlsx')
+                                        'CCNayar_Assortment_Templates_V5.xlsx')
 
 
 def log_runtime(description, log_start=False):
@@ -224,7 +224,7 @@ class NationalToolBox(GlobalSessionToolBox):
                         result_data['identifier_parent'] = parent_kpi_name
                     if 'identifier_result' not in result_data.keys():
                         result_data['identifier_result'] = result_data['kpi_name']
-                    if result_data['result'] <= 1:
+                    if result_data['result'] <= 1 and (result_data['kpi_name'] not in ['Comunicacion - Nacional', 'Plataformas - Nacional']):
                         result_data['result'] = result_data['result'] * 100
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
                 else:  # must be a list
@@ -322,8 +322,9 @@ class NationalToolBox(GlobalSessionToolBox):
 
         plat_template = self.templates[PLATFORMAS]
         plataformas = self.platformas_data
-        relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values)) & (
-                plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
+        relevant_platformas = plataformas[
+            (plataformas['Platform Name'].isin(df['Platform'].values))] if not df.empty else pd.DataFrame()
+
         if not relevant_platformas.empty:
             relevant_platformas = df.merge(relevant_platformas, how='left', on='scene_id')
 
@@ -428,7 +429,7 @@ class NationalToolBox(GlobalSessionToolBox):
                                            (relevant_results['score'] != 0)]
         nan_results = relevant_results[relevant_results['result'].isna()]
         if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
-            result_dict['result'] = pd.np.nan
+            result_dict['result'] = 0
         elif row['Component aggregation'] == 'one-passed':
             if len(relevant_results) > 0 and len(passing_results) > 0:
                 result_dict['result'] = 1
@@ -915,7 +916,7 @@ class NationalToolBox(GlobalSessionToolBox):
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                 return result_dict
         else:
-            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
+            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,SCENE_FK,
                                      FACINGS_IGN_STACK] + \
                                     [denominator_entity, numerator_entity] + self.delete_filter_nan(
                 [numerator_param1, denominator_param1])
@@ -953,6 +954,14 @@ class NationalToolBox(GlobalSessionToolBox):
                 if denominator_scif.empty:
                     result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                     return result_dict
+
+                if row['remove irrelevant logic'] == 'y':
+                    relevant_scene_for_removal = denominator_scif[denominator_scif.template_group == 'Enfriadores CC'].scene_fk.unique()
+                    if 'Irrelevant' in self.scif[self.scif.scene_fk.isin(relevant_scene_for_removal)].product_type.unique():
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                        return result_dict
+
+
                 denominator_id = denominator_scif[denominator_entity].mode()[0]
                 denominator_result = denominator_scif[FINAL_FACINGS].sum()
 
@@ -1435,18 +1444,30 @@ class NationalToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_availability(self, row):
+        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         relevant_scif = self._filter_scif(row, self.scif)
         result = 0 if relevant_scif.empty else 1
         if pd.notna(row[RELEVANT_QUESTION_FK]):
             relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
             result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
-            result = float(result) / 3
+            result = float(result) / self._get_relevant_passing_result_for_materiales_fijos(self.att2)
+            result = 1 if result > 1 else result
 
-        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': return_holder[2],
                        'denominator_id': return_holder[3],
                        'result': result}
         return result_dict
+
+    @staticmethod
+    def _get_relevant_passing_result_for_materiales_fijos(store_size):
+        if store_size == 'Chico':
+            threshold = 1
+        elif store_size == 'Mediano':
+            threshold = 2
+        elif store_size == 'Grande':
+            threshold = 3
+        return threshold
+
 
     def _filter_scif(self, row, df):
         columns_in_scif = row.index[np.in1d(row.index, df.columns)]
@@ -1528,7 +1549,7 @@ class NationalToolBox(GlobalSessionToolBox):
         return result
 
     def calculate_relevant_availability_survey_result(self, relevant_question_fk):
-        result = 0
+        final_result = 0
         survey_response_df = self.get_scene_survey_response()
         if survey_response_df.empty:
             return 0
@@ -1537,10 +1558,15 @@ class NationalToolBox(GlobalSessionToolBox):
         for question_fk in relevant_question_fk:
             relevant_survey_response = survey_response_df[survey_response_df['question_fk'].isin([question_fk])]
             if not relevant_survey_response.empty:
-                if relevant_survey_response.iloc[0, 2] in accepted_results:
-                    result = result + 1
+                survey_answer = relevant_survey_response.iloc[0, 2]
+                if survey_answer in accepted_results:
+                    if survey_answer in accepted_results:
+                        result = int(survey_answer) if survey_answer.isnumeric() else 1
+                    else:
+                        result = 0
+                    final_result = final_result + result
 
-        return result
+        return final_result
 
     @staticmethod
     def calculate_targets_for_availability_kpi(store_size):

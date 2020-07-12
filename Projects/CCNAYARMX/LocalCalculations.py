@@ -1,120 +1,53 @@
-from collections import OrderedDict
-import csv
-import os
-
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
-from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Trax.Utils.Conf.Configuration import Config
-
+from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from Projects.CCNAYARMX.Calculations import Calculations
-
-DATA_PATH = os.path.join(os.path.dirname(__file__), 'Data')
-
-
-def read_sessions(filename):
-    """
-    Reads CSV with `filename` from Data folder into memory.
-
-    :param filename: Name of CSV file to read.
-    :return: List of sessions.
-    """
-
-    with open(os.path.join(DATA_PATH, filename+'.csv'), 'rb') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        sessions = [row[0] for row in csv_reader]
-
-    return sessions
-
-
-def run_sessions(session_list):
-    """
-    Iterates through `session_list` running calculations on then recording each session.
-
-    :param session_list: List of sessions to run calculations on.
-    """
-
-    for session in session_list:
-        if session in completed_sessions:
-            continue
-        print("==================== {} ====================".format(session))
-        data_provider.load_session_data(session_uid=session)
-        output = Output()
-        Calculations(data_provider, output).run_project_calculations()
-        record_session(session)
-
-
-def record_session(session):
-    """
-    Appends `session` to the end of 'tested_sessions.csv'
-    and removes it from 'test_sessions.csv'.
-
-    :param session: most recently run session to add to 'tested_sessions.csv'.
-    """
-
-    completed_sessions.append(session)
-
-    # add session to 'tested_sessions.csv'
-    with open(os.path.join(DATA_PATH, 'tested_sessions.csv'), 'rb') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        tested_sessions = OrderedDict.fromkeys([row[0] for row in csv_reader]).keys()
-
-    try:
-        tested_sessions.remove(session)
-    except ValueError:
-        pass
-    tested_sessions.append(session)
-
-    with open(os.path.join(DATA_PATH, 'tested_sessions.csv'), 'wb') as csv_file:
-        csv_writer = csv.writer(csv_file)
-        csv_writer.writerows([[session] for session in tested_sessions])
-
-    # remove session from 'test_sessions.csv'
-    with open(os.path.join(DATA_PATH, 'test_sessions.csv'), 'rb') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        test_sessions = {row[0] for row in csv_reader}
-
-    if len(test_sessions) > 0:
-        test_sessions.discard(session)
-
-        with open(os.path.join(DATA_PATH, 'test_sessions.csv'), 'wb') as csv_file:
-            csv_writer = csv.writer(csv_file)
-            csv_writer.writerows([[session] for session in test_sessions])
-
 
 if __name__ == '__main__':
     LoggerInitializer.init('ccnayarmx calculations')
     Config.init()
-    data_provider = KEngineDataProvider(project_name='ccnayarmx')
+    project_name = 'ccnayarmx'
 
-    check_sessions = [
-        '2cb0ec65-2803-413e-8a7b-6734bc98781a',
-        'a5662f4b-6122-49f6-823e-358758eda37a',
-        'b7faec9b-4c34-496b-b78a-d2748c034f99',
-        # 'e4aa24a5-d13e-4b6a-8941-0a195d589070',  # error
-        # '5f20ba65-63ae-4057-a8b0-3491accf7869',  # fine
-        # '69b028e2-5119-4c11-a846-94ca29adede4',
-        # 'cf7bd046-0acc-4c60-bb33-3ed5dfdd836e',
-        # 'E45618DB-39E9-45A4-B541-054C85515A69',
-        # '0eda0210-b4ed-461c-8b32-09bfddf0cab8',
-        # '1c7303e6-96bc-4360-822f-e00886701a1b',
-        # '9ba32139-c2bd-4d36-96b3-6268628960ee',
-        # '69b028e2-5119-4c11-a846-94ca29adede4',
-        # 'cf7bd046-0acc-4c60-bb33-3ed5dfdd836e',
-        # 'E45618DB-39E9-45A4-B541-054C85515A69',
-        # '69b028e2-5119-4c11-a846-94ca29adede4',  # fine
-        # 'cf7bd046-0acc-4c60-bb33-3ed5dfdd836e',
-        # 'E45618DB-39E9-45A4-B541-054C85515A69',
-        # '725524e8-2e9b-4c42-ace1-b2120d987f9e',
-        # '90004fbd-58dd-418f-a359-f2605134291c',
-        # '677d0628-9566-4760-8702-821882f74665',
-        # 'f6f086d8-b269-4f2d-8229-144af3b1edf8',
-        # '7e117743-0448-447b-9ad3-7c895ca8a0b7',
-        # '543f7eff-309b-419c-8f39-931cc5cbcba6',
-        # '199eda17-4fbb-4c23-b02d-8f3f47e079d9',
+    from Trax.Data.Projects.Store import ProjectStore
+
+    ProjectStore.get_project(project_name)['rds_name'] = ProjectStore.get_project(project_name)['rds_name'].replace(
+        'mysql.vpn.', 'mysql.')
+
+    data_provider = KEngineDataProvider(project_name)
+    session_list = [
+'cc4694de-bfaa-48af-95fd-68f382244d96'
+
+        # 'a25897ed-412a-4c13-a65a-7e89a143f08f',
+        # '8c6282cd-f039-417c-b095-e634e72009b2',
+        # 'fd6ffdbc-aed1-4985-8839-e6e818dd1cba',
+        # '37faa72d-6736-4b91-a706-200e86393cac',
+        # 'fd6ffdbc-aed1-4985-8839-e6e818dd1cba',
+        # '64547dd6-a854-4d2b-9a0d-d2fdc1309eb1'
+
+        # '0001bcaa-fa9f-41d7-9b05-ecf606e3fcea',
+        # '0061aa06-5a5c-4632-809a-05896f5d0449',
+        # '00719b93-e709-453f-a95a-3d8f4c0c323f'
+
+        # 'ff28d81f-8fe0-4404-a63c-264b1e094b39',
+        # 'fd6ffdbc-aed1-4985-8839-e6e818dd1cba',
+        # 'fd0abb6f-1699-40e5-a29e-3b2ed863a45b',
+        # 'fcf9cff3-3ff4-4ed2-bdc8-899a207b4d2f'
+
+        # '2d802f39-05d4-47ee-9af0-97b7cb3efa46',
+        # 'd5613cbc-6f10-46a2-9e99-acb6c8c21edb',
+        # '2d802f39-05d4-47ee-9af0-97b7cb3efa46',
+        # 'f8f413dc-7a9c-47d6-813b-dadd7f834a5f'
+        # 'fd0abb6f-1699-40e5-a29e-3b2ed863a45b'
+
+        # 'd5613cbc-6f10-46a2-9e99-acb6c8c21edb',
+        # 'cf12065b-e383-4009-a1e8-c8d9ced9bbf9',
+        # 'b974cb3b-a609-4610-ab14-ae94163d0c76',
+        # 'cf12065b-e383-4009-a1e8-c8d9ced9bbf9',
+        # 'a25897ed-412a-4c13-a65a-7e89a143f08f',
+        # 'd64cbf6a-c1eb-4c10-a880-668617dd38ac',
+        # '77acfbe0-347e-4f23-bab6-f93781515b31'
     ]
-
-    completed_sessions = []
-
-    run_sessions(check_sessions)
-    run_sessions(read_sessions('test_sessions'))
-    run_sessions(read_sessions('tested_sessions'))
+    for session in session_list:
+        data_provider.load_session_data(session)
+        output = Output()
+        Calculations(data_provider, output).run_project_calculations()
