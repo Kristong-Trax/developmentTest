@@ -9,7 +9,11 @@ if __name__ == '__main__':
     project_name = 'lionnz'
     data_provider = KEngineDataProvider(project_name)
     sessions = [
-        '4C359AE0-3D19-4F70-BAC2-5D136C157009'
+        '482d1805-f825-4b08-afb6-5bc69ffdf41e',
+        '427A4567-0A34-4264-9964-5538039B9B99',
+        '4C359AE0-3D19-4F70-BAC2-5D136C157009',
+        'B1123864-62AA-4951-94CA-59E256F5988E',
+        # '4C359AE0-3D19-4F70-BAC2-5D136C157009'
         # '35DCB86F-3E35-4F24-827C-F51112DC2420',
         # '9F36C933-BE8A-4BE5-9473-E23EFFDFEF63',
         # '6C388114-B8E5-4262-952D-87207BCB5C13',
