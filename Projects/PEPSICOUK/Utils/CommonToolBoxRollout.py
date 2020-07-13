@@ -240,9 +240,9 @@ class PEPSICOUKCommonToolBox:
         mix_scenes = self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(mix_displays)][ScifConsts.SCENE_FK].unique()
         mix_matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK].isin(mix_scenes)]
         shelf_len_df = pd.DataFrame(columns=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER, 'shelf_length'])
-        shelf_len_df[MatchesConsts.SCENE_FK] = shelf_len_df[MatchesConsts.SCENE_FK].astype('float')
-        shelf_len_df[MatchesConsts.BAY_NUMBER] = shelf_len_df[MatchesConsts.BAY_NUMBER].astype('float')
         if not mix_matches.empty:
+            shelf_len_df[MatchesConsts.SCENE_FK] = shelf_len_df[MatchesConsts.SCENE_FK].astype('float')
+            shelf_len_df[MatchesConsts.BAY_NUMBER] = shelf_len_df[MatchesConsts.BAY_NUMBER].astype('float')
             scenes_bays = mix_matches.drop_duplicates(subset=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])
             for i, row in scenes_bays.iterrows():
                 filtered_matches = mix_matches[(mix_matches[MatchesConsts.SCENE_FK]==row[MatchesConsts.SCENE_FK]) &
