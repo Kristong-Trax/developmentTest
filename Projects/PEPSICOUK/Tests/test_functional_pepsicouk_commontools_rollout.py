@@ -41,6 +41,12 @@ class Test_PEPSICOUKCommon(TestFunctionalCase):
         self.kpi_scores_values_mock = self.mock_kpi_score_value_table()
         self.mock_all_products()
         self.mock_all_templates()
+        self.mock_checK_if_all_bins_are_recognized()
+
+    def mock_checK_if_all_bins_are_recognized(self):
+        flag = self.mock_object('PEPSICOUKCommonToolBox.check_if_all_bins_are_recognized',
+                              path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        flag.return_value = True
 
     def mock_store_area(self, data):
         sa = self.mock_object('PEPSICOUKCommonToolBox.get_scene_to_store_area_map',
