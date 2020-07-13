@@ -117,11 +117,11 @@ class ColdCutToolBox:
         relevant_kpi_types = [
             # Consts.SOS,
             # Consts.SCENE_LOCATION,
-            Consts.HORIZONTAL_SHELF_POSITION,
+            # Consts.HORIZONTAL_SHELF_POSITION,
             Consts.VERTICAL_SHELF_POSITION,
-            Consts.BLOCKING,
-            Consts.BLOCK_ADJ,
-            Consts.BLOCKING_ORIENTATION
+            # Consts.BLOCKING,
+            # Consts.BLOCK_ADJ,
+            # Consts.BLOCKING_ORIENTATION
             # Consts.BAY_POSITION, Consts.DIAMOND_POSITION
         ]
 
@@ -216,8 +216,8 @@ class ColdCutToolBox:
         mpis = df  # get this from the external target filter_df method thingy
         scene_facings_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['facings'].max()
         scene_facings_df.rename(columns={'facings': 'scene_facings'}, inplace=True)
-        shelf_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['shelf_number'].max()
-        shelf_df.rename(columns={'shelf_number': 'shelf_count'}, inplace=True)
+        shelf_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['shelf_number_from_bottom'].max()
+        shelf_df.rename(columns={'shelf_number_from_bottom': 'shelf_count'}, inplace=True)
 
         pre_sort_mpis = pd.merge(mpis, scene_facings_df, how='left', on=['scene_fk', 'product_fk'])
         scene_facings_df_sorted = pre_sort_mpis.sort_values('scene_facings')
@@ -285,10 +285,11 @@ class ColdCutToolBox:
 
     @staticmethod
     def _calculate_vertical_position(row):
-        shelf_number = str(row.shelf_number)
+        shelf_number = str(row.shelf_number_from_bottom)
         shelf_count = str(row.shelf_count)
 
-        pos_value = Consts.shelf_map[shelf_count][shelf_number]
+        shelf_count_pos_map = Consts.shelf_map[shelf_count]
+        pos_value = shelf_count_pos_map[shelf_number]
 
         return pos_value
 
