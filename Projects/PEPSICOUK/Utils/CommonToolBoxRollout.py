@@ -125,7 +125,7 @@ class PEPSICOUKCommonToolBox:
         scenes_with_bin_logic = set(self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(tasks_with_bin_logic)]\
             [ScifConsts.SCENE_FK].unique())
         scenes_with_tagged_bins = set(self.scene_display[ScifConsts.SCENE_FK].unique()) if \
-            self.scene_display[ScifConsts.SCENE_FK].unique() else set([0])
+            len(self.scene_display[ScifConsts.SCENE_FK].unique())>0 else set([0])
         missing_bin_tags = scenes_with_bin_logic.difference(scenes_with_tagged_bins)
         flag = False if missing_bin_tags else True
         return flag
