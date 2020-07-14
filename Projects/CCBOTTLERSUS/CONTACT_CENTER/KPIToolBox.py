@@ -59,7 +59,7 @@ class ContactCenterToolBox(GlobalSessionToolBox):
         merged_df = num_df.merge(den_df[['scene_fk', 'den_count']], on=['scene_fk'])
 
         def calc_purity_result(row):
-            purity = round(row['num_count'] / row['den_count'], 2)
+            purity = round(row['num_count'] / row['den_count'], 2) * 100
             result = int(purity >= kpi['purity_threshold']) * 100
             return pd.Series([purity, result])
 
@@ -110,7 +110,7 @@ class ContactCenterToolBox(GlobalSessionToolBox):
             DENOMINATOR_ID: self.store_id,
             RESULT: result,
             IDENTIFIER_RESULT: kpi[NAME],
-            'should_enter': True
+            SHOULD_ENTER: True
         }, ignore_index=True)
 
     def save_to_results(self, values):

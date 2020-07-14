@@ -46,8 +46,8 @@ KPIs = {
         {
             NAME: 'Cooler Purity - Scene',
             KPI_TYPE: COOLER_PURITY,
-            'minimum_threshold': .40,
-            'purity_threshold': .95,
+            'minimum_threshold': 40,
+            'purity_threshold': 95,
             DEN_FILTERS: {
                 'template_name': ['Other Cooler'],
                 UNITED_DELIVER: 'Y'
