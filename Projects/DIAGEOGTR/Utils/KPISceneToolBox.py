@@ -123,11 +123,15 @@ class DIAGEOGTRSceneToolBox:
             for i, row in scif.iterrows():
                 product_fk = row['product_fk']
                 if pd.isnull(row[facings_field]):
-                    sku_facings = 0
-                    print(row)
+                    Log.info(
+                         "Skipping: Scif Facings is null : {value} for Product {product_fk} Scene {scene_id}".format(
+                             value=row[facings_field],
+                             product_fk=row['product_fk'],
+                             scene_id=row['scene_id'])
+                     )
                     continue
-                else:
-                    sku_facings = int(row[facings_field])
+
+                sku_facings = int(row[facings_field])
                 self.common.write_to_db_result(
                     fk=kpi_fk,
                     numerator_id=product_fk,
