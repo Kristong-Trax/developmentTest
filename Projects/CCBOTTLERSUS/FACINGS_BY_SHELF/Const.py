@@ -1,3 +1,8 @@
+FK = 'fk'
+NUMERATOR_ID = 'numerator_id'
+DENOMINATOR_ID = 'denominator_id'
+CONTEXT_ID = 'context_id'
+RESULT = 'result'
 PRODUCT_FK = 'product_fk'
 SHELF_NUMBER = 'shelf_number'
 TEMPLATE_FK = 'template_fk'

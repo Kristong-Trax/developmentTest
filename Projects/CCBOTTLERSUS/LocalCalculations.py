@@ -45,9 +45,9 @@ if __name__ == '__main__':
     ]
 
     sessions = [
+        '56c14363-dc7c-43a1-b51c-a6b7b3215595',
         '826ace9e-abec-4660-9b65-96d7a4604bf8',  # Contact Center
         '7f474bd8-cd5e-413c-90e8-0be771f03f1c',
-        '56c14363-dc7c-43a1-b51c-a6b7b3215595',
     ]
 
     for session in sessions:

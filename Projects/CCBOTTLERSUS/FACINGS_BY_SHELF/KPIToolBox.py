@@ -7,7 +7,7 @@ from Projects.CCBOTTLERSUS.FACINGS_BY_SHELF.Const import *
 
 __author__ = 'trevaris'
 
-COLUMNS = ['scene_match_fk', 'scene_fk', 'shelf_number', 'product_fk']
+COLUMNS = ['scene_match_fk', 'template_fk', 'scene_fk', 'shelf_number', 'product_fk']
 
 
 class FacingsToolBox(GlobalSessionToolBox):
@@ -15,9 +15,13 @@ class FacingsToolBox(GlobalSessionToolBox):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
 
         self.mpis = self.matches.merge(self.scene_info, on='scene_fk')[COLUMNS]
+        self.results_df = pd.DataFrame(
+            columns=[FK, NUMERATOR_ID, DENOMINATOR_ID, CONTEXT_ID, RESULT]
+        )
 
     def main_calculation(self):
         self.calculate_facings_by_shelf()
+        self.save_to_db()
 
     def calculate_facings_by_shelf(self):
         kpi_name = 'Facings by Shelf in Location'
@@ -28,12 +32,23 @@ class FacingsToolBox(GlobalSessionToolBox):
             .rename(columns={'scene_match_fk': FACINGS})
 
         for _, row in df.iterrows():
-            self.common.write_to_db_result(
-                fk=kpi_id,
-                numerator_id=row[PRODUCT_FK],
-                denominator_id=row[SHELF_NUMBER],
-                context_id=row[TEMPLATE_FK],
-                result=row[FACINGS]
+            self.save_to_results([kpi_id, row[PRODUCT_FK], row[SHELF_NUMBER], row[TEMPLATE_FK], row[FACINGS]])
+
+    def save_to_results(self, values):
+        self.results_df.loc[self.results_df.shape[0], self.results_df.columns.tolist()] = values
+
+    def save_to_db(self):
+        """
+        Writes values in `self.results_df` to database.
+        """
+
+        for row in self.results_df.itertuples():
+            self.write_to_db(
+                fk=getattr(row, FK),
+                numerator_id=getattr(row, NUMERATOR_ID),
+                denominator_id=getattr(row, DENOMINATOR_ID),
+                context_id=getattr(row, CONTEXT_ID),
+                result=getattr(row, RESULT),
             )
 
     @staticmethod
