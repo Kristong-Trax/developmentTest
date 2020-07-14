@@ -1382,8 +1382,9 @@ class ToolBox:
 
             if Consts.EX_MIN_FACINGS in scene_mpis.columns.tolist():
                 scene_mpis[Consts.EX_MIN_FACINGS].fillna(0)
-                scene_mpis['result'] = scene_mpis['facings'] >= scene_mpis[Consts.EX_MIN_FACINGS]
-                if scene_mpis['result'].any():
+                relevant_mpis = scene_mpis[scene_mpis[MatchesConsts.PRODUCT_FK].isin(product_fk_with_substs)]
+                relevant_mpis['result'] = relevant_mpis['facings'] >= relevant_mpis[Consts.EX_MIN_FACINGS]
+                if relevant_mpis['result'].any():
                     sum_scenes_passed += 1
                     break
 

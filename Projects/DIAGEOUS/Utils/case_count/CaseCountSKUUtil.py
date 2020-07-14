@@ -63,6 +63,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
                     sku_cases_res = self._count_number_of_cases()
                     unshoppable_cases_res = []
                     implied_cases_res = []
+                sku_cases_res = self._remove_nonshoppable_cases_from_shoppable_cases(sku_cases_res,
+                                                                                     unshoppable_cases_res)
                 total_res = self._calculate_total_cases(sku_cases_res + implied_cases_res + unshoppable_cases_res)
                 placeholder_res = self._generate_placeholder_results(facings_res, sku_cases_res,
                                                                      unshoppable_cases_res, implied_cases_res)
@@ -112,6 +114,17 @@ class CaseCountCalculator(GlobalSessionToolBox):
             for missing_product_fk in [fk for fk in total_product_fks if fk not in res_product_fks]:
                 placeholder_res.append({Pc.PRODUCT_FK: missing_product_fk, Src.RESULT: 0, 'fk': kpi_fk})
         return placeholder_res
+
+    @staticmethod
+    def _remove_nonshoppable_cases_from_shoppable_cases(sku_cases_res, unshoppable_cases_res):
+        unshopable_cases_dict = \
+            {res[Pc.PRODUCT_FK]: res[Src.RESULT] for res in unshoppable_cases_res if res[Src.RESULT] > 0}
+        new_sku_cases_res = []
+        for res in sku_cases_res:
+            if res[Pc.PRODUCT_FK] in unshopable_cases_dict.keys():
+                res[Src.RESULT] = res[Src.RESULT] - unshopable_cases_dict[res[Pc.PRODUCT_FK]]
+            new_sku_cases_res.append(res)
+        return new_sku_cases_res
 
     def _save_results_to_db(self, results_list):
         """This method saves the KPI results to DB"""
@@ -307,15 +320,19 @@ class CaseCountCalculator(GlobalSessionToolBox):
         grouped_scif_dict = grouped_scif.groupby(Pc.PRODUCT_FK)[Sc.SKU_TYPE].apply(list).to_dict()
         for product_fk in self.target.keys():
             sku_types = grouped_scif_dict.pop(product_fk, [])
-            res = 1 if len(sku_types) == 1 and sku_types[0].lower() == 'case' else 0
+            if len(sku_types) == 1 and sku_types[0].lower() == 'case':
+                res = grouped_scif[grouped_scif[Pc.PRODUCT_FK] == product_fk]['tagged'].iloc[0]
+            else:
+                res = 0
             unshoppable_results.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: res, 'fk': kpi_fk})
         # we only want to save non-shoppable results for products that have non-shoppable cases if they are not
         # in the standards
         for product_fk in list(set(grouped_scif_dict.keys()) - set(self.excluded_product_fks)):
             sku_types = grouped_scif_dict.get(product_fk, [])
-            res = 1 if len(sku_types) == 1 and sku_types[0].lower() == 'case' else 0
-            if res == 1:
+            if len(sku_types) == 1 and sku_types[0].lower() == 'case':
+                res = grouped_scif[grouped_scif[Pc.PRODUCT_FK] == product_fk]['tagged'].iloc[0]
                 unshoppable_results.append({Pc.PRODUCT_FK: product_fk, Src.RESULT: res, 'fk': kpi_fk})
+
         return unshoppable_results
 
     @staticmethod
@@ -580,7 +597,7 @@ class CaseCountCalculator(GlobalSessionToolBox):
     def _get_excluded_product_fks(self):
         if self.scif.empty:
             return []
-        other_products = self.scif[self.scif[Sc.PRODUCT_TYPE] == 'Other'][
+        other_products = self.scif[self.scif[Sc.PRODUCT_TYPE].isin(['Other', 'Empty'])][
             Sc.PRODUCT_FK].unique().tolist()
         substitution_products = self.scif[self.scif[Sc.FACINGS] == 0][Sc.PRODUCT_FK].unique().tolist()
         return other_products + substitution_products
