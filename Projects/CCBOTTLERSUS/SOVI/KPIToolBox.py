@@ -86,7 +86,7 @@ class SOVIToolBox:
         num_df = num_df.groupby(num_columns, as_index=False)['facings'].sum()
         num_df.rename(columns={'facings': 'numerator'}, inplace=True)
 
-        den_columns = [col for col in [denominator_id, context_id] if col]
+        den_columns = [col for col in [denominator_id] if col]
         den_df = self.scif.groupby(den_columns, as_index=False)['facings'].sum()
         den_df.rename(columns={'facings': 'denominator'}, inplace=True)
 
@@ -117,7 +117,7 @@ class SOVIToolBox:
                                            context_id=getattr(result, str(context_id), None),
                                            numerator_result=getattr(result, 'numerator', 0),
                                            denominator_result=getattr(result, 'denominator', 0),
-                                           results_df=result.sos, identifier_parent=identifier_parent,
+                                           result=result.sos * 100, identifier_parent=identifier_parent,
                                            identifier_result=identifier_result, should_enter=True)
 
     def _get_parent_kpi_fk_by_kpi_type(self, kpi_type):
