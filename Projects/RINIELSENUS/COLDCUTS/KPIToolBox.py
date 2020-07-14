@@ -117,7 +117,7 @@ class ColdCutToolBox:
         relevant_kpi_types = [
             # Consts.SOS,
             # Consts.SCENE_LOCATION,
-            # Consts.HORIZONTAL_SHELF_POSITION,
+            Consts.HORIZONTAL_SHELF_POSITION,
             Consts.VERTICAL_SHELF_POSITION,
             # Consts.BLOCKING,
             # Consts.BLOCK_ADJ,
@@ -216,14 +216,14 @@ class ColdCutToolBox:
         mpis = df  # get this from the external target filter_df method thingy
         scene_facings_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['facings'].max()
         scene_facings_df.rename(columns={'facings': 'scene_facings'}, inplace=True)
-        shelf_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['shelf_number_from_bottom'].max()
+        shelf_df = self.merged_scif_mpis.groupby(['scene_fk', 'bay_number'], as_index=False)['shelf_number_from_bottom'].max()
         shelf_df.rename(columns={'shelf_number_from_bottom': 'shelf_count'}, inplace=True)
 
         pre_sort_mpis = pd.merge(mpis, scene_facings_df, how='left', on=['scene_fk', 'product_fk'])
         scene_facings_df_sorted = pre_sort_mpis.sort_values('scene_facings')
         mpis = scene_facings_df_sorted.drop_duplicates(['scene_fk', 'product_fk'], keep="last")
 
-        mpis = pd.merge(mpis, shelf_df, how='left', on=['scene_fk', 'product_fk'])
+        mpis = pd.merge(mpis, shelf_df, how='left', on=['scene_fk', 'bay_number'])
 
         mpis['position'] = mpis.apply(self._calculate_vertical_position, axis=1)
         mpis['result_type_fk'] = mpis['position'].apply(lambda x: Consts.CUSTOM_RESULT.get(x, 0))
@@ -248,9 +248,14 @@ class ColdCutToolBox:
     def calculate_horizontal_position(self, row, df):
         result_dict_list = []
         mpis = df  # get this from the external target filter_df method thingy
-        bay_df = mpis.groupby('scene_fk', as_index=False)['bay_number'].max()
+
+        scene_facings_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['facings'].max()
+        scene_facings_df.rename(columns={'facings': 'scene_facings'}, inplace=True)
+        pre_sort_mpis = pd.merge(mpis, scene_facings_df, how='left', on=['scene_fk', 'product_fk'])
+
+        bay_df = pre_sort_mpis.groupby('scene_fk', as_index=False)['bay_number'].max()
         bay_df.rename(columns={'bay_number': 'bay_count'}, inplace=True)
-        mpis = pd.merge(mpis, bay_df, how='left', on='scene_fk')
+        mpis = pd.merge(pre_sort_mpis, bay_df, how='left', on='scene_fk')
         mpis['position'] = mpis.apply(self._calculate_horizontal_position, axis=1)
         mpis['result_type_fk'] = mpis['position'].apply(lambda x: Consts.CUSTOM_RESULT.get(x, 0))
         mpis = mpis.groupby(['product_fk'], as_index=False)['result_type_fk'].agg(pd.Series.mode)
