@@ -51,7 +51,7 @@ PARAM_DB_MAP = {
 # list of `exclude_include` sheet columns
 INC_EXC_LIST = ['stacking', 'others', 'irrelevant', 'empty',
                 'categories_to_exclude', 'scene_types_to_exclude',
-                'brands_to_exclude', 'ean_codes_to_exclude']
+                'brands_to_exclude', 'ean_codes_to_exclude', 'scene_types_to_exclude_stacking']
 # assortment KPIs
 # Codes
 OOS_CODE = 1
@@ -303,8 +303,7 @@ class LIONNZToolBox:
                 detail['pk'] = kpi['pk'].iloc[0]
                 # gather details
                 groupers, query_string = get_groupers_and_query_string(detail)
-                _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL]
-                                                       == kpi[KPI_TYPE_COL].values[0]]
+                _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL] == kpi[KPI_TYPE_COL].values[0]]
                 # gather include exclude
                 include_exclude_data_dict = get_include_exclude(_include_exclude)
                 dataframe_to_process = self.get_sanitized_match_prod_scene(
@@ -504,6 +503,7 @@ class LIONNZToolBox:
         include_stacking = include_exclude_data_dict.get('stacking')
         # list
         scene_types_to_exclude = include_exclude_data_dict.get('scene_types_to_exclude', False)
+        scene_types_to_exclude_stacking = include_exclude_data_dict.get('scene_types_to_exclude_stacking', False)
         categories_to_exclude = include_exclude_data_dict.get('categories_to_exclude', False)
         brands_to_exclude = include_exclude_data_dict.get('brands_to_exclude', False)
         ean_codes_to_exclude = include_exclude_data_dict.get('ean_codes_to_exclude', False)
@@ -518,10 +518,37 @@ class LIONNZToolBox:
                 inplace=True
             )
         if not include_stacking:
+            # get column value for this row
+
+            if scene_types_to_exclude_stacking:
+                newdf = sanitized_products_in_scene[ ~ sanitized_products_in_scene['template_name'].str.upper().isin(
+                    [x.upper() if type(x) in [unicode, str] else x for x in scene_types_to_exclude_stacking]
+                )]
+
+                for each_template_name in scene_types_to_exclude_stacking:
+
+                    sanitized_products_in_scene_for_temp = sanitized_products_in_scene[
+                        sanitized_products_in_scene['template_name'].str.upper() == each_template_name.upper()
+                        ]
+
+                    filtered = sanitized_products_in_scene_for_temp[
+                        sanitized_products_in_scene_for_temp['stacking_layer'] <= 1
+                        ]
+
+                    if filtered.empty:
+                        pass
+                    else:
+                        # use the filtered
+                        newdf = newdf.append(filtered)
+
+                sanitized_products_in_scene = newdf
+            else:
+                Log.info("Exclude stacking other than in layer 1 or negative stacking [menu]")
+                sanitized_products_in_scene = sanitized_products_in_scene.loc[
+                    sanitized_products_in_scene['stacking_layer'] <= 1]
+
             # exclude stacking if the flag is set
-            Log.info("Exclude stacking other than in layer 1 or negative stacking [menu]")
-            sanitized_products_in_scene = sanitized_products_in_scene.loc[
-                sanitized_products_in_scene['stacking_layer'] <= 1]
+
         if categories_to_exclude:
             # list of categories to exclude is present, otherwise all included
             Log.info("Exclude categories {}".format(categories_to_exclude))

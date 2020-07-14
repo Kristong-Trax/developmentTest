@@ -21,7 +21,7 @@ def get_exclusion_template_df_all_tests():
     return template_df
 
 
-class Test_PEPSICOUK(TestFunctionalCase):
+class Test_PEPSICOUKUtil(TestFunctionalCase):
     # template_df_mock = get_exclusion_template_df_all_tests()
 
     @property
@@ -29,7 +29,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         return 'Projects.PEPSICOUK.KPIs.Util'
 
     def set_up(self):
-        super(Test_PEPSICOUK, self).set_up()
+        super(Test_PEPSICOUKUtil, self).set_up()
         self.mock_data_provider()
         self.data_provider_mock.project_name = 'Test_Project_1'
         self.data_provider_mock.rds_conn = MagicMock()
@@ -60,6 +60,12 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_all_products()
         self.mock_all_templates()
         self.mock_position_graph()
+        self.mock_checK_if_all_bins_are_recognized()
+
+    def mock_checK_if_all_bins_are_recognized(self):
+        flag = self.mock_object('PEPSICOUKCommonToolBox.check_if_all_bins_are_recognized',
+                                    path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        flag.return_value = True
 
     def mock_store_data(self):
         store_data = self.mock_object('PEPSICOUKCommonToolBox.get_store_data_by_store_id',

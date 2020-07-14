@@ -68,6 +68,12 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_position_graph()
         self.mock_position_graph_block()
         self.mock_position_graph_adjacency()
+        self.mock_checK_if_all_bins_are_recognized()
+
+    def mock_checK_if_all_bins_are_recognized(self):
+        flag = self.mock_object('PEPSICOUKCommonToolBox.check_if_all_bins_are_recognized',
+                                    path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        flag.return_value = True
 
     def mock_scene_store_area(self):
         sa = self.mock_object('PEPSICOUKCommonToolBox.get_scene_to_store_area_map',

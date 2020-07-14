@@ -109,11 +109,26 @@ class PEPSICOUKCommonToolBox:
                                                       'HO Agreed Half Pallet'][self.SHELF_LEN_DISPL].values[0]
         self.shelf_len_mixed_shelves = self.calculate_shelf_len_for_mixed_shelves()
         self.scene_display = self.get_match_display_in_scene()
-        self.assign_bays_to_bins()
+        self.are_all_bins_tagged = self.check_if_all_bins_are_recognized()
         self.filtered_scif_secondary = self.get_initial_secondary_scif()
         self.filtered_matches_secondary = self.get_initial_secondary_matches()
-        self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
-                                                              self.filtered_matches_secondary)
+        if self.are_all_bins_tagged:
+            self.assign_bays_to_bins()
+            self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
+                                                                      self.filtered_matches_secondary)
+
+    def check_if_all_bins_are_recognized(self):
+        tasks_with_bin_logic =  self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
+                                                  (self.displays_template[self.BAY_TO_SEPARATE] == 'No') &
+                                                  (self.displays_template[self.BIN_TO_SEPARATE] == 'Yes')] \
+            [self.DISPLAY_NAME_TEMPL].unique()
+        scenes_with_bin_logic = set(self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(tasks_with_bin_logic)]\
+            [ScifConsts.SCENE_FK].unique())
+        scenes_with_tagged_bins = set(self.scene_display[ScifConsts.SCENE_FK].unique()) if \
+            len(self.scene_display[ScifConsts.SCENE_FK].unique())>0 else set([0])
+        missing_bin_tags = scenes_with_bin_logic.difference(scenes_with_tagged_bins)
+        flag = False if missing_bin_tags else True
+        return flag
 
     def add_sub_category_to_empty_and_other(self, scif, matches):
         # exclude bin scenes
@@ -225,9 +240,9 @@ class PEPSICOUKCommonToolBox:
         mix_scenes = self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(mix_displays)][ScifConsts.SCENE_FK].unique()
         mix_matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK].isin(mix_scenes)]
         shelf_len_df = pd.DataFrame(columns=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER, 'shelf_length'])
-        shelf_len_df[MatchesConsts.SCENE_FK] = shelf_len_df[MatchesConsts.SCENE_FK].astype('float')
-        shelf_len_df[MatchesConsts.BAY_NUMBER] = shelf_len_df[MatchesConsts.BAY_NUMBER].astype('float')
         if not mix_matches.empty:
+            shelf_len_df[MatchesConsts.SCENE_FK] = shelf_len_df[MatchesConsts.SCENE_FK].astype('float')
+            shelf_len_df[MatchesConsts.BAY_NUMBER] = shelf_len_df[MatchesConsts.BAY_NUMBER].astype('float')
             scenes_bays = mix_matches.drop_duplicates(subset=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])
             for i, row in scenes_bays.iterrows():
                 filtered_matches = mix_matches[(mix_matches[MatchesConsts.SCENE_FK]==row[MatchesConsts.SCENE_FK]) &
