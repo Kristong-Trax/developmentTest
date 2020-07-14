@@ -70,19 +70,6 @@ class ContactCenterToolBox(GlobalSessionToolBox):
             self.save_to_results([kpi_id, kpi[NAME], self.own_manufacturer, self.store_id, scene[SCENE_FK],
                                   scene['purity'], scene[RESULT], scene[SCENE_FK], kpi[IDENTIFIER_PARENT],  True])
 
-        # for _, scene in min_scenes.iterrows():
-        #     self.results_df = self.results_df.append({
-        #         FK: kpi_id,
-        #         KPI_NAME: kpi[NAME],
-        #         NUMERATOR_ID: self.own_manufacturer,
-        #         DENOMINATOR_ID: self.store_id,
-        #         SCORE: round(scene['purity'], 2),
-        #         RESULT: scene[RESULT],
-        #         IDENTIFIER_RESULT: scene[SCENE_FK],
-        #         IDENTIFIER_PARENT: kpi[IDENTIFIER_PARENT],
-        #         'should_enter': True
-        #     }, ignore_index=True)
-
     def calculate_availability(self, kpi):
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi[NAME])
 
@@ -98,9 +85,9 @@ class ContactCenterToolBox(GlobalSessionToolBox):
 
         self.results_df = self.results_df.append({
             FK: kpi_id,
-            'kpi_name': kpi[NAME],
-            'numerator_id': self.own_manufacturer,
-            'denominator_id': self.store_id,
+            KPI_NAME: kpi[NAME],
+            NUMERATOR_ID: self.own_manufacturer,
+            DENOMINATOR_ID: self.store_id,
             RESULT: int(result) * 100,
             IDENTIFIER_RESULT: kpi_id,
             IDENTIFIER_PARENT: kpi[IDENTIFIER_PARENT],
