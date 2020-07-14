@@ -126,6 +126,7 @@ class ContactCenterToolBox(GlobalSessionToolBox):
                 fk=getattr(row, FK),
                 numerator_id=getattr(row, NUMERATOR_ID),
                 denominator_id=getattr(row, DENOMINATOR_ID),
+                context_id=getattr(row, CONTEXT_ID, None),
                 score=getattr(row, SCORE),
                 result=getattr(row, RESULT),
                 identifier_parent=getattr(row, IDENTIFIER_PARENT, None),
