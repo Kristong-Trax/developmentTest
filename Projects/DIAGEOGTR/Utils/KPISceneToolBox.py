@@ -122,7 +122,12 @@ class DIAGEOGTRSceneToolBox:
             total_sku_facings_in_scene = int(scif[facings_field].sum())
             for i, row in scif.iterrows():
                 product_fk = row['product_fk']
-                sku_facings = int(row[facings_field])
+                if pd.isnull(row[facings_field]):
+                    sku_facings = 0
+                    print(row)
+                    continue
+                else:
+                    sku_facings = int(row[facings_field])
                 self.common.write_to_db_result(
                     fk=kpi_fk,
                     numerator_id=product_fk,
