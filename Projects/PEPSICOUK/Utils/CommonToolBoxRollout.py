@@ -396,7 +396,8 @@ class PEPSICOUKCommonToolBox:
             if not bin_bin_matches.empty:
                 bin_bin_matches = self.place_products_to_bays(bin_bin_matches, self.scene_display)
             display_matches = bin_bin_matches.append(bin_bay_matches)
-            display_matches = self.calculate_product_length_in_matches_on_display(display_matches)
+            if not display_matches.empty:
+                display_matches = self.calculate_product_length_in_matches_on_display(display_matches)
 
             mix_matches = shelf_matches.append(display_matches)
             mix_matches_agg = mix_matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]). \
