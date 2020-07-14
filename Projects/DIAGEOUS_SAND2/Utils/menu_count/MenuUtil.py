@@ -13,12 +13,14 @@ class MenuToolBox(GlobalSessionToolBox):
     def __init__(self, data_provider, common):
         GlobalSessionToolBox.__init__(self, data_provider, None)
         # self.matches = self.get_filtered_matches()
+        self.store_number = self.store_info.store_number_1
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalcAdmin)
         self.custom_entity = self.get_custom_entity()
 
-        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=['store_number_1', 'product_fk'])
-        self.store_number = self.store_info.store_number_1
+        self.targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[6006],
+                                                                      key_fields=['store_number_1', 'product_fk'],
+                                                                      key_filters={'store_number_1': self.store_number})
         self.common = common
 
     def _get_filtered_match_display_in_scene(self):

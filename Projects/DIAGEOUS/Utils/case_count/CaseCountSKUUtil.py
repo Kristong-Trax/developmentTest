@@ -37,7 +37,8 @@ class CaseCountCalculator(GlobalSessionToolBox):
         """
         case_count_kpi_fk = self.get_kpi_fk_by_kpi_type(Consts.TOTAL_CASES_STORE_KPI)
         targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[case_count_kpi_fk], data_fields=[Src.TARGET],
-                                                                 key_fields=[Sc.PRODUCT_FK, 'store_number_1'])
+                                                                 key_fields=[Sc.PRODUCT_FK, 'store_number_1'],
+                                                                 key_filters={'store_number_1': self.store_number_1})
         targets = targets.loc[targets.store_number_1 == self.store_number_1][[Pc.PRODUCT_FK, Src.TARGET]]
         return dict(zip(targets[Pc.PRODUCT_FK], targets[Src.TARGET]))
 
