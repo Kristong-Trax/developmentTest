@@ -31,6 +31,27 @@ class Consts(object):
                      "Bottom": 36
                      }
 
+    ADJACENCY_ENTITY_CONFIG = {
+        "Price Tier":{
+            "numerator_entity": "Brand",
+            "denominator_entity": "Brand",
+            "context_entity" : "KHZ_Price Tier"
+        },
+        "Pack Type": {
+            "numerator_entity": "Brand",
+            "denominator_entity": "Brand",
+            "context_entity": "KHZ_Pack Type"
+        },
+        "Pack Type": {
+            "numerator_entity": "KHZ_Pack Type",
+            "denominator_entity": "KHZ_Pack Type",
+        },
+        "other": {
+            "numerator_entity": "KHZ_Price Tier",
+            "denominator_entity": "KHZ_Price Tier",
+        },
+    }
+
     shelf_map = {
         "1": {
             "1": "Bottom"
@@ -53,7 +74,7 @@ class Consts(object):
         "5": {
             "1": "Bottom",
             "2": "Middle",
-            "3": "Eye",
+            "3": "Middle",
             "4": "Eye",
             "5": "Top",
         },

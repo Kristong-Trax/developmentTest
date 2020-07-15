@@ -117,10 +117,10 @@ class ColdCutToolBox:
         relevant_kpi_types = [
             # Consts.SOS,
             # Consts.SCENE_LOCATION,
-            Consts.HORIZONTAL_SHELF_POSITION,
-            Consts.VERTICAL_SHELF_POSITION,
+            # Consts.HORIZONTAL_SHELF_POSITION,
+            # Consts.VERTICAL_SHELF_POSITION,
             # Consts.BLOCKING,
-            # Consts.BLOCK_ADJ,
+            Consts.BLOCK_ADJ,
             # Consts.BLOCKING_ORIENTATION
             # Consts.BAY_POSITION, Consts.DIAMOND_POSITION
         ]
@@ -156,7 +156,7 @@ class ColdCutToolBox:
 
         if is_adjacent_result:
             result = 1
-
+        entity_df = self.get_adjacency_entity_config(row, df)
         result_dict = {'kpi_fk': kpi_fk,
                        'numerator_id': self.own_manufacturer_fk,
                        'denominator_id': self.store_id,
@@ -164,6 +164,17 @@ class ColdCutToolBox:
                        'result': result,
                        'score': 0}
         return result_dict
+
+    def get_adjacency_entity_config(self, row, df):
+        kpi_name = row.kpi_type
+        config_dict = {}
+        if kpi_name in Consts.ADJACENCY_ENTITY_CONFIG.keys():
+            config_dict = Consts.ADJACENCY_ENTITY_CONFIG[kpi_name]
+        else:
+            config_dict = Consts.ADJACENCY_ENTITY_CONFIG['other']
+
+        config_dict
+        pass
 
     def _logic_for_adj(self, kpi_fk, anchor_data, target_data, location_data, additional_data):
         result = self.adjacency.evaluate_block_adjacency(anchor_data, target_data, location=location_data,
@@ -208,8 +219,17 @@ class ColdCutToolBox:
         output = [kpi_name, kpi_fk]
         return output
 
-    def calculate_blocking_orientation(self):
-        pass
+    def calculate_blocking_orientation(self, df, row):
+        addtional_data = row['Config Params: JSON']
+        location_data = row['Location: JSON']
+        kpi_fk = row['kpi_fk']
+        # population_data = {'population': row['Dataset 1: JSON']}
+        population_data = row['Dataset 1: JSON']['include'][0]
+        df.rename(columns={'pk': 'custom_entity_fk'}, inplace=True)
+        result_dict_list = self._logic_for_blocking_orientation(kpi_fk, population_data, location_data, addtional_data)
+        # if dataframe empty do we save the kpi?
+
+        return result_dict_list
 
     def calculate_vertical_position(self, row, df):
         result_dict_list = []
@@ -340,6 +360,8 @@ class ColdCutToolBox:
             return self.calculate_blocking
         elif kpi_type == Consts.BLOCK_ADJ:
             return self.calculate_blocking_adj
+        elif kpi_type == Consts.BLOCKING_ORIENTATION:
+            return self.calculate_blocking_orientation()
 
     def get_denominator(self, denominator_value):
         if denominator_value == 'store_fk':
