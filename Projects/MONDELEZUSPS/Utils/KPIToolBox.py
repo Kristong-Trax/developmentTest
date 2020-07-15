@@ -323,8 +323,6 @@ class ToolBox(GlobalSessionToolBox):
             denominator_filtered_df = self._filter_df(df,
                                                       {denominator_type: unqiue_denominator_id})
             for unique_numerator_id in set(denominator_filtered_df[numerator_type]):
-                if unique_numerator_id == 97:
-                    a = 1
                 filtered_numerator_df = self._filter_df(denominator_filtered_df, {numerator_type: unique_numerator_id})
                 relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg(
                     ['max', 'idxmax']).loc['idxmax']['facings']
@@ -435,26 +433,25 @@ class ToolBox(GlobalSessionToolBox):
             (~ self.targets[Consts.GRANULAR_GROUP_NAME].isnull()) & (self.targets[Consts.ASSORTMENT_TYPE] == return_holder[0])]
 
         if relevant_template_for_distribution.empty:
-            return result_dict_list
+            return {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],'result':0}
 
         relevant_template_for_distribution.dropna(subset=[Consts.EAN_CODE], inplace=True)
-        try:
-            relevant_template_for_distribution[Consts.EAN_CODE] = relevant_template_for_distribution[
-                Consts.EAN_CODE].astype(int) #fails if issue in the original ean code
-        except:
-            return []
+        relevant_template_for_distribution[Consts.EAN_CODE] = relevant_template_for_distribution[
+            Consts.EAN_CODE].astype(str) #fails if issue in the original ean code
+
 
         product_df = self.all_products[['product_ean_code', 'product_fk', 'category_fk']].dropna()
-        product_df.product_ean_code = product_df.product_ean_code.astype(int)
+        product_df.product_ean_code = product_df.product_ean_code.astype(str)
 
         df.dropna(subset=['product_ean_code'], inplace=True)
         df.drop_duplicates(subset=['product_ean_code'], keep='first', inplace=True)
-        df['product_ean_code'] = df['product_ean_code'].astype(int)
+        df['product_ean_code'] = df['product_ean_code'].astype(str)
         df = df[df.product_ean_code.isin(relevant_template_for_distribution[Consts.EAN_CODE])]
         final_df = df[['product_ean_code', 'product_fk', Consts.FINAL_FACINGS]]
 
         if final_df.empty:
-            return result_dict_list
+            final_result = self.logic_for_failed_result_for_distribution(return_holder, child_sku, relevant_template_for_distribution)
+            return final_result
 
         for unique_assortment in relevant_template_for_distribution[Consts.GRANULAR_GROUP_NAME].unique():
             assortment_relevant_template = relevant_template_for_distribution[
@@ -499,6 +496,18 @@ class ToolBox(GlobalSessionToolBox):
             result_dict_list.append(result_dict)
 
         return result_dict_list
+
+    def logic_for_failed_result_for_distribution(self,return_holder, child_sku, relevant_template_for_distribution):
+        result_list = [{'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'result':0}]
+
+        for unique_assortment in relevant_template_for_distribution['Granular Group Name'].unique():
+            assortment_id = self._get_id_from_custom_entity_table('assortment', unique_assortment)
+            result_dict = {'kpi_name': child_sku[0], 'kpi_fk': child_sku[1],
+                           'denominator_id': assortment_id,
+                           'result': 0}
+            result_list.append(result_dict)
+
+        return result_list
 
     def calculate_shelf_position(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
