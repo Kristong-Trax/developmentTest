@@ -320,10 +320,10 @@ class PEPSICOUKCommonToolBox:
         bay_scif = scif
         bay_matches = matches
         if not bay_matches.empty:
-            bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK],
+            bay_matches = bay_matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK],
                                                   keep='last')
             bay_matches[MatchesConsts.BAY_NUMBER] = 1
-            bay_matches = self.construct_display_id(matches)
+            bay_matches = self.construct_display_id(bay_matches)
             bay_matches['display_id'] = bay_matches['display_id']+max_display_id
             bay_scif, bay_matches = self.calculate_product_length_on_display(bay_scif, bay_matches)
             max_display_id = bay_matches['display_id'].max()
