@@ -1,4 +1,4 @@
-from Trax.Algo.Calculations.Core.DataProvider import Data
+# from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 import pandas as pd
@@ -9,7 +9,7 @@ from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.AdjacencyCalculations_v2 import Adjancency
 import itertools
 from KPIUtils_v2.Calculations.CalculationsUtils.GENERALToolBoxCalculations import GENERALToolBox
-from collections import Counter
+# from collections import Counter
 from collections import OrderedDict
 import operator
 
@@ -65,24 +65,24 @@ class ToolBox(GlobalSessionToolBox):
         self.block_parent_results = {}
 
     def main_calculation(self):
-        self.calculate_adjacency_within_bay()
-        self.calculate_max_block_directional()
-        self.calculate_sku_count()
-        self.calculate_facing_count()
-        self.calculate_smart_tags_presence()
-        self.calculate_smart_tags()
-        self.calculate_base_measurement()
-        self.calculate_liner_measure()
+        # self.calculate_adjacency_within_bay()
+        # self.calculate_max_block_directional()
+        # self.calculate_sku_count()
+        # self.calculate_facing_count()
+        # self.calculate_smart_tags_presence()
+        # self.calculate_smart_tags()
+        # self.calculate_base_measurement()
+        # self.calculate_liner_measure()
         self.calculate_horizontal_shelf_position()
         self.calculate_vertical_shelf_position()
-        self.calculate_blocking_comp()
-
-        self.calculate_blocking()
-        self.calculate_blocking_orientation()
-        self.calculate_blocking_sequence()
-
-        self.calculate_max_blocking_adj()
-        self.calculate_negative_max_blocking_adj()
+        # self.calculate_blocking_comp()
+        #
+        # self.calculate_blocking()
+        # self.calculate_blocking_orientation()
+        # self.calculate_blocking_sequence()
+        #
+        # self.calculate_max_blocking_adj()
+        # self.calculate_negative_max_blocking_adj()
 
         score = 0
         return score
@@ -191,107 +191,109 @@ class ToolBox(GlobalSessionToolBox):
                              denominator_id=self.store_id, denominator_result=1, result=result)
 
     def calculate_vertical_shelf_position(self):
+        mpis = self.matches.merge(self.all_products, on='product_fk')
+        shelf_df = mpis.groupby(['scene_fk', 'bay_number'], as_index=False)['shelf_number_from_bottom'] \
+            .max() \
+            .rename(columns={'shelf_number_from_bottom': 'shelf_count'})
+        mpis = mpis.merge(shelf_df, on=['scene_fk', 'bay_number'])
+        mpis['position'] = mpis.apply(self._calculate_vertical_position, axis=1)
+        mpis['result_type_fk'] = mpis['position'].apply(lambda x: Consts.CUSTOM_RESULTS.get(x, 0))
+
         template = self.kpi_template[Consts.VERTICAL_SHELF_SHEET]
-        for i, row in template.iterrows():
+        for _, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
-            kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            params1 = row['PARAM 1']
-            params2 = row['PARAM 2']
-            sub_category_value = row['sub_category']
-            shelf_map_df = self.kpi_template[Consts.SHELF_MAP_SHEET]
+            kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name)
+            param1, param2 = row[['PARAM 1', 'PARAM 2']]
+            sub_category = row['sub_category']
 
-            mpis = pd.merge(self.all_products, self.matches, how='right', on='product_fk')
+            if not pd.isna(sub_category):
+                mpis = mpis[mpis['sub_category'] == sub_category]
 
-            if not pd.isna(sub_category_value):
-                mpis = mpis[mpis['sub_category'] == sub_category_value]
+            if mpis.empty:
+                return
 
-            for value1 in mpis[params1].unique().tolist():
-                filtered_mpis = mpis[mpis[params1] == value1]
+            if pd.isna(param2):
+                modes = mpis.groupby(param1, as_index=False)['result_type_fk'].agg(lambda val: pd.Series.mode(val)[0])
+            else:
+                modes = mpis.groupby(['manufacturer_fk', param1, param2], as_index=False)['result_type_fk'].agg(lambda val: pd.Series.mode(val)[0])
+                modes[['product_fk', 'manufacturer_fk']] = modes.apply(
+                    lambda row: self.all_products[
+                        self.all_products['Parent Brand'] == row['Parent Brand']].iloc[0][['product_fk', 'manufacturer_fk']], axis=1)
 
-                if not pd.isna(params2):
-                    for value2 in mpis[params2].unique().tolist():
-                        filtered_mpis = filtered_mpis[filtered_mpis[params2] == value2]
-                        self.calculate_position(kpi_fk=kpi_fk, mpis=mpis, filtered_mpis=filtered_mpis,
-                                                shelf_map_df=shelf_map_df,
-                                                param1=params1)
+            for result in modes.itertuples():
+                product_fk = result.product_fk
+                custom_fk_result = result.result_type_fk
+                if hasattr(custom_fk_result, '__iter__'):
+                    custom_fk_result = max(custom_fk_result)
 
+                if param1 == 'product_fk':
+                    denom_id = self.store_id
                 else:
-                    self.calculate_position(kpi_fk=kpi_fk, mpis=mpis, filtered_mpis=filtered_mpis,
-                                            shelf_map_df=shelf_map_df, param1=params1)
+                    denom_id = result.manufacturer_fk
 
-    def calculate_position(self, kpi_fk=None, mpis=None, filtered_mpis=None, shelf_map_df=None, param1=None):
-        shelf_positions = []
-        manufacturer_fk = 0
-        try:
-            product_fk = filtered_mpis.product_fk.iloc[0]
-            manufacturer_fk = filtered_mpis.manufacturer_fk.iloc[0]
-        except:
-            product_fk = -1
-
-        if param1 == 'product_fk':
-            denom_id = self.store_id
-        else:
-            denom_id = manufacturer_fk
-
-        for scene in list(filtered_mpis.scene_fk.unique()):
-            filtered_mpis = filtered_mpis[filtered_mpis['scene_fk'] == scene]
-            shelf_count = len(self.matches['shelf_number'][self.matches['scene_fk'] == scene].unique())
-            for i, row in filtered_mpis.iterrows():
-                shelf_number = row['shelf_number']
-                pos = shelf_map_df[shelf_number][shelf_map_df['Num Shelves'] == shelf_count]
-                shelf_positions.append(pos.iloc[0])
-
-        if len(shelf_positions) == 0:
-            pass
-        else:
-
-            mode = max(shelf_positions, key=shelf_positions.count)
-            if not pd.isna(mode):
-                result = Consts.CUSTOM_RESULTS[mode]
-                self.write_to_db(fk=kpi_fk,
-                                 numerator_id=product_fk,
-                                 numerator_result=1,
-                                 context_id=product_fk,
-                                 denominator_id=denom_id, result=result)
+                self.write_to_db(
+                    fk=kpi_fk,
+                    numerator_id=product_fk,
+                    numerator_result=1,
+                    context_id=product_fk,
+                    denominator_id=denom_id,
+                    result=custom_fk_result)
 
     def calculate_horizontal_shelf_position(self):
+        mpis = self.mpis
+        # scene_facings_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['facings'] \
+        #     .max() \
+        #     .rename(columns={'facings': 'scene_facings'})
+        # mpis = mpis.merge(scene_facings_df, on=['scene_fk', 'product_fk'])
+
+        bay_df = mpis.groupby('scene_fk', as_index=False)['bay_number'] \
+            .max() \
+            .rename(columns={'bay_number': 'bay_count'})
+        mpis = mpis.merge(bay_df, on='scene_fk')
+
+        mpis['position'] = mpis.apply(self._calculate_horizontal_position, axis=1)
+        mpis['result_type_fk'] = mpis['position'].apply(lambda x: Consts.CUSTOM_RESULTS.get(x, 0))
+
         template = self.kpi_template[Consts.HORIZONTAL_SHELF_SHEET]
-        for i, row in template.iterrows():
+        for _, row in template.iterrows():
             kpi_name = row['KPI Name'].strip()
-            kpi_fk = self.get_kpi_fk_by_kpi_type(kpi_name)
-            params1 = row['PARAM 1']
-            mpis = self.mpis
+            kpi_fk = self.get_kpi_fk_by_kpi_name(kpi_name)
 
-            for value1 in mpis[params1].unique().tolist():
-                shelf_positions = []
-                filtered_mpis = mpis[mpis[params1] == value1]
-                product_fk = filtered_mpis.product_fk.iloc[0]
+            mpis = mpis.groupby(row['PARAM 1'], as_index=False)['result_type_fk'].agg(pd.Series.mode)
 
-                for scene in list(filtered_mpis.scene_fk.unique()):
-                    filtered_mpis = mpis[mpis['scene_fk'] == scene]
-                    bay_count = len(filtered_mpis.bay_number.unique())
+            for result in mpis.itertuples():
+                custom_fk_result = result.result_type_fk
+                if hasattr(custom_fk_result, '__iter__'):
+                    custom_fk_result = max(custom_fk_result)
 
-                    if bay_count == 1:
-                        pos = 'Center'
-                    else:
-                        factor_bay = round(bay_count / float(3))
-                        for i, row in filtered_mpis.iterrows():
-                            sku_bay_number = row.bay_number
+                self.write_to_db(
+                    fk=kpi_fk,
+                    numerator_id=result.product_fk,
+                    numerator_result=1,
+                    denominator_id=self.store_id,
+                    result=custom_fk_result)
 
-                            if sku_bay_number <= factor_bay:
-                                pos = 'Left'
-                            elif sku_bay_number > (bay_count - factor_bay):
-                                pos = 'Right'
+    @staticmethod
+    def _calculate_vertical_position(row):
+        shelf_number = str(row.shelf_number_from_bottom)
+        shelf_count = str(row.shelf_count)
 
-                    shelf_positions.append(pos)
+        shelf_count_pos_map = Consts.shelf_map[shelf_count]
+        pos_value = shelf_count_pos_map[shelf_number]
 
-                mode = max(shelf_positions, key=shelf_positions.count)
-                if not pd.isna(mode):
-                    result = Consts.CUSTOM_RESULTS[mode]
-                    self.write_to_db(fk=kpi_fk,
-                                     numerator_id=product_fk,
-                                     numerator_result=1,
-                                     denominator_id=self.store_id, result=result)
+        return pos_value
+
+    @staticmethod
+    def _calculate_horizontal_position(row):
+        bay_count = row.bay_count
+        if bay_count == 1:
+            return 'Center'
+        factor = round(bay_count / float(3))
+        if row.bay_number <= factor:
+            return 'Left'
+        elif row.bay_number > (bay_count - factor):
+            return 'Right'
+        return 'Center'
 
     def calculate_blocking_orientation(self):
         template = self.kpi_template[Consts.BLOCK_ORIENTATION]

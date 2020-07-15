@@ -97,5 +97,95 @@ class Consts(object):
         #  'DATASET {}  BLOCK EXCLUDE {} 1',
     ]
 
+    shelf_map = {
+        "1": {
+            "1": "Bottom"
+        },
+        "2": {
+            "1": "Bottom",
+            "2": "Eye",
+        },
+        "3": {
+            "1": "Bottom",
+            "2": "Middle",
+            "3": "Eye",
+        },
+        "4": {
+            "1": "Bottom",
+            "2": "Middle",
+            "3": "Eye",
+            "4": "Top",
+        },
+        "5": {
+            "1": "Bottom",
+            "2": "Middle",
+            "3": "Eye",
+            "4": "Eye",
+            "5": "Top",
+        },
+        "6": {
+            "1": "Bottom",
+            "2": "Middle",
+            "3": "Middle",
+            "4": "Eye",
+            "5": "Eye",
+            "6": "Top",
+        },
+        "7": {
+            "1": "Bottom",
+            "2": "Middle",
+            "3": "Middle",
+            "4": "Eye",
+            "5": "Eye",
+            "6": "Eye",
+            "7": "Top",
+        },
+        "8": {
+            "1": "Bottom",
+            "2": "Middle",
+            "3": "Middle",
+            "4": "Middle",
+            "5": "Eye",
+            "6": "Eye",
+            "7": "Eye",
+            "8": "Top",
+        },
+        "9": {
+            "1": "Bottom",
+            "2": "Bottom",
+            "3": "Middle",
+            "4": "Middle",
+            "5": "Middle",
+            "6": "Eye",
+            "7": "Eye",
+            "8": "Eye",
+            "9": "Top",
+        },
+        "10": {
+            "1": "Bottom",
+            "2": "Bottom",
+            "3": "Middle",
+            "4": "Middle",
+            "5": "Middle",
+            "6": "Eye",
+            "7": "Eye",
+            "8": "Eye",
+            "9": "Top",
+            "10": "Top",
+        },
+        "11": {
+            "1": "Bottom",
+            "2": "Bottom",
+            "3": "Middle",
+            "4": "Middle",
+            "5": "Middle",
+            "6": "Eye",
+            "7": "Eye",
+            "8": "Eye",
+            "9": "Top",
+            "10": "Top",
+            "11": "Top",
+        },
+    }
 
 
