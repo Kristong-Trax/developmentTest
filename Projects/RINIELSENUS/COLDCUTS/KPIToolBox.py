@@ -119,8 +119,8 @@ class ColdCutToolBox:
             # Consts.SCENE_LOCATION,
             # Consts.HORIZONTAL_SHELF_POSITION,
             # Consts.VERTICAL_SHELF_POSITION,
-            # Consts.BLOCKING,
-            Consts.BLOCK_ADJ,
+            Consts.BLOCKING,
+            # Consts.BLOCK_ADJ,
             # Consts.BLOCKING_ORIENTATION
             # Consts.BAY_POSITION, Consts.DIAMOND_POSITION
         ]
@@ -143,6 +143,7 @@ class ColdCutToolBox:
         return result_dict_list
 
     def calculate_blocking_adj(self, row, df):
+        result_dict_list = []
         additional_data = row['Config Params: JSON']
         location_data = row['Location: JSON']
         kpi_fk = row['kpi_fk']
@@ -150,31 +151,81 @@ class ColdCutToolBox:
         target_data = row['Dataset 2: JSON']['include'][0]
 
         df.rename(columns={'pk': 'custom_entity_fk'}, inplace=True)
-        is_adjacent_result = self._logic_for_adj(kpi_fk, anchor_data, target_data, location_data, additional_data)
-        # if dataframe empty do we save the kpi?
-        result = 0
 
+        kpi_name = row.kpi_type
+
+        result_dict_list = []
+        column_name = None
+
+        if "Price Tier" in kpi_name:
+            column_name = 'KHZ_Price Tier'
+            entity_key = "Price Tier"
+
+        elif "Pack Type" in kpi_name:
+            column_name = 'KHZ_Pack Type'
+            entity_key = "Price Type"
+
+        elif "Pack" in kpi_name:
+            entity_key = "Pack"
+
+        else:
+            entity_key = "other"
+
+        if column_name:
+            column_values_list = self.scif[column_name].unique().tolist()
+
+            for column_item in column_values_list:
+                if column_item:
+                    result_dict = self.adj_case_calc(kpi_fk, row, df, anchor_data, target_data, location_data, additional_data, entity_key, column_item )
+                    result_dict_list.append(result_dict)
+        else:
+            column_item = ""
+            result_dict = self.adj_case_calc(kpi_fk, row, df, anchor_data, target_data, location_data, additional_data,
+                                             entity_key, column_item)
+            result_dict_list.append(result_dict)
+        return result_dict_list
+
+
+    def adj_case_calc(self, kpi_fk, row, df, anchor_data, target_data, location_data, additional_data, entity_key, column_item ):
+        is_adjacent_result = self._logic_for_adj(kpi_fk, anchor_data, target_data, location_data,
+                                                 additional_data)
+        result = 0
         if is_adjacent_result:
             result = 1
-        entity_df = self.get_adjacency_entity_config(row, df)
+
+        entity_dict = self.get_adjacency_entity_config(row, df, anchor_data, target_data, entity_key, column_item)
+
         result_dict = {'kpi_fk': kpi_fk,
-                       'numerator_id': self.own_manufacturer_fk,
-                       'denominator_id': self.store_id,
-                       # 'denominator_result': 1,
                        'result': result,
                        'score': 0}
+        result_dict.update(entity_dict)
         return result_dict
 
-    def get_adjacency_entity_config(self, row, df):
-        kpi_name = row.kpi_type
-        config_dict = {}
-        if kpi_name in Consts.ADJACENCY_ENTITY_CONFIG.keys():
-            config_dict = Consts.ADJACENCY_ENTITY_CONFIG[kpi_name]
-        else:
-            config_dict = Consts.ADJACENCY_ENTITY_CONFIG['other']
+    def get_adjacency_entity_config(self, row, df, anchor_data, target_data, entity_key, khz_item):
+        entity_dict = Consts.ADJACENCY_ENTITY_CONFIG[entity_key]
 
-        config_dict
-        pass
+        result_entity_dict = {'numerator_id': self.own_manufacturer_fk,
+                               'denominator_id': self.store_id,
+                         'context_id':0}
+
+        for key, value in entity_dict.items():
+
+
+            if entity_key in ['Pack', 'other']:
+                if key == 'numerator_id':
+                    entity_value =  self.get_custom_entity_value(anchor_data[entity_key])
+                elif key == 'denominator_id':
+                    entity_value =  self.get_custom_entity_value(target_data[entity_key])
+            elif value in ['KHZ_Price Tier', "KHZ_Pack Type"]:
+                entity_value = self.get_custom_entity_value(khz_item)
+            elif value in [ 'own_manufacturer']:
+                entity_value = self.own_manufacturer_fk
+            elif value == 'store_id':
+                entity_value = self.store_id
+
+            result_entity_dict[key] = entity_value
+
+        return result_entity_dict
 
     def _logic_for_adj(self, kpi_fk, anchor_data, target_data, location_data, additional_data):
         result = self.adjacency.evaluate_block_adjacency(anchor_data, target_data, location=location_data,
@@ -213,21 +264,85 @@ class ColdCutToolBox:
         result_dict_list.append(result_dict)
         return result_dict_list
 
+    def _logic_for_blocking_orientation(self, kpi_fk, population_data, location_data, addtional_data, khz_entity_key):
+
+        block = self.block.network_x_block_together(population=population_data, location=location_data,
+                                                    additional=addtional_data)
+
+        for row in block.itertuples():
+            scene_match_fks = list(row.cluster.nodes[list(row.cluster.nodes())[0]]['scene_match_fk'])
+            self.eyelight.write_eyelight_result(scene_match_fks, kpi_fk)
+        passed_block = block[block.is_block.isin([True])]
+
+
+        result_value = "Not Blocked"
+        if passed_block.empty:
+            pass
+        else:
+            orientation_list = []
+            for row in passed_block.itertuples():
+                if row.orientation == "Horizontal":
+                    orientation_list.append("Horizontal")
+                else:
+                    orientation_list.append("Vertical")
+            orientation_mode = pd.DataFrame(orientation_list).mode()
+            result_value = orientation_mode.iloc[0][0]
+
+        result = Consts.CUSTOM_RESULT[result_value]
+        custom_entity_fk = self.get_custom_entity_value(population_data[khz_entity_key][0])
+        result_dict = {'kpi_fk': kpi_fk,
+                       'numerator_id': custom_entity_fk,
+                       'numerator_result': 1,
+                       'denominator_id': self.store_id,
+                       'denominator_result': 1,
+                       'result': result,
+                       'score': 0}
+
+
+        return result_dict
+
     def _get_kpi_name_and_fk(self, row):
         kpi_name = row[Consts.KPI_NAME]
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         output = [kpi_name, kpi_fk]
         return output
 
-    def calculate_blocking_orientation(self, df, row):
+    def calculate_blocking_orientation(self,  row, df):
         addtional_data = row['Config Params: JSON']
         location_data = row['Location: JSON']
         kpi_fk = row['kpi_fk']
         # population_data = {'population': row['Dataset 1: JSON']}
-        population_data = row['Dataset 1: JSON']['include'][0]
+        population_data = row['Dataset 1: JSON']
+        if population_data:
+            population_data = population_data['include'][0]
+        else:
+            population_data = {}
         df.rename(columns={'pk': 'custom_entity_fk'}, inplace=True)
-        result_dict_list = self._logic_for_blocking_orientation(kpi_fk, population_data, location_data, addtional_data)
-        # if dataframe empty do we save the kpi?
+
+        kpi_name = row.kpi_type
+
+        result_dict_list = []
+
+        if "Price Tier" in kpi_name:
+            column_name = 'KHZ_Price Tier'
+        elif "Pack Type" in kpi_name:
+            column_name = 'KHZ_Pack Type'
+        elif "pegged" in kpi_name:
+            column_name = 'KHZ_Pegged'
+
+        column_values_list = df[column_name].unique().tolist()
+
+        addtional_data.update({'vertical_horizontal_methodology': ['bucketing', 'percentage_of_shelves'],
+                                       'shelves_required_for_vertical': .8,
+                                       'check_vertical_horizontal': True})
+
+        for column_item in column_values_list:
+            if column_item:
+                specific_item = {column_name: [column_item]}
+                population_data.update(specific_item)
+                result_dict = self._logic_for_blocking_orientation(kpi_fk, population_data, location_data, addtional_data, column_name)
+                population_data.pop(column_name, None)
+                result_dict_list.append(result_dict)
 
         return result_dict_list
 
@@ -361,7 +476,7 @@ class ColdCutToolBox:
         elif kpi_type == Consts.BLOCK_ADJ:
             return self.calculate_blocking_adj
         elif kpi_type == Consts.BLOCKING_ORIENTATION:
-            return self.calculate_blocking_orientation()
+            return self.calculate_blocking_orientation
 
     def get_denominator(self, denominator_value):
         if denominator_value == 'store_fk':
