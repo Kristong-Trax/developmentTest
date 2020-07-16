@@ -96,8 +96,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
-        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
-        # relevant_kpi_types = [Consts.DISTRIBUTION]
+        # relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
+        relevant_kpi_types = [Consts.BAY_POSITION]
         targets = self.targets[(self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)) & (
             self.targets[Consts.GRANULAR_GROUP_NAME].isnull())]
 
@@ -323,6 +323,8 @@ class ToolBox(GlobalSessionToolBox):
             denominator_filtered_df = self._filter_df(df,
                                                       {denominator_type: unqiue_denominator_id})
             for unique_numerator_id in set(denominator_filtered_df[numerator_type]):
+                if unique_numerator_id == 99:
+                    a = 1
                 filtered_numerator_df = self._filter_df(denominator_filtered_df, {numerator_type: unique_numerator_id})
                 relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg(
                     ['max', 'idxmax']).loc['idxmax']['facings']
@@ -394,16 +396,16 @@ class ToolBox(GlobalSessionToolBox):
             bay_filtered_df = self._filter_df(scene_filtered_df, {'bay_number': bay_number})
             bay_filtered_df_with_null = self._filter_df(df, {'scene_fk': relevant_scene_with_most_facings,
                                                              'bay_number': bay_number})
-            numerator_result = bay_filtered_df.drop_duplicates([numerator_type])[Consts.FINAL_FACINGS].sum()
-            denominator_result = bay_filtered_df_with_null.drop_duplicates([numerator_type])[Consts.FINAL_FACINGS].sum()
+            numerator_result = bay_filtered_df.drop_duplicates(subset=['product_fk'])[Consts.FINAL_FACINGS].sum()
+            denominator_result = bay_filtered_df_with_null.drop_duplicates(subset=['product_fk'])[Consts.FINAL_FACINGS].sum()
             result = float(numerator_result) / denominator_result
             final_result = 'Left Anchor' if result >= anchor_pct else 'Not Anchor'
         elif bay_number == count_of_bays_in_scene:
             bay_filtered_df = self._filter_df(scene_filtered_df, {'bay_number': bay_number})
             bay_filtered_df_with_null = self._filter_df(df, {'scene_fk': relevant_scene_with_most_facings,
                                                              'bay_number': bay_number})
-            numerator_result = bay_filtered_df.drop_duplicates([numerator_type])[Consts.FINAL_FACINGS].sum()
-            denominator_result = bay_filtered_df_with_null.drop_duplicates([numerator_type])[Consts.FINAL_FACINGS].sum()
+            numerator_result = bay_filtered_df.drop_duplicates(subset=['product_fk'])[Consts.FINAL_FACINGS].sum()
+            denominator_result = bay_filtered_df_with_null.drop_duplicates(subset=['product_fk'])[Consts.FINAL_FACINGS].sum()
             result = float(numerator_result) / denominator_result
             final_result = 'Right Anchor' if result >= anchor_pct else 'Not Anchor'
         else:
