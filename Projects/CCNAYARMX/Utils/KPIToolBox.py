@@ -1707,7 +1707,7 @@ class ToolBox(GlobalSessionToolBox):
             scif_df = relevant_scif[relevant_scif.product_short_name.isin([row.product_short_name])]
             if not scif_df.empty:
                 points = 3 if scif_df.facings.iloc[0] >= row.minimum_CC_SKU_facings_required else 0
-                rel_scif = scif_df[scif_df.product_short_name.isin([row.product_short_name_POSM])]
+                rel_scif = relevant_scif[relevant_scif.product_short_name.isin([row.product_short_name_POSM])]
                 if not rel_scif.empty:
                     points = 5 if rel_scif.facings.iloc[0] >= row.minimum_POS_facings_required else 3
                 if not container_for_result:
