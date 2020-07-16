@@ -1,23 +1,17 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-# from Trax.Utils.Logging.Logger import Log
-import pandas as pd
 import ast
-from collections import OrderedDict
 import pandas as pd
 import simplejson
-import re
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI
 from KPIUtils_v2.DB.CommonV2 import Common
 from Trax.Utils.Logging.Logger import Log
-from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Const import Consts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from KPIUtils_v2.Calculations.AMER.CalculationsUtils.CalculationUtils import Eyelight
 from KPIUtils_v2.Calculations.AMER.BlockAdjacencyCalculations import BlockAdjacency
-import collections
 import json
 import numpy
 
@@ -103,7 +97,6 @@ class ColdCutToolBox:
         self.merged_scif_mpis = self.match_product_in_scene.merge(self.scif, how='left',
                                                                   left_on=['scene_fk', 'product_fk'],
                                                                   right_on=['scene_fk', 'product_fk'])
-        # self.purina_scif = self.scif.loc[self.scif['category_fk'] == PET_FOOD_CATEGORY]
         self.targets = self.ps_data_provider.get_kpi_external_targets(
             key_fields=["KPI Type", "Location: JSON", "Config Params: JSON", "Dataset 1: JSON", "Dataset 2: JSON"])
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result', 'context_id',
@@ -116,30 +109,24 @@ class ColdCutToolBox:
         """
         relevant_kpi_types = [
             # Consts.SOS,
-            # Consts.SCENE_LOCATION,
             # Consts.HORIZONTAL_SHELF_POSITION,
             # Consts.VERTICAL_SHELF_POSITION,
             Consts.BLOCKING,
             # Consts.BLOCK_ADJ,
             # Consts.BLOCKING_ORIENTATION
-            # Consts.BAY_POSITION, Consts.DIAMOND_POSITION
         ]
 
         targets = self.targets[self.targets[Consts.ACTUAL_TYPE].isin(relevant_kpi_types)]
         self._calculate_kpis_from_template(targets)
         self.save_results_to_db()
-        pass
+        return
 
     def calculate_blocking(self, row, df):
-        addtional_data = row['Config Params: JSON']
+        additional_data = row['Config Params: JSON']
         location_data = row['Location: JSON']
         kpi_fk = row['kpi_fk']
-        # population_data = {'population': row['Dataset 1: JSON']}
         population_data = row['Dataset 1: JSON']['include'][0]
-        df.rename(columns={'pk': 'custom_entity_fk'}, inplace=True)
-        result_dict_list = self._logic_for_blocking(kpi_fk, population_data, location_data, addtional_data)
-        # if dataframe empty do we save the kpi?
-
+        result_dict_list = self._logic_for_blocking(kpi_fk, population_data, location_data, additional_data)
         return result_dict_list
 
     def calculate_blocking_adj(self, row, df):
@@ -150,154 +137,126 @@ class ColdCutToolBox:
         anchor_data = row['Dataset 1: JSON']['include'][0]
         target_data = row['Dataset 2: JSON']['include'][0]
 
-        df.rename(columns={'pk': 'custom_entity_fk'}, inplace=True)
-
-        kpi_name = row.kpi_type
-
-        result_dict_list = []
-        column_name = None
-
-        if "Price Tier" in kpi_name:
-            column_name = 'KHZ_Price Tier'
-            entity_key = "Price Tier"
-
-        elif "Pack Type" in kpi_name:
-            column_name = 'KHZ_Pack Type'
-            entity_key = "Price Type"
-
-        elif "Pack" in kpi_name:
-            entity_key = "Pack"
-
+        context_type = additional_data.get('context_type')
+        if context_type:
+            context_values = [v for v in df[context_type].unique().tolist() if v and pd.notna(v)]
+            for context_value in context_values:
+                anchor_data = anchor_data.update({context_type: context_value})
+                target_data = target_data.update({context_type: context_value})
+                result_dict = self._logic_for_adj(kpi_fk, anchor_data, target_data, location_data, additional_data,
+                                                  eyelight_prefix='{}-'.format(context_value),
+                                                  custom_entity=context_value)
+                result_dict_list.append(result_dict)
         else:
-            entity_key = "other"
-
-        if column_name:
-            column_values_list = self.scif[column_name].unique().tolist()
-
-            for column_item in column_values_list:
-                if column_item:
-                    result_dict = self.adj_case_calc(kpi_fk, row, df, anchor_data, target_data, location_data, additional_data, entity_key, column_item )
-                    result_dict_list.append(result_dict)
-        else:
-            column_item = ""
-            result_dict = self.adj_case_calc(kpi_fk, row, df, anchor_data, target_data, location_data, additional_data,
-                                             entity_key, column_item)
+            result_dict = self._logic_for_adj(kpi_fk, anchor_data, target_data, location_data, additional_data)
             result_dict_list.append(result_dict)
         return result_dict_list
 
+    def _logic_for_adj(self, kpi_fk, anchor_data, target_data, location_data, additional_data, custom_entity=None,
+                       eyelight_prefix=None):
+        result = self.adjacency.evaluate_block_adjacency(anchor_data, target_data, location=location_data,
+                                                         additional=additional_data, kpi_fk=kpi_fk,
+                                                         eyelight_prefix=eyelight_prefix)
+        result_type_fk = Consts.CUSTOM_RESULT['Yes'] if result else Consts.CUSTOM_RESULT['No']
+        result_dict = {
+            'kpi_fk': kpi_fk,
+            'numerator_id': self.own_manufacturer_fk,
+            'denominator_id': self.store_id,
+            'numerator_result': result,
+            'denominator_result': 1,
+            'result': result_type_fk
+        }
+        if custom_entity:
+            result_dict.update({'context_id': self.get_custom_entity_value(custom_entity)})
 
-    def adj_case_calc(self, kpi_fk, row, df, anchor_data, target_data, location_data, additional_data, entity_key, column_item ):
-        is_adjacent_result = self._logic_for_adj(kpi_fk, anchor_data, target_data, location_data,
-                                                 additional_data)
-        result = 0
-        if is_adjacent_result:
-            result = 1
-
-        entity_dict = self.get_adjacency_entity_config(row, df, anchor_data, target_data, entity_key, column_item)
-
-        result_dict = {'kpi_fk': kpi_fk,
-                       'result': result,
-                       'score': 0}
-        result_dict.update(entity_dict)
         return result_dict
 
-    def get_adjacency_entity_config(self, row, df, anchor_data, target_data, entity_key, khz_item):
-        entity_dict = Consts.ADJACENCY_ENTITY_CONFIG[entity_key]
-
-        result_entity_dict = {'numerator_id': self.own_manufacturer_fk,
-                               'denominator_id': self.store_id,
-                         'context_id':0}
-
-        for key, value in entity_dict.items():
-
-
-            if entity_key in ['Pack', 'other']:
-                if key == 'numerator_id':
-                    entity_value =  self.get_custom_entity_value(anchor_data[entity_key])
-                elif key == 'denominator_id':
-                    entity_value =  self.get_custom_entity_value(target_data[entity_key])
-            elif value in ['KHZ_Price Tier', "KHZ_Pack Type"]:
-                entity_value = self.get_custom_entity_value(khz_item)
-            elif value in [ 'own_manufacturer']:
-                entity_value = self.own_manufacturer_fk
-            elif value == 'store_id':
-                entity_value = self.store_id
-
-            result_entity_dict[key] = entity_value
-
-        return result_entity_dict
-
-    def _logic_for_adj(self, kpi_fk, anchor_data, target_data, location_data, additional_data):
-        result = self.adjacency.evaluate_block_adjacency(anchor_data, target_data, location=location_data,
-                                                         additional=additional_data, kpi_fk=kpi_fk)
-
-        return result
-
-    def _logic_for_blocking(self, kpi_fk, population_data, location_data, addtional_data):
+    def _logic_for_blocking(self, kpi_fk, population_data, location_data, additional_data):
         result_dict_list = []
         block = self.block.network_x_block_together(population=population_data, location=location_data,
-                                                    additional=addtional_data)
+                                                    additional=additional_data)
 
         for row in block.itertuples():
             scene_match_fks = list(row.cluster.nodes[list(row.cluster.nodes())[0]]['scene_match_fk'])
             self.eyelight.write_eyelight_result(scene_match_fks, kpi_fk)
-        passed_block = block[block.is_block.isin([True])]
+        passed_block = block[block['is_block']]
 
-        numerator_result = 0
-        result_value = "No"
         if passed_block.empty:
-            pass
+            numerator_result = 0
+            result_value = "No"
         else:
             numerator_result = 1
             result_value = "Yes"
 
-        result = Consts.CUSTOM_RESULT[result_value]
+        result_type_fk = Consts.CUSTOM_RESULT[result_value]
         # numerator_id = df.custom_entity_fk.iloc[0]
 
-        result_dict = {'kpi_fk': kpi_fk,
-                       'numerator_id': self.own_manufacturer_fk, 'numerator_result': numerator_result,
-                       'denominator_id': self.store_id,
-                       'denominator_result': 1,
-                       'result': result,
-                       'score': 0}
+        result_dict = {
+            'kpi_fk': kpi_fk,
+            'numerator_id': self.own_manufacturer_fk, 'numerator_result': numerator_result,
+            'denominator_id': self.store_id,
+            'denominator_result': 1,
+            'result': result_type_fk
+        }
 
         result_dict_list.append(result_dict)
         return result_dict_list
 
-    def _logic_for_blocking_orientation(self, kpi_fk, population_data, location_data, addtional_data, khz_entity_key):
+    def calculate_blocking_orientation(self,  row, df):
+        result_dict_list = []
+        additional_data = row['Config Params: JSON']
+        location_data = row['Location: JSON']
+        kpi_fk = row['kpi_fk']
+        population_data = row['Dataset 1: JSON']
+        if population_data:
+            population_data = population_data['include'][0]
+        else:
+            population_data = {}
 
+        additional_data.update({'vertical_horizontal_methodology': ['bucketing', 'percentage_of_shelves'],
+                                'shelves_required_for_vertical': .8,
+                                'check_vertical_horizontal': True})
+
+        numerator_type = additional_data.get('numerator_type')
+        if numerator_type:
+            numerator_values = [v for v in df[numerator_type].unique().tolist() if v and pd.notna(v)]
+            for numerator_value in numerator_values:
+                population_data.update({numerator_type: numerator_value})
+                result_dict = self._logic_for_blocking_orientation(kpi_fk, population_data, location_data,
+                                                                   additional_data, numerator_value)
+                result_dict_list.append(result_dict)
+        else:
+            result_dict = self._logic_for_blocking_orientation(kpi_fk, population_data, location_data, additional_data)
+            result_dict_list.append(result_dict)
+
+        return result_dict_list
+
+    def _logic_for_blocking_orientation(self, kpi_fk, population_data, location_data, additional_data,
+                                        custom_entity=None):
         block = self.block.network_x_block_together(population=population_data, location=location_data,
-                                                    additional=addtional_data)
+                                                    additional=additional_data)
 
         for row in block.itertuples():
             scene_match_fks = list(row.cluster.nodes[list(row.cluster.nodes())[0]]['scene_match_fk'])
             self.eyelight.write_eyelight_result(scene_match_fks, kpi_fk)
-        passed_block = block[block.is_block.isin([True])]
+        passed_block = block[block['is_block']]
 
-
-        result_value = "Not Blocked"
         if passed_block.empty:
-            pass
+            result_value = "Not Blocked"
         else:
-            orientation_list = []
-            for row in passed_block.itertuples():
-                if row.orientation == "Horizontal":
-                    orientation_list.append("Horizontal")
-                else:
-                    orientation_list.append("Vertical")
-            orientation_mode = pd.DataFrame(orientation_list).mode()
-            result_value = orientation_mode.iloc[0][0]
+            result_value = passed_block.orientation.iloc[0]
 
         result = Consts.CUSTOM_RESULT[result_value]
-        custom_entity_fk = self.get_custom_entity_value(population_data[khz_entity_key][0])
+        if custom_entity:
+            numerator_id = self.get_custom_entity_value(custom_entity)
+        else:
+            numerator_id = self.own_manufacturer_fk
         result_dict = {'kpi_fk': kpi_fk,
-                       'numerator_id': custom_entity_fk,
-                       'numerator_result': 1,
+                       'numerator_id': numerator_id,
+                       'numerator_result': 1 if result_value != 'Not Blocked' else 0,
                        'denominator_id': self.store_id,
                        'denominator_result': 1,
-                       'result': result,
-                       'score': 0}
-
+                       'result': result}
 
         return result_dict
 
@@ -307,51 +266,13 @@ class ColdCutToolBox:
         output = [kpi_name, kpi_fk]
         return output
 
-    def calculate_blocking_orientation(self,  row, df):
-        addtional_data = row['Config Params: JSON']
-        location_data = row['Location: JSON']
-        kpi_fk = row['kpi_fk']
-        # population_data = {'population': row['Dataset 1: JSON']}
-        population_data = row['Dataset 1: JSON']
-        if population_data:
-            population_data = population_data['include'][0]
-        else:
-            population_data = {}
-        df.rename(columns={'pk': 'custom_entity_fk'}, inplace=True)
-
-        kpi_name = row.kpi_type
-
-        result_dict_list = []
-
-        if "Price Tier" in kpi_name:
-            column_name = 'KHZ_Price Tier'
-        elif "Pack Type" in kpi_name:
-            column_name = 'KHZ_Pack Type'
-        elif "pegged" in kpi_name:
-            column_name = 'KHZ_Pegged'
-
-        column_values_list = df[column_name].unique().tolist()
-
-        addtional_data.update({'vertical_horizontal_methodology': ['bucketing', 'percentage_of_shelves'],
-                                       'shelves_required_for_vertical': .8,
-                                       'check_vertical_horizontal': True})
-
-        for column_item in column_values_list:
-            if column_item:
-                specific_item = {column_name: [column_item]}
-                population_data.update(specific_item)
-                result_dict = self._logic_for_blocking_orientation(kpi_fk, population_data, location_data, addtional_data, column_name)
-                population_data.pop(column_name, None)
-                result_dict_list.append(result_dict)
-
-        return result_dict_list
-
     def calculate_vertical_position(self, row, df):
         result_dict_list = []
         mpis = df  # get this from the external target filter_df method thingy
         scene_facings_df = mpis.groupby(['scene_fk', 'product_fk'], as_index=False)['facings'].max()
         scene_facings_df.rename(columns={'facings': 'scene_facings'}, inplace=True)
-        shelf_df = self.merged_scif_mpis.groupby(['scene_fk', 'bay_number'], as_index=False)['shelf_number_from_bottom'].max()
+        shelf_df = self.merged_scif_mpis.groupby(['scene_fk', 'bay_number'],
+                                                 as_index=False)['shelf_number_from_bottom'].max()
         shelf_df.rename(columns={'shelf_number_from_bottom': 'shelf_count'}, inplace=True)
 
         pre_sort_mpis = pd.merge(mpis, scene_facings_df, how='left', on=['scene_fk', 'product_fk'])
