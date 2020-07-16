@@ -59,31 +59,31 @@ class GSKRUToolBox:
         """
         This function calculates the KPI results.
         """
-        assortment_store_dict = self.gsk_generator.availability_store_function()
+        assortment_store_dict = self.gsk_generator.availability_store_function(custom_suffix='_Include_stacking')
         self.common.save_json_to_new_tables(assortment_store_dict)
 
-        assortment_category_dict = self.gsk_generator.availability_category_function()
+        assortment_category_dict = self.gsk_generator.availability_category_function(custom_suffix='_Include_stacking')
         self.common.save_json_to_new_tables(assortment_category_dict)
 
-        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function()
+        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function(custom_suffix='_Include_stacking')
         self.common.save_json_to_new_tables(assortment_subcategory_dict)
 
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function()
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(custom_suffix='_Stacking_Included')
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(custom_suffix='_Stacking_Included')
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(custom_suffix='_Stacking_Included')
         self.common.save_json_to_new_tables(facings_sos_dict)
 
         linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
         self.common.save_json_to_new_tables(linear_sos_dict)
 
-        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
         self.common.save_json_to_new_tables(linear_sos_dict)
 
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
-        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function()
-        self.common.save_json_to_new_tables(facings_sos_dict)
-
-        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
         self.common.save_json_to_new_tables(linear_sos_dict)
 
         self.common.commit_results_data()
