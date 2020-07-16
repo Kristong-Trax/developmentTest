@@ -292,7 +292,7 @@ class ToolBox(GlobalSessionToolBox):
             position = 'Center'
         if row.bay_number <= factor:
             position = 'Left'
-        elif row.bay_number > factor:
+        elif row.bay_number > (bay_count - factor):
             position = 'Right'
         return position
 
