@@ -437,20 +437,20 @@ class ToolBox(GlobalSessionToolBox):
 
         relevant_template_for_distribution.dropna(subset=[Consts.EAN_CODE], inplace=True)
         relevant_template_for_distribution[Consts.EAN_CODE] = relevant_template_for_distribution[
-            Consts.EAN_CODE].astype(str) #fails if issue in the original ean code
+            Consts.EAN_CODE].astype(int) #fails if issue in the original ean code
 
 
         product_df = self.all_products[['product_ean_code', 'product_fk', 'category_fk']].dropna()
-        product_df.product_ean_code = product_df.product_ean_code.astype(str)
+        product_df.product_ean_code = product_df.product_ean_code.astype(int)
 
         df.dropna(subset=['product_ean_code'], inplace=True)
         df.drop_duplicates(subset=['product_ean_code'], keep='first', inplace=True)
-        df['product_ean_code'] = df['product_ean_code'].astype(str)
+        df['product_ean_code'] = df['product_ean_code'].astype(int)
         df = df[df.product_ean_code.isin(relevant_template_for_distribution[Consts.EAN_CODE])]
         final_df = df[['product_ean_code', 'product_fk', Consts.FINAL_FACINGS]]
 
         if final_df.empty:
-            final_result = self.logic_for_failed_result_for_distribution(return_holder, child_sku, relevant_template_for_distribution)
+            final_result = self.logic_for_failed_result_for_distribution(return_holder, child_sku,product_df ,relevant_template_for_distribution)
             return final_result
 
         for unique_assortment in relevant_template_for_distribution[Consts.GRANULAR_GROUP_NAME].unique():
@@ -497,15 +497,35 @@ class ToolBox(GlobalSessionToolBox):
 
         return result_dict_list
 
-    def logic_for_failed_result_for_distribution(self,return_holder, child_sku, relevant_template_for_distribution):
-        result_list = [{'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'result':0}]
+    def logic_for_failed_result_for_distribution(self,return_holder, child_sku, product_df,relevant_template_for_distribution):
+        result_list = []
 
-        for unique_assortment in relevant_template_for_distribution['Granular Group Name'].unique():
+        for unique_assortment in relevant_template_for_distribution['Granular Group Name']:
+            distribution_template = relevant_template_for_distribution[
+                relevant_template_for_distribution[Consts.GRANULAR_GROUP_NAME] == unique_assortment]
+
             assortment_id = self._get_id_from_custom_entity_table('assortment', unique_assortment)
-            result_dict = {'kpi_name': child_sku[0], 'kpi_fk': child_sku[1],
-                           'denominator_id': assortment_id,
-                           'result': 0}
+            categorical_product_df = product_df[
+                product_df.product_ean_code.isin(distribution_template[Consts.EAN_CODE])]
+
+            for unique_ean_code in distribution_template[Consts.EAN_CODE]:
+                numerator_id = categorical_product_df[categorical_product_df.product_ean_code == unique_ean_code].product_fk.iat[0]
+                result_dict = {'kpi_name': child_sku[0], 'kpi_fk': child_sku[1], 'numerator_id': numerator_id,
+                               'denominator_id': assortment_id,
+                               'result': 0}
+                result_list.append(result_dict)
+
+            parent_numerator_id = assortment_id
+            parent_denominator_id = self.store_id
+
+            parent_result = 0
+
+            result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
+                           'numerator_id': parent_numerator_id,
+                           'denominator_id': parent_denominator_id,
+                           'result': parent_result}
             result_list.append(result_dict)
+
 
         return result_list
 
