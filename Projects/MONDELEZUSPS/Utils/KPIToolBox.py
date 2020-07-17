@@ -522,8 +522,8 @@ class ToolBox(GlobalSessionToolBox):
             parent_result = 0
 
             result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-                           'numerator_id': parent_numerator_id,
-                           'denominator_id': parent_denominator_id,
+                           'numerator_id': parent_numerator_id,'numerator_result':0,
+                           'denominator_id': parent_denominator_id,'denominator_result':0,
                            'result': parent_result}
             result_list.append(result_dict)
 
