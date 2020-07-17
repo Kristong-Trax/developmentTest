@@ -63,11 +63,11 @@ class ColdCutToolBox:
         """
         relevant_kpi_types = [
             Consts.SOS,
-            Consts.HORIZONTAL_SHELF_POSITION,
-            Consts.VERTICAL_SHELF_POSITION,
-            Consts.BLOCKING,
-            Consts.BLOCK_ADJ,
-            Consts.BLOCKING_ORIENTATION
+            # Consts.HORIZONTAL_SHELF_POSITION,
+            # Consts.VERTICAL_SHELF_POSITION,
+            # Consts.BLOCKING,
+            # Consts.BLOCK_ADJ,
+            # Consts.BLOCKING_ORIENTATION
         ]
 
         targets = self.targets[self.targets[Consts.ACTUAL_TYPE].isin(relevant_kpi_types)]
@@ -220,12 +220,6 @@ class ColdCutToolBox:
 
         return result_dict
 
-    def _get_kpi_name_and_fk(self, row):
-        kpi_name = row[Consts.KPI_NAME]
-        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
-        output = [kpi_name, kpi_fk]
-        return output
-
     def calculate_vertical_position(self, row, df):
         result_dict_list = []
         mpis = df  # get this from the external target filter_df method thingy
@@ -315,24 +309,27 @@ class ColdCutToolBox:
         return pos_value
 
     def calculate_facings_sos(self, row, df):
-        return_holder = self._get_kpi_name_and_fk(row)
+        data_filter = {'population': row['Dataset 2: JSON']}
+        data_filter['population'].update({'include': [{'session_id': self.session_fk}]})
+        data_filter.update({'location': row['Location: JSON']})
         config_json = row['Config Params: JSON']
         numerator_type = config_json['numerator_type']
         df.dropna(subset=[numerator_type], inplace=True)
-        result_dict_list = self._logic_for_sos(return_holder, df, numerator_type)
+        df = ParseInputKPI.filter_df(data_filter, self.scif)
+        result_dict_list = self._logic_for_sos(row, df, numerator_type)
         return result_dict_list
 
-    def _logic_for_sos(self, return_holder, df, numerator_type):
+    def _logic_for_sos(self, row, df, numerator_type):
         result_list = []
-        for num_item in df[numerator_type].unique().tolist():
+        for num_item in [v for v in df[numerator_type].unique().tolist() if v and pd.notna(v)]:
             numerator_scif = df[df[numerator_type] == num_item]
             numerator_result = numerator_scif.facings.sum()
             denominator_result = df.facings.sum()
-            custom_khz_fk = self.get_custom_entity_value(num_item)
+            custom_entity_fk = self.get_custom_entity_value(num_item)
             sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
 
-            result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1],
-                           'numerator_id': custom_khz_fk, 'numerator_result': numerator_result,
+            result_dict = {'kpi_fk': row.kpi_fk,
+                           'numerator_id': custom_entity_fk, 'numerator_result': numerator_result,
                            'denominator_id': self.store_id,
                            'denominator_result': denominator_result,
                            'result': sos_value}
