@@ -372,10 +372,10 @@ class ColdCutToolBox:
                 Log.error('Unable to calculate {}: {}'.format(row[Consts.KPI_NAME], e))
 
     def _parse_json_filters_to_df(self, row):
-        json = row[(row.index.str.contains('JSON')) &
-                   (~row.index.str.contains('Config Params')) &
-                   (~row.index.str.contains('Dataset 2'))]
-        filter_json = json[~json.isnull()]
+        jsonv = row[(row.index.str.contains('JSON')) &
+                    (~row.index.str.contains('Config Params')) &
+                    (~row.index.str.contains('Dataset 2'))]
+        filter_json = jsonv[~jsonv.isnull()]
         filtered_scif_mpis = self.merged_scif_mpis
         for each_json in filter_json:
             final_json = {'population': each_json} if ('include' or 'exclude') in each_json else each_json
