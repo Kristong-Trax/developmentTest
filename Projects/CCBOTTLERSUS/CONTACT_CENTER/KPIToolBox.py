@@ -26,7 +26,7 @@ class ContactCenterToolBox(GlobalSessionToolBox):
             .merge(self.templates, on=TEMPLATE_FK)[COLUMNS]
 
         self.results_df = pd.DataFrame(
-            columns=[FK, KPI_NAME, NUMERATOR_ID, DENOMINATOR_ID, CONTEXT_ID, SCORE, RESULT,
+            columns=[FK, KPI_NAME, NUMERATOR_ID, 'numerator_result', DENOMINATOR_ID, CONTEXT_ID, SCORE, RESULT,
                      IDENTIFIER_RESULT, IDENTIFIER_PARENT, SHOULD_ENTER]
         )
 
@@ -67,8 +67,18 @@ class ContactCenterToolBox(GlobalSessionToolBox):
         min_scenes = merged_df[merged_df['num_count'] / merged_df['den_count'] * 100 >= kpi['minimum_threshold']]
 
         for _, scene in min_scenes.iterrows():
-            self.save_to_results([kpi_id, kpi[NAME], self.own_manufacturer, self.store_id, scene[SCENE_FK],
-                                  scene['purity'], scene[RESULT], scene[SCENE_FK], kpi[IDENTIFIER_PARENT],  True])
+            self.save_to_results({
+                FK: kpi_id,
+                KPI_NAME: kpi[NAME],
+                NUMERATOR_ID: self.own_manufacturer,
+                'numerator_result': scene[SCENE_FK],
+                DENOMINATOR_ID: self.store_id,
+                CONTEXT_ID: scene[SCENE_FK],
+                SCORE: scene['purity'],
+                RESULT: scene[RESULT],
+                IDENTIFIER_RESULT: scene[SCENE_FK],
+                IDENTIFIER_PARENT: kpi[IDENTIFIER_PARENT],
+                SHOULD_ENTER: True})
 
     def calculate_availability(self, kpi):
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi[NAME])
@@ -83,7 +93,7 @@ class ContactCenterToolBox(GlobalSessionToolBox):
                 dataset_b = self._filter_df(dataset_b, filters=filters, func=func)
             result = all(bool(dataset_b[col].unique().shape[0] >= val) for col, val in kpi[TEST_B].items())
 
-        self.results_df = self.results_df.append({
+        self.save_to_results({
             FK: kpi_id,
             KPI_NAME: kpi[NAME],
             NUMERATOR_ID: self.own_manufacturer,
@@ -91,8 +101,7 @@ class ContactCenterToolBox(GlobalSessionToolBox):
             RESULT: int(result) * 100,
             IDENTIFIER_RESULT: kpi_id,
             IDENTIFIER_PARENT: kpi[IDENTIFIER_PARENT],
-            SHOULD_ENTER: True
-        }, ignore_index=True)
+            SHOULD_ENTER: True})
 
     def calculate_results_analysis(self, kpi):
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi[NAME])
@@ -114,6 +123,8 @@ class ContactCenterToolBox(GlobalSessionToolBox):
         }, ignore_index=True)
 
     def save_to_results(self, values):
+        if isinstance(values, dict):
+            values = [values.get(col) for col in self.results_df.columns]
         self.results_df.loc[self.results_df.shape[0], self.results_df.columns.tolist()] = values
 
     def save_to_db(self):
@@ -125,6 +136,7 @@ class ContactCenterToolBox(GlobalSessionToolBox):
             self.write_to_db(
                 fk=getattr(row, FK),
                 numerator_id=getattr(row, NUMERATOR_ID),
+                numerator_result=getattr(row, 'numerator_result', None),
                 denominator_id=getattr(row, DENOMINATOR_ID),
                 context_id=getattr(row, CONTEXT_ID, None),
                 score=getattr(row, SCORE),
