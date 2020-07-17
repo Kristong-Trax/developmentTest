@@ -511,8 +511,8 @@ class ToolBox(GlobalSessionToolBox):
 
             for unique_ean_code in distribution_template[Consts.EAN_CODE]:
                 numerator_id = categorical_product_df[categorical_product_df.product_ean_code == unique_ean_code].product_fk.iat[0]
-                result_dict = {'kpi_name': child_sku[0], 'kpi_fk': child_sku[1], 'numerator_id': numerator_id,
-                               'denominator_id': assortment_id,
+                result_dict = {'kpi_name': child_sku[0], 'kpi_fk': child_sku[1], 'numerator_id': numerator_id,'numerator_result':0,
+                               'denominator_id': assortment_id,'denominator_result':1,
                                'result': 0}
                 result_list.append(result_dict)
 
