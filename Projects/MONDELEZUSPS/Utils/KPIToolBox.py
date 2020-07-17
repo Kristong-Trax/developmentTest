@@ -96,8 +96,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
-        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
-        # relevant_kpi_types = [Consts.BAY_POSITION]
+        # relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
+        relevant_kpi_types = [Consts.BAY_POSITION]
         targets = self.targets[(self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)) & (
             self.targets[Consts.GRANULAR_GROUP_NAME].isnull())]
 
@@ -323,14 +323,13 @@ class ToolBox(GlobalSessionToolBox):
             denominator_filtered_df = self._filter_df(df,
                                                       {denominator_type: unqiue_denominator_id})
             for unique_numerator_id in set(denominator_filtered_df[numerator_type]):
-                if unique_numerator_id in [1107]: #1107, 1109
-                    a = 1
                 filtered_numerator_df = self._filter_df(denominator_filtered_df, {numerator_type: unique_numerator_id})
                 relevant_scene = self._df_groupby_logic(filtered_numerator_df, ['scene_fk'], {'facings': 'count'}).agg(
                     ['max', 'idxmax']).loc['idxmax']['facings']
+
                 scene_filtered_df = self._filter_df(filtered_numerator_df, {'scene_fk': relevant_scene})
                 # count_of_bays_in_scene = self.match_product_in_scene[self.match_product_in_scene.scene_fk == relevant_scene].bay_number.max()
-                count_of_bays_in_scene = scene_filtered_df.bay_number.max()
+                count_of_bays_in_scene = self._filter_df(self.match_product_in_scene, {'scene_fk':relevant_scene}).bay_number.max()
                 bay_number = self._get_bay_number_for_bay_positon(numerator_type, count_of_bays_in_scene,
                                                                   scene_filtered_df)
                 final_result = self._get_result_for_bay_postion(df,
