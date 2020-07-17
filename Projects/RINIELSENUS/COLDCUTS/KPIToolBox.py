@@ -83,7 +83,7 @@ class ColdCutToolBox:
         self.scene_info = self.data_provider[Data.SCENES_INFO]
         self.store_id = self.data_provider[Data.STORE_FK]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
-        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.rds_conn = self.ps_data_provider.rds_conn
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.session_info = self.data_provider[Data.SESSION_INFO]
         self.session_fk = self.session_info['pk'].values[0]
@@ -157,12 +157,12 @@ class ColdCutToolBox:
         result = self.adjacency.evaluate_block_adjacency(anchor_data, target_data, location=location_data,
                                                          additional=additional_data, kpi_fk=kpi_fk,
                                                          eyelight_prefix=eyelight_prefix)
-        result_type_fk = Consts.CUSTOM_RESULT['Yes'] if result else Consts.CUSTOM_RESULT['No']
+        result_type_fk = Consts.CUSTOM_RESULT['Yes'] if result and pd.notna(result) else Consts.CUSTOM_RESULT['No']
         result_dict = {
             'kpi_fk': kpi_fk,
             'numerator_id': self.own_manufacturer_fk,
             'denominator_id': self.store_id,
-            'numerator_result': result,
+            'numerator_result': 1 if result else 0,
             'denominator_result': 1,
             'result': result_type_fk
         }
@@ -513,8 +513,12 @@ class ColdCutToolBox:
         return df
 
     def get_custom_entity_value(self, value):
-        custom_fk = self.custom_entity_table['pk'][self.custom_entity_table['name'] == value].iloc[0]
-        return custom_fk
+        try:
+            custom_fk = self.custom_entity_table['pk'][self.custom_entity_table['name'] == value].iloc[0]
+            return custom_fk
+        except IndexError:
+            Log.error('No custom entity found for: {}'.format(value))
+            return None
 
     def commit_results(self):
         self.common.commit_results_data()
