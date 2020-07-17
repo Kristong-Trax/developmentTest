@@ -16,7 +16,7 @@ class FacingsToolBox(GlobalSessionToolBox):
 
         self.mpis = self.matches.merge(self.scene_info, on='scene_fk')[COLUMNS]
         self.results_df = pd.DataFrame(
-            columns=[FK, NUMERATOR_ID, DENOMINATOR_ID, CONTEXT_ID, RESULT]
+            columns=[FK, NUMERATOR_ID, DENOMINATOR_ID, CONTEXT_ID, RESULT, SCORE]
         )
 
     def main_calculation(self):
@@ -27,14 +27,22 @@ class FacingsToolBox(GlobalSessionToolBox):
         kpi_name = 'Facings by Shelf in Location'
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi_name)
 
-        df = self.mpis.groupby(by=['scene_fk', 'shelf_number', 'product_fk'], as_index=False) \
+        df = self.mpis.groupby(by=[TEMPLATE_FK, SHELF_NUMBER, PRODUCT_FK], as_index=False) \
             .count() \
             .rename(columns={'scene_match_fk': FACINGS})
 
         for _, row in df.iterrows():
-            self.save_to_results([kpi_id, row[PRODUCT_FK], row[SHELF_NUMBER], row[TEMPLATE_FK], row[FACINGS]])
+            self.save_to_results({
+                FK: kpi_id,
+                NUMERATOR_ID: row[PRODUCT_FK],
+                DENOMINATOR_ID: row[SHELF_NUMBER],
+                CONTEXT_ID: row[TEMPLATE_FK],
+                RESULT: row[FACINGS],
+                SCORE: row[SHELF_NUMBER]})
 
     def save_to_results(self, values):
+        if isinstance(values, dict):
+            values = [values.get(col) for col in self.results_df.columns]
         self.results_df.loc[self.results_df.shape[0], self.results_df.columns.tolist()] = values
 
     def save_to_db(self):
@@ -49,6 +57,7 @@ class FacingsToolBox(GlobalSessionToolBox):
                 denominator_id=getattr(row, DENOMINATOR_ID),
                 context_id=getattr(row, CONTEXT_ID),
                 result=getattr(row, RESULT),
+                score=row.score
             )
 
     @staticmethod
