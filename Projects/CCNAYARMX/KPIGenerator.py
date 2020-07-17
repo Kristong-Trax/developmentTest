@@ -9,6 +9,7 @@ from Projects.CCNAYARMX.National.Utils.KPIToolBox import NationalToolBox
 from Projects.CCNAYARMX.Especializado.Utils.KPIToolBox import EspecializadoToolBox
 from Projects.CCNAYARMX.Fondas.Utils.KPIToolBox import FONDASToolBox
 from Projects.CCNAYARMX.Comidas.Utils.KPIToolBox import ComidasToolBox
+from Projects.CCNAYARMX.Puestos_Fijos.Utils.KPIToolBox import PuestosFijosToolBox
 
 __author__ = 'krishnat'
 
@@ -39,6 +40,7 @@ class Generator:
         if self.data_provider['scene_item_facts'].empty:
             Log.warning('Scene item facts is empty for this session')
         else:
+            PuestosFijosToolBox(self.data_provider, self.output, self.common).main_calculation()
             ComidasToolBox(self.data_provider, self.output, self.common).main_calculation()
             EspecializadoToolBox(self.data_provider,self.output, self.common).main_calculation()
             FONDASToolBox(self.data_provider, self.output, self.common).main_calculation()
