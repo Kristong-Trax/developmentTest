@@ -96,8 +96,8 @@ class ToolBox(GlobalSessionToolBox):
 
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
-        # relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
-        relevant_kpi_types = [Consts.BAY_POSITION]
+        relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
+        # relevant_kpi_types = [Consts.BAY_POSITION]
         targets = self.targets[(self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)) & (
             self.targets[Consts.GRANULAR_GROUP_NAME].isnull())]
 
