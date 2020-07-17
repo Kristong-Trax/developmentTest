@@ -26,6 +26,7 @@ class Consts(object):
                      "Vertical": 39,
                      "VERTICAL": 39,
                      "Horizontal": 40,
+                     'HORIZONTAL': 40,
                      "Top": 33,
                      "Middle": 35,
                      "Eye": 34,
