@@ -109,11 +109,11 @@ class ColdCutToolBox:
         """
         relevant_kpi_types = [
             Consts.SOS,
-            # Consts.HORIZONTAL_SHELF_POSITION,
-            # Consts.VERTICAL_SHELF_POSITION,
-            # Consts.BLOCKING,
-            # Consts.BLOCK_ADJ,
-            # Consts.BLOCKING_ORIENTATION
+            Consts.HORIZONTAL_SHELF_POSITION,
+            Consts.VERTICAL_SHELF_POSITION,
+            Consts.BLOCKING,
+            Consts.BLOCK_ADJ,
+            Consts.BLOCKING_ORIENTATION
         ]
 
         targets = self.targets[self.targets[Consts.ACTUAL_TYPE].isin(relevant_kpi_types)]
