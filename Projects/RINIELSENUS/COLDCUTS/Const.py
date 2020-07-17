@@ -24,6 +24,7 @@ class Consts(object):
                      "Blocked": 37,
                      "Not Blocked": 38,
                      "Vertical": 39,
+                     "VERTICAL": 39,
                      "Horizontal": 40,
                      "Top": 33,
                      "Middle": 35,

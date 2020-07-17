@@ -111,8 +111,8 @@ class ColdCutToolBox:
             # Consts.SOS,
             # Consts.HORIZONTAL_SHELF_POSITION,
             # Consts.VERTICAL_SHELF_POSITION,
-            Consts.BLOCKING,
-            # Consts.BLOCK_ADJ,
+            # Consts.BLOCKING,
+            Consts.BLOCK_ADJ,
             # Consts.BLOCKING_ORIENTATION
         ]
 
@@ -141,8 +141,8 @@ class ColdCutToolBox:
         if context_type:
             context_values = [v for v in df[context_type].unique().tolist() if v and pd.notna(v)]
             for context_value in context_values:
-                anchor_data = anchor_data.update({context_type: context_value})
-                target_data = target_data.update({context_type: context_value})
+                anchor_data.update({context_type: [context_value]})
+                target_data.update({context_type: [context_value]})
                 result_dict = self._logic_for_adj(kpi_fk, anchor_data, target_data, location_data, additional_data,
                                                   eyelight_prefix='{}-'.format(context_value),
                                                   custom_entity=context_value)
@@ -173,6 +173,7 @@ class ColdCutToolBox:
 
     def _logic_for_blocking(self, kpi_fk, population_data, location_data, additional_data):
         result_dict_list = []
+        additional_data.update({'use_masking_only': True})
         block = self.block.network_x_block_together(population=population_data, location=location_data,
                                                     additional=additional_data)
 
@@ -221,7 +222,7 @@ class ColdCutToolBox:
         if numerator_type:
             numerator_values = [v for v in df[numerator_type].unique().tolist() if v and pd.notna(v)]
             for numerator_value in numerator_values:
-                population_data.update({numerator_type: numerator_value})
+                population_data.update({numerator_type: [numerator_value]})
                 result_dict = self._logic_for_blocking_orientation(kpi_fk, population_data, location_data,
                                                                    additional_data, numerator_value)
                 result_dict_list.append(result_dict)
@@ -233,12 +234,19 @@ class ColdCutToolBox:
 
     def _logic_for_blocking_orientation(self, kpi_fk, population_data, location_data, additional_data,
                                         custom_entity=None):
+        additional_data.update({'use_masking_only': True})
         block = self.block.network_x_block_together(population=population_data, location=location_data,
                                                     additional=additional_data)
-
+        if custom_entity:
+            prefix = '{}-'.format(custom_entity)
+            numerator_id = self.get_custom_entity_value(custom_entity)
+        else:
+            prefix = None
+            numerator_id = self.own_manufacturer_fk
         for row in block.itertuples():
+
             scene_match_fks = list(row.cluster.nodes[list(row.cluster.nodes())[0]]['scene_match_fk'])
-            self.eyelight.write_eyelight_result(scene_match_fks, kpi_fk)
+            self.eyelight.write_eyelight_result(scene_match_fks, kpi_fk, prefix=prefix)
         passed_block = block[block['is_block']]
 
         if passed_block.empty:
@@ -247,10 +255,6 @@ class ColdCutToolBox:
             result_value = passed_block.orientation.iloc[0]
 
         result = Consts.CUSTOM_RESULT[result_value]
-        if custom_entity:
-            numerator_id = self.get_custom_entity_value(custom_entity)
-        else:
-            numerator_id = self.own_manufacturer_fk
         result_dict = {'kpi_fk': kpi_fk,
                        'numerator_id': numerator_id,
                        'numerator_result': 1 if result_value != 'Not Blocked' else 0,
@@ -399,10 +403,6 @@ class ColdCutToolBox:
         elif kpi_type == Consts.BLOCKING_ORIENTATION:
             return self.calculate_blocking_orientation
 
-    def get_denominator(self, denominator_value):
-        if denominator_value == 'store_fk':
-            return self.store_id
-
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
             try:
@@ -416,23 +416,22 @@ class ColdCutToolBox:
                         self.results_df.loc[len(self.results_df), result.keys()] = result
                 elif result_data and isinstance(result_data, dict):
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
-            except:
-
-                pass
-                # Print log error for kpi
-                # row['kpi_type'] ERROR for this
+            except Exception as e:
+                Log.error('Unable to calculate {}: {}'.format(row[Consts.KPI_NAME], e))
 
     def _parse_json_filters_to_df(self, row):
-        JSON = row[row.index.str.contains('JSON') & (~ row.index.str.contains('Config Params'))]
-        filter_JSON = JSON[~JSON.isnull()]
+        json = row[(row.index.str.contains('JSON')) &
+                   (~row.index.str.contains('Config Params')) &
+                   (~row.index.str.contains('Dataset 2'))]
+        filter_json = json[~json.isnull()]
         filtered_scif_mpis = self.merged_scif_mpis
-        for each_JSON in filter_JSON:
-            final_JSON = {'population': each_JSON} if ('include' or 'exclude') in each_JSON else each_JSON
-            filtered_scif_mpis = ParseInputKPI.filter_df(final_JSON, filtered_scif_mpis)
+        for each_json in filter_json:
+            final_json = {'population': each_json} if ('include' or 'exclude') in each_json else each_json
+            filtered_scif_mpis = ParseInputKPI.filter_df(final_json, filtered_scif_mpis)
         if 'include_stacking' in row['Config Params: JSON'].keys():
             including_stacking = row['Config Params: JSON']['include_stacking'][0]
-            filtered_scif_mpis[
-                Consts.FINAL_FACINGS] = filtered_scif_mpis.facings if including_stacking == 'True' else filtered_scif_mpis.facings_ign_stack
+            filtered_scif_mpis[Consts.FINAL_FACINGS] = \
+                filtered_scif_mpis.facings if including_stacking == 'True' else filtered_scif_mpis.facings_ign_stack
             filtered_scif_mpis = filtered_scif_mpis[filtered_scif_mpis.stacking_layer == 1]
         return filtered_scif_mpis
 
@@ -454,9 +453,9 @@ class ColdCutToolBox:
         if item:
             try:
                 container = self.prereq_parse_json_row(item)
-            except:
+            except Exception as e:
                 container = None
-                pass  # add log warning
+                Log.warning('{}: Unable to parse json for: {}'.format(e, item))
         else:
             container = None
 
@@ -465,7 +464,8 @@ class ColdCutToolBox:
     def save_results_to_db(self):
         self.results_df.drop(columns=['kpi_name'], inplace=True)
         self.results_df.rename(columns={'kpi_fk': 'fk'}, inplace=True)
-        self.results_df[['result']].fillna(0, inplace=True)
+        self.results_df['result'].fillna(0, inplace=True)
+        self.results_df['score'].fillna(0, inplace=True)
         results = self.results_df.to_dict('records')
         for result in results:
             result = simplejson.loads(simplejson.dumps(result, ignore_nan=True))
@@ -485,26 +485,6 @@ class ColdCutToolBox:
             json_str_fixed = json_str.replace("'", '"')
             container = json.loads(json_str_fixed)
 
-        # container = dict(container)
-        # if isinstance(item, list):
-        #     container = OrderedDict()
-        #     for it in item:
-        #         # value = re.findall("[0-9a-zA-Z_]+", it)
-        #         value = re.findall("'([^']*)'", it)
-        #         if len(value) == 2:
-        #             for i in range(0, len(value), 2):
-        #                 container[value[i]] = [value[i + 1]]
-        #         else:
-        #             if len(container.items()) == 0:
-        #                 print('issue')  # delete later
-        #                 # raise error
-        #                 # haven't encountered an this. So should raise an issue.
-        #                 pass
-        #             else:
-        #                 last_inserted_value_key = container.items()[-1][0]
-        #                 container.get(last_inserted_value_key).append(value[0])
-        # else:
-        #     container = ast.literal_eval(item)
         return container
 
     @staticmethod
@@ -526,18 +506,6 @@ class ColdCutToolBox:
         if not isinstance(ratio, (float, int)):
             ratio = 0
         return round(ratio * 100, 2)
-
-    @staticmethod
-    def _filter_df(df, filters, exclude=0):
-        for key, val in filters.items():
-            if not isinstance(val, list):
-                val = [val]
-            if exclude:
-                df = df[~df[key].isin(val)]
-            else:
-                df = df[df[key].isin(val)]
-
-        return df
 
     def get_kpi_custom_entity_table(self):
         """
