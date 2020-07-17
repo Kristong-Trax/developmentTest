@@ -108,11 +108,11 @@ class ColdCutToolBox:
         This function calculates the KPI results.
         """
         relevant_kpi_types = [
-            # Consts.SOS,
+            Consts.SOS,
             # Consts.HORIZONTAL_SHELF_POSITION,
             # Consts.VERTICAL_SHELF_POSITION,
             # Consts.BLOCKING,
-            Consts.BLOCK_ADJ,
+            # Consts.BLOCK_ADJ,
             # Consts.BLOCKING_ORIENTATION
         ]
 
@@ -360,19 +360,18 @@ class ColdCutToolBox:
 
     def calculate_facings_sos(self, row, df):
         return_holder = self._get_kpi_name_and_fk(row)
-        numerator_type, denominator_type = self._get_numerator_and_denominator_type(
-            row['Config Params: JSON'], context_relevant=False)
+        config_json = row['Config Params: JSON']
+        numerator_type = config_json['numerator_type']
         df.dropna(subset=[numerator_type], inplace=True)
-        result_dict_list = self._logic_for_sos(return_holder, df, numerator_type, denominator_type)
+        result_dict_list = self._logic_for_sos(return_holder, df, numerator_type)
         return result_dict_list
 
-    def _logic_for_sos(self, return_holder, df, numerator_type, denominator_type):
+    def _logic_for_sos(self, return_holder, df, numerator_type):
         result_list = []
-        for num_item in self.merged_scif_mpis[numerator_type].dropna().unique().tolist():
-            numerator_scif = self.merged_scif_mpis[self.merged_scif_mpis[numerator_type] == num_item]
+        for num_item in df[numerator_type].unique().tolist():
+            numerator_scif = df[df[numerator_type] == num_item]
             numerator_result = numerator_scif.facings.sum()
-            denominator_result = self.merged_scif_mpis.facings.sum()
-
+            denominator_result = df.facings.sum()
             product_fk = numerator_scif['product_fk'].iloc[0]
 
             sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
@@ -388,14 +387,11 @@ class ColdCutToolBox:
 
     def _get_calculation_function_by_kpi_type(self, kpi_type):
         if kpi_type == Consts.SOS:
-            pass
-            # return self.calculate_facings_sos
+            return self.calculate_facings_sos
         elif kpi_type == Consts.HORIZONTAL_SHELF_POSITION:
             return self.calculate_horizontal_position
         elif kpi_type == Consts.VERTICAL_SHELF_POSITION:
             return self.calculate_vertical_position
-        # elif kpi_type == Consts.SHELF_POSITION:
-        #     return self.calculate_shelf_position
         elif kpi_type == Consts.BLOCKING:
             return self.calculate_blocking
         elif kpi_type == Consts.BLOCK_ADJ:
