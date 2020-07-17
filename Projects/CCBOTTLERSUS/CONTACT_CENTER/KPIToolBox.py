@@ -101,7 +101,7 @@ class ContactCenterToolBox(GlobalSessionToolBox):
         passed = component_df['result'].sum() or 0
         total = component_df.shape[0] * 100
 
-        result = passed / total if total > 0 else 0
+        result = passed / total * 100 if total > 0 else 0
 
         self.results_df = self.results_df.append({
             FK: kpi_id,

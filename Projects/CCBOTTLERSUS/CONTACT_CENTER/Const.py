@@ -8,6 +8,7 @@ DENOMINATOR_ID = 'denominator_id'
 CONTEXT_ID = 'context_id'
 SHOULD_ENTER = 'should_enter'
 TEMPLATE_FK = 'template_fk'
+TEMPLATE_NAME = 'template_name'
 SCENE_FK = 'scene_fk'
 BRAND_FK = 'brand_fk'
 BRAND_NAME = 'brand_name'
@@ -48,11 +49,8 @@ KPIs = {
             KPI_TYPE: COOLER_PURITY,
             'minimum_threshold': 40,
             'purity_threshold': 95,
-            DEN_FILTERS: {
-                'template_name': ['Other Cooler'],
-                UNITED_DELIVER: 'Y'
-            },
-            NUM_FILTERS: {MANUFACTURER_FK: 1},
+            DEN_FILTERS: {TEMPLATE_NAME: ['Other Cooler']},
+            NUM_FILTERS: {UNITED_DELIVER: 'Y'},
             IDENTIFIER_PARENT: COOLER_PURITY
         },
         {
