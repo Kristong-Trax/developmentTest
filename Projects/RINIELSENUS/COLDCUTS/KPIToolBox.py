@@ -1,6 +1,4 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Trax.Cloud.Services.Connector.Keys import DbUsers
-from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 import ast
 import pandas as pd
 import simplejson
@@ -15,51 +13,7 @@ from KPIUtils_v2.Calculations.AMER.BlockAdjacencyCalculations import BlockAdjace
 import json
 import numpy
 
-# from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-# from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability
-# from KPIUtils_v2.Calculations.NumberOfScenesCalculations import NumberOfScenes
-# from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
-# from KPIUtils_v2.Calculations.SOSCalculations import SOS
-# from KPIUtils_v2.Calculations.SequenceCalculations import Sequence
-# from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-
-# from KPIUtils_v2.Calculations.CalculationsUtils import GENERALToolBoxCalculations
-# from _mysql_exceptions import ProgrammingError
-# from datetime import datetime
-import math
-
 __author__ = 'Nicolas Keeton'
-
-KPI_RESULT = 'report.kpi_results'
-KPK_RESULT = 'report.kpk_results'
-KPS_RESULT = 'report.kps_results'
-STATIC_ATOMIC = 'static.atomic_kpi'
-
-# IN DB
-MANUFACTUR = 'Manufacturer'
-BRAND = 'Brand'
-SUB_BRAND = 'Sub Brand'
-SUB_CATEGORY = 'Sub Category'
-CATEGORY = 'Category'
-# SUBSEGMENT_KPI = 'Subsegment'
-# SUBSEGMENT_SET = 'Purina- Subsegment'
-# PRICE_SET = 'Purina- Price'
-PRICE_KPI = 'Price Class'  # to be written as it is on the database
-
-# In SCIF
-# SCIF_SUBSEGMENT = 'Nestle_Purina_Subsegment'  # to be written as it is on the database
-SCIF_SUB_CATEOGRY = 'Nestle_Purina_Sub-category'
-# SCIF_SUB_BRAND = 'Nestle_Purina_Subbrand'
-SCIF_PRICE = 'Nestle_Purina_Price_Class'
-SCIF_CATEOGRY = 'Nestle_Purina_Category'
-LINEAR_SIZE = u'gross_len_add_stack'
-# gross_len_ign_stack
-# gross_len_split_stack
-# gross_len_add_stack
-PURINA_KPI = [MANUFACTUR, BRAND, SUB_CATEGORY, CATEGORY, PRICE_KPI]
-PET_FOOD_CATEGORY = 13
-PURINA_SET = 'Purina'
-OTHER = 'OTHER'
 
 
 class ColdCutToolBox:
@@ -139,7 +93,9 @@ class ColdCutToolBox:
 
         context_type = additional_data.get('context_type')
         if context_type:
-            context_values = [v for v in df[context_type].unique().tolist() if v and pd.notna(v)]
+            target_df = ParseInputKPI.filter_df(target_data, self.scif)
+            target_values = target_df[context_type].unique().tolist()
+            context_values = [v for v in df[context_type].unique().tolist() if v and pd.notna(v) and v in target_values]
             for context_value in context_values:
                 anchor_data.update({context_type: [context_value]})
                 target_data.update({context_type: [context_value]})

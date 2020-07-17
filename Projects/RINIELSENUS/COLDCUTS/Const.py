@@ -16,8 +16,8 @@ class Consts(object):
     # SCENE_FK = 'scene_fk
     BLOCK_ADJ = 'Block Adjacency'
 
-    CUSTOM_RESULT = {"Yes": 32,
-                     "No": 31,
+    CUSTOM_RESULT = {"Yes": 31,
+                     "No": 32,
                      "Right": 29,
                      "Left": 27,
                      "Center": 28,
