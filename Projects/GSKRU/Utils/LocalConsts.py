@@ -20,8 +20,8 @@ class Consts(object):
         ]
 
     SOA = 'SOA'
-    SOA_TOP_LEVEL_INTERNAL_TARGET_KPI = 'GSK_SOA_Top_Level_Internal_Target'
-    SOA_TOP_LEVEL_EXTERNAL_TARGET_KPI = 'GSK_SOA_Top_Level_External_Target'
+    SOA_MANUFACTURER_INTERNAL_TARGET_KPI = 'GSK_SOA_in_Manufacturer_vs_Internal_Target'
+    SOA_MANUFACTURER_EXTERNAL_TARGET_KPI = 'GSK_SOA_in_Manufacturer_vs_External_Target'
     SOA_SUBCAT_INTERNAL_TARGET_KPI = 'GSK_SOA_in_SubCategory_vs_Internal_Target'
     SOA_SUBCAT_EXTERNAL_TARGET_KPI = 'GSK_SOA_in_SubCategory_vs_External_Target'
 
