@@ -10,7 +10,7 @@ if __name__ == '__main__':
     Config.init()
     project_name = 'gskru'
     data_provider = KEngineDataProvider(project_name)
-    session = 'd870de4a-475f-41c1-8447-45f63c024d8d'
+    session = 'aca2d140-d7dc-4817-9a42-95d2a69c70ff'
     data_provider.load_session_data(session)
     output = Output()
     Calculations(data_provider, output).run_project_calculations()
