@@ -14,12 +14,13 @@ class HeroAvailabilitySkuKpi(UnifiedCalculationsScript):
         self.kpi_name = self._config_params['kpi_type']
 
     def calculate(self):
-        self.util.filtered_scif_secondary, self.util.filtered_matches_secondary = \
-            self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif_secondary,
-                                                                                 self.util.filtered_matches_secondary,
-                                                                                 self.kpi_name)
-        self.calculate_kpi_for_secondary_shelf()
-        self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
+        if self.util.commontools.are_all_bins_tagged:
+            self.util.filtered_scif_secondary, self.util.filtered_matches_secondary = \
+                self.util.commontools.set_filtered_scif_and_matches_for_specific_kpi(self.util.filtered_scif_secondary,
+                                                                                     self.util.filtered_matches_secondary,
+                                                                                     self.kpi_name)
+            self.calculate_kpi_for_secondary_shelf()
+            self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def kpi_type(self):
         pass

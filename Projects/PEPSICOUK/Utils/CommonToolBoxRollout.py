@@ -109,11 +109,26 @@ class PEPSICOUKCommonToolBox:
                                                       'HO Agreed Half Pallet'][self.SHELF_LEN_DISPL].values[0]
         self.shelf_len_mixed_shelves = self.calculate_shelf_len_for_mixed_shelves()
         self.scene_display = self.get_match_display_in_scene()
-        self.assign_bays_to_bins()
+        self.are_all_bins_tagged = self.check_if_all_bins_are_recognized()
         self.filtered_scif_secondary = self.get_initial_secondary_scif()
         self.filtered_matches_secondary = self.get_initial_secondary_matches()
-        self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
-                                                              self.filtered_matches_secondary)
+        if self.are_all_bins_tagged:
+            self.assign_bays_to_bins()
+            self.set_filtered_scif_and_matches_for_all_kpis_secondary(self.filtered_scif_secondary,
+                                                                      self.filtered_matches_secondary)
+
+    def check_if_all_bins_are_recognized(self):
+        tasks_with_bin_logic =  self.displays_template[(self.displays_template[self.KPI_LOGIC] == 'Bin') &
+                                                  (self.displays_template[self.BAY_TO_SEPARATE] == 'No') &
+                                                  (self.displays_template[self.BIN_TO_SEPARATE] == 'Yes')] \
+            [self.DISPLAY_NAME_TEMPL].unique()
+        scenes_with_bin_logic = set(self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(tasks_with_bin_logic)]\
+            [ScifConsts.SCENE_FK].unique())
+        scenes_with_tagged_bins = set(self.scene_display[ScifConsts.SCENE_FK].unique()) if \
+            len(self.scene_display[ScifConsts.SCENE_FK].unique())>0 else set([0])
+        missing_bin_tags = scenes_with_bin_logic.difference(scenes_with_tagged_bins)
+        flag = False if missing_bin_tags else True
+        return flag
 
     def add_sub_category_to_empty_and_other(self, scif, matches):
         # exclude bin scenes
@@ -225,9 +240,9 @@ class PEPSICOUKCommonToolBox:
         mix_scenes = self.scif[self.scif[ScifConsts.TEMPLATE_NAME].isin(mix_displays)][ScifConsts.SCENE_FK].unique()
         mix_matches = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK].isin(mix_scenes)]
         shelf_len_df = pd.DataFrame(columns=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER, 'shelf_length'])
-        shelf_len_df[MatchesConsts.SCENE_FK] = shelf_len_df[MatchesConsts.SCENE_FK].astype('float')
-        shelf_len_df[MatchesConsts.BAY_NUMBER] = shelf_len_df[MatchesConsts.BAY_NUMBER].astype('float')
         if not mix_matches.empty:
+            shelf_len_df[MatchesConsts.SCENE_FK] = shelf_len_df[MatchesConsts.SCENE_FK].astype('float')
+            shelf_len_df[MatchesConsts.BAY_NUMBER] = shelf_len_df[MatchesConsts.BAY_NUMBER].astype('float')
             scenes_bays = mix_matches.drop_duplicates(subset=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])
             for i, row in scenes_bays.iterrows():
                 filtered_matches = mix_matches[(mix_matches[MatchesConsts.SCENE_FK]==row[MatchesConsts.SCENE_FK]) &
@@ -305,10 +320,10 @@ class PEPSICOUKCommonToolBox:
         bay_scif = scif
         bay_matches = matches
         if not bay_matches.empty:
-            bay_matches = matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK],
+            bay_matches = bay_matches.drop_duplicates(subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK],
                                                   keep='last')
             bay_matches[MatchesConsts.BAY_NUMBER] = 1
-            bay_matches = self.construct_display_id(matches)
+            bay_matches = self.construct_display_id(bay_matches)
             bay_matches['display_id'] = bay_matches['display_id']+max_display_id
             bay_scif, bay_matches = self.calculate_product_length_on_display(bay_scif, bay_matches)
             max_display_id = bay_matches['display_id'].max()
@@ -381,7 +396,8 @@ class PEPSICOUKCommonToolBox:
             if not bin_bin_matches.empty:
                 bin_bin_matches = self.place_products_to_bays(bin_bin_matches, self.scene_display)
             display_matches = bin_bin_matches.append(bin_bay_matches)
-            display_matches = self.calculate_product_length_in_matches_on_display(display_matches)
+            if not display_matches.empty:
+                display_matches = self.calculate_product_length_in_matches_on_display(display_matches)
 
             mix_matches = shelf_matches.append(display_matches)
             mix_matches_agg = mix_matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK]). \
@@ -415,16 +431,20 @@ class PEPSICOUKCommonToolBox:
     def calculate_product_length_in_matches_on_display(self, matches):
         matches = matches.drop_duplicates(
             subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])
-        matches_no_pos = matches[~(matches[MatchesConsts.STACKING_LAYER] == -2)]
+        matches = matches.merge(self.all_products[[ScifConsts.PRODUCT_FK, ScifConsts.PRODUCT_TYPE]],
+                                       on=ScifConsts.PRODUCT_FK, how='left')
+        matches_no_pos = matches[~(matches[ScifConsts.PRODUCT_TYPE]=='POS')]
+        # matches_no_pos = matches[~(matches[MatchesConsts.STACKING_LAYER] == -2)]
         bay_sku = matches_no_pos.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
                                   as_index=False).agg({'facings_matches': np.sum})
         bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
         matches = matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER], how='left')
         matches[MatchesConsts.WIDTH_MM_ADVANCE] = matches.apply(self.get_product_len, args=(matches,), axis=1)
+        matches.drop(columns=[ScifConsts.PRODUCT_TYPE], inplace=True)
         return matches
 
     def get_product_len(self, row, matches):
-        if row[MatchesConsts.STACKING_LAYER] == -2:
+        if row[ScifConsts.PRODUCT_TYPE] == 'POS':
             return 0
 
         # if Mix logic - then the length will depend of whether there are bins or bays in the bottom level

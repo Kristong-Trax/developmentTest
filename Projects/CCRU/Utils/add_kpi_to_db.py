@@ -336,13 +336,13 @@ if __name__ == '__main__':
     kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
     kpi_data.add_kpis_from_template()
 
-    file_name = '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2020/KPIs for DB - PoS 2020.xlsx'
-    sheet_name = 'Sheet1'
-
-    kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
-    kpi_data.update_kpi_weights()
-
-    kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
-    kpi_data.update_atomic_weights()
+    # file_name = '/home/sergey/dev/kpi_factory/Projects/CCRU/Data/KPIs_2020/KPIs for DB - PoS 2020.xlsx'
+    # sheet_name = 'Sheet1'
+    #
+    # kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
+    # kpi_data.update_kpi_weights()
+    #
+    # kpi_data = CCRUAddKPIs(project_name, file_name, sheet_name)
+    # kpi_data.update_atomic_weights()
 
     # # kpi_data.update_atomic_kpi_data()

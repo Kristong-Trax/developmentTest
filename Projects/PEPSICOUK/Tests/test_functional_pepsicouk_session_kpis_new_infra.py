@@ -26,12 +26,13 @@ from Trax.Utils.Testing.Case import skip
 __author__ = 'natalya'
 
 
+
 def get_exclusion_template_df_all_tests():
     template_df = pd.read_excel(DataTestUnitPEPSICOUK.exclusion_template_path)
     return template_df
 
 
-class Test_PEPSICOUK(TestFunctionalCase):
+class Test_PEPSICOUK_Session(TestFunctionalCase):
     # template_df_mock = get_exclusion_template_df_all_tests()
 
     @property
@@ -39,7 +40,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         return 'Projects.PEPSICOUK.KPIs.Util'
 
     def set_up(self):
-        super(Test_PEPSICOUK, self).set_up()
+        super(Test_PEPSICOUK_Session, self).set_up()
         self.mock_data_provider()
         self.data_provider_mock.project_name = 'Test_Project_1'
         self.data_provider_mock.rds_conn = MagicMock()
@@ -47,6 +48,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_various_project_connectors()
         self.project_connector_mock = self.mock_project_connector()
         self.mock_scene_store_area()
+        self.mock_checK_if_all_bins_are_recognized()
 
         self.ps_dataprovider_project_connector_mock = self.mock_ps_data_provider_project_connector()
         self.mock_common_project_connector_mock = self.mock_common_project_connector()
@@ -70,6 +72,16 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_all_products()
         self.mock_all_templates()
         self.mock_position_graph()
+
+    def mock_checK_if_all_bins_are_recognized(self):
+        flag = self.mock_object('PEPSICOUKCommonToolBox.check_if_all_bins_are_recognized',
+                                path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        flag.return_value = True
+
+    def mock_scene_display(self):
+        sa = self.mock_object('PEPSICOUKCommonToolBox.get_match_display_in_scene',
+                                      path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        sa.return_value = pd.DataFrame(columns={'scene_fk'})
 
     def mock_scene_store_area(self):
         sa = self.mock_object('PEPSICOUKCommonToolBox.get_scene_to_store_area_map',
@@ -250,6 +262,7 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_match_product_in_scene(pd.read_excel(DataTestUnitPEPSICOUK.test_case_1, sheet_name='matches'))
         self.mock_scene_info(DataTestUnitPEPSICOUK.scene_info)
         self.mock_scene_kpi_results(DataTestUnitPEPSICOUK.scene_kpi_results_test_case_1)
+        self.mock_checK_if_all_bins_are_recognized()
         availability_sku = HeroAvailabilitySkuKpi(self.data_provider_mock, config_params={})
         availability_sku.calculate()
         availabiliity_res = pd.DataFrame(availability_sku.kpi_results)

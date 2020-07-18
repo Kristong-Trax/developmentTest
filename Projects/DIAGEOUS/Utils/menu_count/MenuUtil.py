@@ -13,23 +13,18 @@ class MenuToolBox(GlobalSessionToolBox):
     def __init__(self, data_provider, common):
         GlobalSessionToolBox.__init__(self, data_provider, None)
         # self.matches = self.get_filtered_matches()
+        self.store_number = self.store_info.store_number_1.iloc[0]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalcAdmin)
         self.custom_entity = self.get_custom_entity()
 
-        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=['store_number_1', 'product_fk'])
-        self.store_number = self.store_info.store_number_1
+        self.targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[6006],
+                                                                      key_fields=['store_number_1', 'product_fk'],
+                                                                      key_filters={'store_number_1': self.store_number})
         self.common = common
 
-    def _get_filtered_match_display_in_scene(self):
-        """ This method filters match display in scene - it saves only "close" and "open" tags"""
-        mdis = self.data_provider.match_display_in_scene.loc[
-            self.data_provider.match_display_in_scene.display_name.str.contains("Open|Close|open|close")]
-        return mdis
-
     def main_calculation(self):
-        """This method calculates the entire Case Count KPIs set."""
-        self.get_relevant_targets()
+        """This method calculates the entire Menu Brand KPIs set."""
         self.menu_count()
 
     def menu_count(self):
@@ -81,10 +76,6 @@ class MenuToolBox(GlobalSessionToolBox):
         self.write_to_db(fk=parent_kpi, numerator_id=self.manufacturer_fk, numerator_result=0, denominator_result=0,
                          denominator_id=self.store_id,
                          result=passed_products, score=0, target=target_products)
-
-    def get_relevant_targets(self):
-        self.targets = self.targets[(self.targets['store_number_1'] == self.store_number.iloc[0])
-                                    & (self.targets['operation_type'] == 'menu_brand')]
 
     def get_custom_entity(self):
         query = DiageoQueries.get_custom_entities_query()
