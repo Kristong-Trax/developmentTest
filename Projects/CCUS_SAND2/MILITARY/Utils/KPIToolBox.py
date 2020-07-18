@@ -3,9 +3,13 @@ import os
 import pandas as pd
 
 from KPIUtils_v2.DB.CommonV2 import Common
+from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
+from KPIUtils_v2.Calculations.SurveyCalculations import Survey
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+
 from Trax.Algo.Calculations.Core.DataProvider import Data
 
-from Projects.CCUS.MILITARY.Utils import Const
+from Projects.CCUS_SAND2.MILITARY.Utils.Const import *
 
 __author__ = 'trevaris'
 
@@ -13,7 +17,7 @@ PATH = os.path.dirname(__file__)
 COLUMNS = ['scene_match_fk', 'scene_fk', 'bay_number', 'manufacturer_fk', 'product_fk', 'category_fk', 'template_fk']
 
 
-class MilitaryToolBox:
+class MilitaryToolBox(GlobalSessionToolBox):
     def __init__(self, data_provider, output):
         self.data_provider = data_provider
         self.output = output
@@ -23,32 +27,41 @@ class MilitaryToolBox:
         self.store_info = data_provider[Data.STORE_INFO]
         self.templates = self.data_provider[Data.ALL_TEMPLATES]
         self.products = self.data_provider[Data.ALL_PRODUCTS]
-
         self.match_product_in_scene = data_provider[Data.MATCHES]
         self.products = data_provider[Data.PRODUCTS]
         self.scene_info = data_provider[Data.SCENES_INFO]
+        self.scif = data_provider[Data.SCENE_ITEM_FACTS]
+        self.key_packages = self.scif[['product_fk', 'Key Package']].drop_duplicates()
+        self.survey = Survey(self.data_provider, output=output, ps_data_provider=PsDataProvider(data_provider, output),
+                             common=self.common)
 
         self.mpis = self.match_product_in_scene \
             .merge(self.products, on='product_fk', suffixes=['', '_p']) \
-            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s'])[COLUMNS]
+            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
+            .merge(self.key_packages, on='product_fk', suffixes=['', '_kp'])[COLUMNS]
 
-        with open(os.path.join(PATH, "mock_data.csv"), 'rb') as f:
-            self.mpis = pd.read_csv(f)
+        self.results_df = pd.DataFrame(
+            columns=[FK, NUMERATOR_ID, NUMERATOR_RESULT, DENOMINATOR_ID, DENOMINATOR_RESULT, RESULT])
+
+        # with open(os.path.join(PATH, "mock_data.csv"), 'rb') as f:
+        #     self.mpis = pd.read_csv(f)
 
     def main_calculation(self):
-        # if self.filter_df(self.store_info, {'region_name': Const.REGION}).empty:
-        #     return
+        if self.filter_df(self.store_info, {'region_name': REGION}).empty:
+            return
 
         self.calculate_compliant_bay_kpi()
         # self.calculate_scene_availability_kpi()
         self.calculate_facings_sos_kpi()
         self.calculate_share_of_scenes_kpi()
+        self.save_results()
 
     def calculate_compliant_bay_kpi(self):
         """Iterates through Compliant Bay type KPI."""
-        for kpi in Const.KPIs[Const.COMPLIANT_BAY_COUNT]:
+
+        for kpi in KPIs[COMPLIANT_BAY_COUNT]:
             self.calculate_compliant_bay(
-                kpi['name'], kpi['template'], kpi['manufacturer'], kpi['exclude_manufacturers'])
+                kpi[NAME], kpi[TEMPLATE], kpi[MANUFACTURER], kpi['exclude_manufacturers'])
 
     def calculate_compliant_bay(self, kpi, templates, manufacturers, exclude_manufacturers=False, sos_threshold=.501):
         """
@@ -57,7 +70,7 @@ class MilitaryToolBox:
         :param kpi: Name of KPI.
         :param templates:
         :param manufacturers:
-        :param exclude_manufacturers: If True, exclues `manufacturers` in filter.
+        :param exclude_manufacturers: If True, excludes `manufacturers` in filter.
         :param sos_threshold: Minimum percentage to determine display branding.
         """
 
@@ -84,22 +97,21 @@ class MilitaryToolBox:
         result_df['result'] = result_df.apply(lambda row: 1 if row['sos'] >= sos_threshold else 0, axis=1)
         result = sum(result_df['result'])
 
-        self.common.write_to_db_result(
-            fk=kpi_id,
-            numerator_id=self.own_manufacturer,
-            numerator_result=result,
-            denominator_id=self.store_info['store_fk'][0],
-            denominator_result=1,
-            result=result
-        )
+        self.append_results({
+            FK: kpi_id,
+            NUMERATOR_ID: self.own_manufacturer,
+            NUMERATOR_RESULT: result,
+            DENOMINATOR_ID: self.store_info['store_fk'][0],
+            DENOMINATOR_RESULT: 1,
+            RESULT: result})
 
     def calculate_scene_availability_kpi(self):
         """Iterates through Scene Availability type KPI"""
 
-        for kpi in Const.KPIs[Const.SCENE_AVAILABILITY]:
+        for kpi in KPIs[SCENE_AVAILABILITY]:
             self.calculate_scene_availability(
-                kpi=kpi['name'],
-                template=kpi['template']
+                kpi=kpi[NAME],
+                template=kpi[TEMPLATE]
             )
 
     def calculate_scene_availability(self, kpi, template):
@@ -107,28 +119,35 @@ class MilitaryToolBox:
 
         """
 
+        # TODO
+        # SURVEY
+        # NUMERATOR_ID
+
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
         template_ids = self.get_template_fks(template)
 
-        filtered_df = self.filter_df(self.mpis,
-                                     filters={
-                                         'template_fk': template_ids
-                                     })
+        filtered_df = self.filter_df(
+            self.mpis,
+            filters={
+                'template_fk': template_ids
+            })
 
-        self.common.write_to_db_result(
-            fk=kpi_id,
-        )
+        self.append_results({
+            FK: kpi_id,
+            NUMERATOR_ID: None,
+            DENOMINATOR_ID: self.store_id
+        })
 
     def calculate_facings_sos_kpi(self):
         """Iterates through Facings SOS type KPI."""
 
-        for kpi in Const.KPIs[Const.FACINGS_SOS]:
+        for kpi in KPIs[FACINGS_SOS]:
             self.calculate_facings_sos(
-                kpi[Const.NAME],
-                kpi[Const.TEMPLATE],
-                kpi[Const.NUMERATOR],
-                kpi[Const.DENOMINATOR],
-                kpi[Const.CONTEXT]
+                kpi[NAME],
+                kpi[TEMPLATE],
+                kpi[NUMERATOR],
+                kpi[DENOMINATOR],
+                kpi[CONTEXT]
             )
 
     def calculate_facings_sos(self, kpi, templates, numerator, denominator, context):
@@ -160,20 +179,19 @@ class MilitaryToolBox:
         cat_man_count = cat_man.merge(cat_count, on='category_fk')
 
         for _, row in cat_man_count.iterrows():
-            self.common.write_to_db_result(
-                fk=kpi_id,
-                numerator_id=row[numerator+'_fk'],
-                numerator_result=row[numerator+'_count'],
-                denominator_id=row[denominator+'_fk'],
-                denominator_result=row[denominator+'_count'],
-                context_id=row.get(context+'_fk'),
-                result=row[numerator+'_count'] / row[denominator+'_count'],
-            )
+            self.append_results({
+                FK: kpi_id,
+                NUMERATOR_ID: row[numerator+'_fk'],
+                NUMERATOR_RESULT: row[numerator+'_count'],
+                DENOMINATOR_ID: row[denominator+'_fk'],
+                DENOMINATOR_RESULT: row[denominator+'_count'],
+                CONTEXT_ID: row.get(context+'_fk'),
+                RESULT: row[numerator+'_count'] / row[denominator+'_count']})
 
     def calculate_share_of_scenes_kpi(self):
         """Iterates through Share of Scenes type KPI."""
 
-        for kpi in Const.KPIs[Const.SHARE_OF_SCENES]:
+        for kpi in KPIs[SHARE_OF_SCENES]:
             self.calculate_share_of_scenes(
                 kpi['name'],
                 kpi['template']
@@ -203,20 +221,28 @@ class MilitaryToolBox:
             product_count
                 .groupby(by=['category_fk', 'scene_fk'])['count']
                 .transform(max) == product_count['count']]
-        scene_max['count'] = 1
+        scene_max.loc[:, 'count'] = 1
         scene_max_count = scene_max.groupby(by=['category_fk', 'manufacturer_fk'], as_index=False) \
             .count() \
             .merge(category_df, on='category_fk')
 
         for manufacturer_category in scene_max_count.itertuples():
-            self.common.write_to_db_result(
-                fk=kpi_id,
-                numerator_id=manufacturer_category['manufacturer_fk'],
-                numerator_result=manufacturer_category['count'],
-                denominator_id=manufacturer_category['category_fk'],
-                denominator_result=manufacturer_category['scene_count'],
-                result=manufacturer_category['count'] / manufacturer_category['scene_count']
-            )
+            self.append_results({
+                FK: kpi_id,
+                NUMERATOR_ID: manufacturer_category.manufacturer_fk,
+                NUMERATOR_RESULT: manufacturer_category.count,
+                DENOMINATOR_ID: manufacturer_category.category_fk,
+                DENOMINATOR_RESULT: manufacturer_category.scene_count,
+                RESULT: manufacturer_category.count / manufacturer_category.scene_count})
+
+    def get_values(self, key):
+        d = {
+            'Own Manufacturer': lambda _: self.own_manufacturer
+        }
+
+        d.get(get)
+
+        return
 
     def get_template_fks(self, template_names):
         if not hasattr(template_names, '__iter__'):
@@ -236,23 +262,41 @@ class MilitaryToolBox:
     @staticmethod
     def filter_df(df, filters, exclude=False):
         """
-        Filters dataframe based on `filters`.
+        Filters `df`` based on `filters`.
 
-        :param df: Dataframe to be filtered.
+        :param df: DataFrame to be filtered.
         :param filters: Dictionary of column-value pairs to filter by.
         :param exclude: If true, filter excludes values in `filters`.
-        :return: Returns filtered dataframe.
+        :return: Returns filtered DataFrame.
         """
 
         for key, val in filters.items():
-            if not hasattr(val, '__iter__'):
+            if not hasattr(val, '__iter__') or isinstance(val, str):
                 val = [val]
-
             if exclude:
                 df = df[~df[key].isin(val)]
             else:
                 df = df[df[key].isin(val)]
         return df
+
+    def append_results(self, results):
+        """
+        Organizes `results` according to the columns in `results_df` then appends them.
+
+        :param results: Dictionary containing column-value pairs to add to results DataFrame.
+        """
+
+        if isinstance(results, dict):
+            results = [results.get(col) for col in self.results_df.columns]
+        self.results_df.loc[self.results_df.shape[0], self.results_df.columns.tolist()] = results
+
+    def save_results(self):
+        """
+        Writes results to database.
+        """
+
+        for _, result in self.results_df.iterrows():
+            self.write_to_db(**result.to_dict())
 
     def commit_results(self):
         self.common.commit_results_data()

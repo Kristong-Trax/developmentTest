@@ -1,6 +1,6 @@
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
 
-from Projects.CCUS.MILITARY.Utils.KPIToolBox import MilitaryToolBox
+from Projects.CCUS_SAND2.MILITARY.Utils.KPIToolBox import MilitaryToolBox
 
 
 class MilitaryGenerator:

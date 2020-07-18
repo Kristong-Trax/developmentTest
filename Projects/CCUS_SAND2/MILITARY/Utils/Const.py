@@ -2,6 +2,14 @@ def get(coll, keys):
     return [coll.get(key) for key in keys]
 
 
+FK = 'fk'
+NUMERATOR_ID = 'numerator_id'
+NUMERATOR_RESULT = 'numerator_result'
+DENOMINATOR_ID = 'denominator_id'
+DENOMINATOR_RESULT = 'denominator_result'
+RESULT = 'result'
+CONTEXT_ID = 'context_id'
+
 # kpi keys
 NAME = 'name'
 TEMPLATE = 'template'
@@ -9,6 +17,9 @@ MANUFACTURER = 'manufacturer'
 CATEGORY = 'category'
 PRODUCT = 'product'
 RESULTS = 'results'
+DATASET_A = 'dataset_a'
+TEST_A = 'test_a'
+FACINGS = 'facings'
 
 COMPLIANT_BAY_COUNT = 'compliant_bay_count'
 SCENE_AVAILABILITY = 'scene_availability'
@@ -35,8 +46,7 @@ FILTER = 'filter'
 NUMERATOR = 'numerator'
 DENOMINATOR = 'denominator'
 CONTEXT = 'context'
-
-KEY_PACKAGE = 'KEY PACKAGE'
+KEY_PACKAGE = 'Key Package'
 
 TEMPLATES = {
     MAIN_COOLERS: 'M - Main Checkout Coolers Only',
@@ -99,9 +109,16 @@ KPIs = {
     SCENE_AVAILABILITY: [
         {
             'name': 'Does this store have a display of Coca - Cola CSD Brands of 24 pack /12 oz cans ?',
-            'template': TEMPLATES[DISPLAY],
-            'manufacturer': MANUFACTURERS[COKE],
-            'key package': ''
+            TEMPLATE: TEMPLATES[DISPLAY],
+            'datasets': [
+                {
+                    MANUFACTURER: MANUFACTURERS[COKE],
+                    KEY_PACKAGE: '12OZ 24PK CAN'
+                }
+            ],
+            'tests': [
+                {FACINGS: 3}
+            ],
         },
         {
             'name': 'Where is the display of Coca-Cola CSD Brands of 24 pack/12 oz. cans located?',
