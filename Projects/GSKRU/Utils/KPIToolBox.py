@@ -10,6 +10,8 @@ from KPIUtils.GlobalProjects.GSK.KPIGenerator import GSKGenerator
 
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts
 from Trax.Data.ProfessionalServices.PsConsts.DB import SessionResultsConsts
+from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
+from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
 from Projects.GSKRU.Utils.LocalConsts import Consts as LocalConsts
 
 
@@ -38,12 +40,56 @@ class GSKRUToolBox:
         self.set_up_template = None
         self.gsk_generator = None
 
+        self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.own_manufacturer_id = self.get_own_manufacturer_id()
         self.set_up_data = LocalConsts.SET_UP_DATA
+        self.store_info = self.get_store_info()
+        self.store_type = self.store_info['store_type'][0]
+        self.retailer_name = self.store_info['retailer_name'][0]
+        self.retailer_fk = self.store_info['retailer_fk'][0]
 
     def get_own_manufacturer_id(self):
         return int(self.data_provider.own_manufacturer[self.data_provider.own_manufacturer['param_name'] ==
                                                        'manufacturer_id']['param_value'].iloc[0])
+
+    def get_store_info(self):
+        query = """
+                    SELECT 
+                    s.pk as store_fk, 
+                    s.store_type_fk, tp.name as store_type,
+                    s.additional_attribute_17, 
+                    s.additional_attribute_3, 
+                    s.retailer_fk, r.name as retailer_name,
+                    s.store_number_1,
+                    s.address_line_1 as address_line_1,
+                    s.business_unit_fk, 
+                    s.additional_attribute_5, 
+                    s.district_fk, 
+                    s.test_store,
+                    bu.name as business_unit,
+                    br.name as branch_name,
+                    re.name as region,
+                    cn.name as country, 
+                    dis.name as dist_name, 
+                    dis.code as dis_code, 
+                    st.name as state, 
+                    st.code as state_code
+                    FROM static.stores s
+                    left join static.retailer r
+                    on r.pk = s.retailer_fk
+                    left join static.business_unit bu
+                    on bu.pk = s.business_unit_fk
+                    left join static.branch br 
+                    on br.pk = s.branch_fk
+                    left join static.regions re on re.pk = s.region_fk
+                    left join static.countries cn ON re.country_fk = cn.pk
+                    left join static.district dis on dis.pk = s.district_fk
+                    left join static.state st on st.pk = s.state_fk
+                    left join static.store_type tp on tp.pk=s.store_type_fk
+                    where s.pk = '{}'
+                """.format(self.store_id)
+        store_data = pd.read_sql_query(query, self.rds_conn.db)
+        return store_data
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -182,6 +228,10 @@ class GSKRUToolBox:
 
         results = []
 
+        targets = self.ps_data_provider.get_kpi_external_targets(kpi_operation_types=['SOA'],
+                                                                 key_filters={'store_type': self.store_type,
+                                                                              'retailer_fk': self.retailer_fk})
+
         kpi_soa_manufacturer_internal_target_fk = \
             self.common.get_kpi_fk_by_kpi_type(LocalConsts.SOA_MANUFACTURER_INTERNAL_TARGET_KPI)
         kpi_soa_manufacturer_external_target_fk = \
@@ -204,6 +254,13 @@ class GSKRUToolBox:
         denominator_result = len(df[ScifConsts.PRODUCT_FK].unique().tolist())
         result = round(float(numerator_result) / float(denominator_result), 4)
 
+        target = targets[targets['sub_category_fk'].isnull()]['internal_target'].values
+        target = float(target[0]) if target else None
+        target = target/100 if target else None
+        if target:
+            score = 1 if result >= target else 0
+        else:
+            score = None
         results.append(
             {'fk': kpi_soa_manufacturer_internal_target_fk,
              SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
@@ -211,8 +268,18 @@ class GSKRUToolBox:
              SessionResultsConsts.DENOMINATOR_ID: self.store_id,
              SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
              SessionResultsConsts.RESULT: result,
+             SessionResultsConsts.TARGET: target,
+             SessionResultsConsts.SCORE: score,
              'identifier_result': identifier_internal,
              'should_enter': True})
+
+        target = targets[targets['sub_category_fk'].isnull()]['external_target'].values
+        target = float(target[0]) if target else None
+        target = target/100 if target else None
+        if target:
+            score = 1 if result >= target else 0
+        else:
+            score = None
         results.append(
             {'fk': kpi_soa_manufacturer_external_target_fk,
              SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
@@ -220,6 +287,8 @@ class GSKRUToolBox:
              SessionResultsConsts.DENOMINATOR_ID: self.store_id,
              SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
              SessionResultsConsts.RESULT: result,
+             SessionResultsConsts.TARGET: target,
+             SessionResultsConsts.SCORE: score,
              'identifier_result': identifier_external,
              'should_enter': True})
 
@@ -233,6 +302,13 @@ class GSKRUToolBox:
                                          ScifConsts.PRODUCT_FK].unique().tolist())
             result = round(float(numerator_result) / float(denominator_result), 4)
 
+            target = targets[targets['sub_category_fk'] == sub_category_fk]['internal_target'].values
+            target = float(target[0]) if target else None
+            target = target/100 if target else None
+            if target:
+                score = 1 if result >= target else 0
+            else:
+                score = None
             results.append(
                 {'fk': kpi_soa_subcat_internal_target_fk,
                  SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
@@ -241,8 +317,18 @@ class GSKRUToolBox:
                  SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
                  SessionResultsConsts.CONTEXT_ID: sub_category_fk,
                  SessionResultsConsts.RESULT: result,
+                 SessionResultsConsts.TARGET: target,
+                 SessionResultsConsts.SCORE: score,
                  'identifier_parent': identifier_internal,
                  'should_enter': True})
+
+            target = targets[targets['sub_category_fk'] == sub_category_fk]['external_target'].values
+            target = float(target[0]) if target else None
+            target = target/100 if target else None
+            if target:
+                score = 1 if result >= target else 0
+            else:
+                score = None
             results.append(
                 {'fk': kpi_soa_subcat_external_target_fk,
                  SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
@@ -251,6 +337,8 @@ class GSKRUToolBox:
                  SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
                  SessionResultsConsts.CONTEXT_ID: sub_category_fk,
                  SessionResultsConsts.RESULT: result,
+                 SessionResultsConsts.TARGET: target,
+                 SessionResultsConsts.SCORE: score,
                  'identifier_parent': identifier_external,
                  'should_enter': True})
 
