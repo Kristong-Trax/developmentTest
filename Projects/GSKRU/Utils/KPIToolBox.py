@@ -47,6 +47,7 @@ class GSKRUToolBox:
         self.store_type = self.store_info['store_type'][0]
         self.retailer_name = self.store_info['retailer_name'][0]
         self.retailer_fk = self.store_info['retailer_fk'][0]
+        self.core_range_targets = {}
 
     def get_own_manufacturer_id(self):
         return int(self.data_provider.own_manufacturer[self.data_provider.own_manufacturer['param_name'] ==
@@ -220,6 +221,10 @@ class GSKRUToolBox:
         soa_dict = self.gsk_soa_function()
         self.common.save_json_to_new_tables(soa_dict)
 
+        # Core Range Assortment
+        cra_dict = self.gsk_cra_function()
+        self.common.save_json_to_new_tables(cra_dict)
+
         self.common.commit_results_data()
 
         return
@@ -228,10 +233,8 @@ class GSKRUToolBox:
 
         results = []
 
-        targets = self.ps_data_provider.get_kpi_external_targets(kpi_operation_types=['SOA'],
-                                                                 key_filters={'store_type': self.store_type,
-                                                                              'retailer_fk': self.retailer_fk})
-
+        kpi_soa_fk = \
+            self.common.get_kpi_fk_by_kpi_type(LocalConsts.SOA_KPI)
         kpi_soa_manufacturer_internal_target_fk = \
             self.common.get_kpi_fk_by_kpi_type(LocalConsts.SOA_MANUFACTURER_INTERNAL_TARGET_KPI)
         kpi_soa_manufacturer_external_target_fk = \
@@ -241,18 +244,80 @@ class GSKRUToolBox:
         kpi_soa_subcat_external_target_fk = \
             self.common.get_kpi_fk_by_kpi_type(LocalConsts.SOA_SUBCAT_EXTERNAL_TARGET_KPI)
 
-        identifier_internal = 'int'
-        identifier_external = 'ext'
+        identifier_internal = self.common.get_dictionary(manufacturer_fk=self.own_manufacturer_id,
+                                                         kpi_fk=kpi_soa_manufacturer_internal_target_fk)
+        identifier_external = self.common.get_dictionary(manufacturer_fk=self.own_manufacturer_id,
+                                                         kpi_fk=kpi_soa_manufacturer_external_target_fk)
+
+        targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[kpi_soa_fk],
+                                                                 key_filters={'store_type': self.store_type,
+                                                                              'retailer_fk': self.retailer_fk})
 
         self.gsk_generator.tool_box. \
             extract_data_set_up_file(LocalConsts.SOA, self.set_up_data, LocalConsts.KPI_DICT)
         df = self.gsk_generator.tool_box.tests_by_template(LocalConsts.SOA, self.scif, self.set_up_data)
 
+        # Sub-Category
+        for sub_category_fk in df[ScifConsts.SUB_CATEGORY_FK].unique().tolist():
+
+            numerator_result = len(df[(df[ScifConsts.MANUFACTURER_FK] == self.own_manufacturer_id) &
+                                      (df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk)][
+                                       ScifConsts.PRODUCT_FK].unique().tolist())
+            denominator_result = len(df[df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk][
+                                         ScifConsts.PRODUCT_FK].unique().tolist())
+            result = round(float(numerator_result) / float(denominator_result), 4) \
+                if numerator_result != 0 and denominator_result != 0 \
+                else 0
+
+            target = targets[targets['sub_category_fk'] == sub_category_fk]['internal_target'].values
+            target = float(target[0]) if len(target) > 0 else None
+            target = target/100 if target else None
+            if target:
+                score = 1 if result >= target else 0
+            else:
+                score = None
+            results.append(
+                {'fk': kpi_soa_subcat_internal_target_fk,
+                 SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
+                 SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
+                 SessionResultsConsts.DENOMINATOR_ID: self.store_id,
+                 SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
+                 SessionResultsConsts.CONTEXT_ID: sub_category_fk,
+                 SessionResultsConsts.RESULT: result,
+                 SessionResultsConsts.TARGET: target,
+                 SessionResultsConsts.SCORE: score,
+                 'identifier_parent': identifier_internal,
+                 'should_enter': True})
+
+            self.core_range_targets.update({sub_category_fk: target})
+
+            target = targets[targets['sub_category_fk'] == sub_category_fk]['external_target'].values
+            target = float(target[0]) if len(target) > 0 else None
+            target = target/100 if target else None
+            if target:
+                score = 1 if result >= target else 0
+            else:
+                score = None
+            results.append(
+                {'fk': kpi_soa_subcat_external_target_fk,
+                 SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
+                 SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
+                 SessionResultsConsts.DENOMINATOR_ID: self.store_id,
+                 SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
+                 SessionResultsConsts.CONTEXT_ID: sub_category_fk,
+                 SessionResultsConsts.RESULT: result,
+                 SessionResultsConsts.TARGET: target,
+                 SessionResultsConsts.SCORE: score,
+                 'identifier_parent': identifier_external,
+                 'should_enter': True})
+
         # Manufacturer
         numerator_result = len(df[df[ScifConsts.MANUFACTURER_FK] == self.own_manufacturer_id][
                                    ScifConsts.PRODUCT_FK].unique().tolist())
         denominator_result = len(df[ScifConsts.PRODUCT_FK].unique().tolist())
-        result = round(float(numerator_result) / float(denominator_result), 4)
+        result = round(float(numerator_result) / float(denominator_result), 4) \
+            if numerator_result != 0 and denominator_result != 0 \
+            else 0
 
         target = targets[targets['sub_category_fk'].isnull()]['internal_target'].values
         target = float(target[0]) if target else None
@@ -292,54 +357,134 @@ class GSKRUToolBox:
              'identifier_result': identifier_external,
              'should_enter': True})
 
+        return results
+
+    def gsk_cra_function(self):
+
+        results = []
+
+        kpi_cra_fk = \
+            self.common.get_kpi_fk_by_kpi_type(LocalConsts.CRA_KPI)
+        kpi_cra_manufacturer_fk = \
+            self.common.get_kpi_fk_by_kpi_type(LocalConsts.CRA_MANUFACTURER_KPI)
+        kpi_cra_subcat_fk = \
+            self.common.get_kpi_fk_by_kpi_type(LocalConsts.CRA_SUBCAT_KPI)
+        kpi_cra_subcat_by_product_fk = \
+            self.common.get_kpi_fk_by_kpi_type(LocalConsts.CRA_SUBCAT_BY_PRODUCT_KPI)
+
+        identifier_manufacturer = self.common.get_dictionary(manufacturer_fk=self.own_manufacturer_id,
+                                                             kpi_fk=kpi_cra_manufacturer_fk)
+
+        total_cra_size_target = 0
+        total_cra_size_actual = 0
+
+        targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[kpi_cra_fk],
+                                                                 key_filters={'store_type': self.store_type,
+                                                                              'retailer_fk': self.retailer_fk})
+
+        self.gsk_generator.tool_box. \
+            extract_data_set_up_file(LocalConsts.CRA, self.set_up_data, LocalConsts.KPI_DICT)
+        df = self.gsk_generator.tool_box.tests_by_template(LocalConsts.CRA, self.scif, self.set_up_data)
+
+        df = df[df[ScifConsts.SUB_CATEGORY_FK].notnull()][
+            [ScifConsts.SUB_CATEGORY_FK, ScifConsts.PRODUCT_FK, ScifConsts.FACINGS]]\
+            .groupby([ScifConsts.SUB_CATEGORY_FK, ScifConsts.PRODUCT_FK]).agg({ScifConsts.FACINGS: 'sum'})\
+            .reset_index()
+        df = df.merge(targets[['sub_category_fk', 'product_fk', 'priority']],
+                      how='left',
+                      left_on=[ScifConsts.SUB_CATEGORY_FK, ScifConsts.PRODUCT_FK],
+                      right_on=['sub_category_fk', 'product_fk'])
+        df['unique_product_id'] = \
+            df.apply(lambda r:
+                     'P' + str(r['priority']) if pd.notnull(r['priority']) else 'N' + str(r['product_fk']), axis=1)
+
         # Sub-Category
-        for sub_category_fk in df[ScifConsts.SUB_CATEGORY_FK].unique().tolist():
+        target_subcat_fks = targets['sub_category_fk'].unique().tolist()
+        for sub_category_fk in target_subcat_fks:
 
-            numerator_result = len(df[(df[ScifConsts.MANUFACTURER_FK] == self.own_manufacturer_id) &
-                                      (df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk)][
-                                       ScifConsts.PRODUCT_FK].unique().tolist())
-            denominator_result = len(df[df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk][
-                                         ScifConsts.PRODUCT_FK].unique().tolist())
-            result = round(float(numerator_result) / float(denominator_result), 4)
+            identifier_subcat = self.common.get_dictionary(manufacturer_fk=self.own_manufacturer_id,
+                                                           sub_category_fk=sub_category_fk,
+                                                           kpi_fk=kpi_cra_subcat_fk)
 
-            target = targets[targets['sub_category_fk'] == sub_category_fk]['internal_target'].values
-            target = float(target[0]) if target else None
-            target = target/100 if target else None
-            if target:
-                score = 1 if result >= target else 0
+            if sub_category_fk not in self.core_range_targets.keys():
+                numerator_result = denominator_result = result = score = 0
             else:
-                score = None
+                subcat_size = len(df[df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk][
+                                      'unique_product_id'].unique().tolist())
+                cra_priority = round(subcat_size * self.core_range_targets[sub_category_fk])
+                cra_size_target = cra_priority
+                # cra_size_target = len(targets[(targets['sub_category_fk'] == sub_category_fk) &
+                #                               (targets['priority'] <= cra_priority)]['priority'].unique().tolist())
+                cra_size_actual = len(df[(df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk) &
+                                         (df['priority'] <= cra_priority)]['priority'].unique().tolist())
+                cra_products = df[(df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk) &
+                                  (df['priority'] <= cra_priority)][
+                    [ScifConsts.PRODUCT_FK, ScifConsts.FACINGS, 'priority']]
+
+                if cra_size_target == 0:
+                    numerator_result = denominator_result = result = score = 0
+                else:
+
+                    # Product
+                    for i, product in cra_products.iterrows():
+
+                        numerator_result = product[ScifConsts.FACINGS]
+                        denominator_result = product['priority']
+                        score = result = 1
+
+                        results.append(
+                            {'fk': kpi_cra_subcat_by_product_fk,
+                             SessionResultsConsts.NUMERATOR_ID: product[ScifConsts.PRODUCT_FK],
+                             SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
+                             SessionResultsConsts.DENOMINATOR_ID: self.own_manufacturer_id,
+                             SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
+                             SessionResultsConsts.CONTEXT_ID: sub_category_fk,
+                             SessionResultsConsts.RESULT: result,
+                             SessionResultsConsts.SCORE: score,
+                             'identifier_parent': identifier_subcat,
+                             'should_enter': True})
+
+                    numerator_result = cra_size_actual
+                    denominator_result = cra_size_target
+                    result = round(float(numerator_result) / float(denominator_result), 4) \
+                        if numerator_result != 0 and denominator_result != 0 \
+                        else 0
+                    score = result
+
+                    total_cra_size_target += cra_size_target
+                    total_cra_size_actual += cra_size_actual
+
             results.append(
-                {'fk': kpi_soa_subcat_internal_target_fk,
+                {'fk': kpi_cra_subcat_fk,
                  SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
                  SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
                  SessionResultsConsts.DENOMINATOR_ID: self.store_id,
                  SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
                  SessionResultsConsts.CONTEXT_ID: sub_category_fk,
                  SessionResultsConsts.RESULT: result,
-                 SessionResultsConsts.TARGET: target,
                  SessionResultsConsts.SCORE: score,
-                 'identifier_parent': identifier_internal,
+                 'identifier_parent': identifier_manufacturer,
+                 'identifier_result': identifier_subcat,
                  'should_enter': True})
 
-            target = targets[targets['sub_category_fk'] == sub_category_fk]['external_target'].values
-            target = float(target[0]) if target else None
-            target = target/100 if target else None
-            if target:
-                score = 1 if result >= target else 0
-            else:
-                score = None
+        # Manufacturer
+        if target_subcat_fks:
+            numerator_result = total_cra_size_actual
+            denominator_result = total_cra_size_target
+            result = round(float(total_cra_size_actual) / float(total_cra_size_target), 4) \
+                if numerator_result != 0 and denominator_result != 0 \
+                else 0
+            score = result
+
             results.append(
-                {'fk': kpi_soa_subcat_external_target_fk,
+                {'fk': kpi_cra_manufacturer_fk,
                  SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
                  SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
                  SessionResultsConsts.DENOMINATOR_ID: self.store_id,
                  SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
-                 SessionResultsConsts.CONTEXT_ID: sub_category_fk,
                  SessionResultsConsts.RESULT: result,
-                 SessionResultsConsts.TARGET: target,
                  SessionResultsConsts.SCORE: score,
-                 'identifier_parent': identifier_external,
+                 'identifier_result': identifier_manufacturer,
                  'should_enter': True})
 
         return results

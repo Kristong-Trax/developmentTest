@@ -20,17 +20,26 @@ class Consts(object):
         ]
 
     SOA = 'SOA'
+    SOA_KPI = 'GSK_SOA'
     SOA_MANUFACTURER_INTERNAL_TARGET_KPI = 'GSK_SOA_in_Manufacturer_vs_Internal_Target'
     SOA_MANUFACTURER_EXTERNAL_TARGET_KPI = 'GSK_SOA_in_Manufacturer_vs_External_Target'
     SOA_SUBCAT_INTERNAL_TARGET_KPI = 'GSK_SOA_in_SubCategory_vs_Internal_Target'
     SOA_SUBCAT_EXTERNAL_TARGET_KPI = 'GSK_SOA_in_SubCategory_vs_External_Target'
 
+    CRA = 'CRA'
+    CRA_KPI = 'GSK_CRA'
+    CRA_MANUFACTURER_KPI = 'GSK_CRA_in_Manufacturer_Stacking_Included'
+    CRA_SUBCAT_KPI = 'GSK_CRA_in_SubCategory_Stacking_Included'
+    CRA_SUBCAT_BY_PRODUCT_KPI = 'GSK_CRA_in_SubCategory_by_Product_Stacking_Included'
+
     KPI_DICT = {
-        SOA: SOA
+        SOA: SOA,
+        CRA: CRA
     }
 
     SET_UP_DATA = {
-        (SOA, Const.KPI_TYPE_COLUMN): Const.NO_INFO
+        (SOA, Const.KPI_TYPE_COLUMN): Const.NO_INFO,
+        (CRA, Const.KPI_TYPE_COLUMN): Const.NO_INFO
     }
 
 
