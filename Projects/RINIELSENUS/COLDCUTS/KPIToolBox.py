@@ -314,15 +314,18 @@ class ColdCutToolBox:
         data_filter.update({'location': row['Location: JSON']})
         config_json = row['Config Params: JSON']
         numerator_type = config_json['numerator_type']
-        df.dropna(subset=[numerator_type], inplace=True)
         df = ParseInputKPI.filter_df(data_filter, self.scif)
         result_dict_list = self._logic_for_sos(row, df, numerator_type)
         return result_dict_list
 
     def _logic_for_sos(self, row, df, numerator_type):
         result_list = []
-        for num_item in [v for v in df[numerator_type].unique().tolist() if v and pd.notna(v)]:
-            numerator_scif = df[df[numerator_type] == num_item]
+        for num_item in df[numerator_type].unique().tolist():
+            if num_item:
+                numerator_scif = df[df[numerator_type] == num_item]
+            else:
+                numerator_scif = df[df[numerator_type].isnull()]
+                num_item = 'None'
             numerator_result = numerator_scif.facings.sum()
             denominator_result = df.facings.sum()
             custom_entity_fk = self.get_custom_entity_value(num_item)
