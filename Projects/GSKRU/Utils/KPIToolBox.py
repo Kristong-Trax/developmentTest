@@ -99,118 +99,118 @@ class GSKRUToolBox:
         This function calculates the KPI results.
         """
 
-        # # Global KPIs
-        #
-        # # All Store KPIs
-        # self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-        #                                                   'gsk_set_up.xlsx'),
-        #                                      sheet_name='Functional KPIs All Store',
-        #                                      keep_default_na=False)
-        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
-        #
-        # assortment_store_dict = self.gsk_generator.availability_store_function(
-        #     custom_suffix='_Stacking_Included')
-        # self.common.save_json_to_new_tables(assortment_store_dict)
-        #
-        # assortment_category_dict = self.gsk_generator.availability_category_function(
-        #     custom_suffix='_Stacking_Included')
-        # self.common.save_json_to_new_tables(assortment_category_dict)
-        #
-        # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function(
-        #     custom_suffix='_Stacking_Included')
-        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
-        #     custom_suffix='_Stacking_Included',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
-        #     custom_suffix='_Stacking_Included',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
-        #     custom_suffix='_Stacking_Included',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # # Main Shelf KPIs
-        # self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-        #                                                   'gsk_set_up.xlsx'),
-        #                                      sheet_name='Functional KPIs Main Shelf',
-        #                                      keep_default_na=False)
-        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
-        #     custom_suffix='_Stacking_Included_Main_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
-        #     custom_suffix='_Stacking_Included_Main_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
-        #     custom_suffix='_Stacking_Included_Main_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function(
-        #     custom_suffix='_Main_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function(
-        #     custom_suffix='_Main_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function(
-        #     custom_suffix='_Main_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # # Secondary Shelf KPIs
-        # self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-        #                                                   'gsk_set_up.xlsx'),
-        #                                      sheet_name='Functional KPIs Secondary Shelf',
-        #                                      keep_default_na=False)
-        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
-        #     custom_suffix='_Stacking_Included_Secondary_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
-        #     custom_suffix='_Stacking_Included_Secondary_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
-        #     custom_suffix='_Stacking_Included_Secondary_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function(
-        #     custom_suffix='_Secondary_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function(
-        #     custom_suffix='_Secondary_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function(
-        #     custom_suffix='_Secondary_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
+        # Global KPIs
+
+        # All Store KPIs
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                          'gsk_set_up.xlsx'),
+                                             sheet_name='Functional KPIs All Store',
+                                             keep_default_na=False)
+        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+
+        assortment_store_dict = self.gsk_generator.availability_store_function(
+            custom_suffix='_Stacking_Included')
+        self.common.save_json_to_new_tables(assortment_store_dict)
+
+        assortment_category_dict = self.gsk_generator.availability_category_function(
+            custom_suffix='_Stacking_Included')
+        self.common.save_json_to_new_tables(assortment_category_dict)
+
+        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function(
+            custom_suffix='_Stacking_Included')
+        self.common.save_json_to_new_tables(assortment_subcategory_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
+            custom_suffix='_Stacking_Included',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
+            custom_suffix='_Stacking_Included',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
+            custom_suffix='_Stacking_Included',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        # Main Shelf KPIs
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                          'gsk_set_up.xlsx'),
+                                             sheet_name='Functional KPIs Main Shelf',
+                                             keep_default_na=False)
+        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
+            custom_suffix='_Stacking_Included_Main_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
+            custom_suffix='_Stacking_Included_Main_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
+            custom_suffix='_Stacking_Included_Main_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function(
+            custom_suffix='_Main_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function(
+            custom_suffix='_Main_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function(
+            custom_suffix='_Main_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        # Secondary Shelf KPIs
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                          'gsk_set_up.xlsx'),
+                                             sheet_name='Functional KPIs Secondary Shelf',
+                                             keep_default_na=False)
+        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
+            custom_suffix='_Stacking_Included_Secondary_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
+            custom_suffix='_Stacking_Included_Secondary_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
+            custom_suffix='_Stacking_Included_Secondary_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function(
+            custom_suffix='_Secondary_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function(
+            custom_suffix='_Secondary_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function(
+            custom_suffix='_Secondary_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
 
         # Local KPIs
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
