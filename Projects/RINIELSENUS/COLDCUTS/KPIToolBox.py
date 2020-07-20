@@ -76,6 +76,8 @@ class ColdCutToolBox:
         return
 
     def calculate_blocking(self, row, df):
+        if df.empty:
+            return None
         additional_data = row['Config Params: JSON']
         location_data = row['Location: JSON']
         kpi_fk = row['kpi_fk']
@@ -160,6 +162,8 @@ class ColdCutToolBox:
         return result_dict_list
 
     def calculate_blocking_orientation(self,  row, df):
+        if df.empty:
+            return
         result_dict_list = []
         additional_data = row['Config Params: JSON']
         location_data = row['Location: JSON']
