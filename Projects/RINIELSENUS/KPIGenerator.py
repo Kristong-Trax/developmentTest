@@ -53,11 +53,11 @@ class MarsUsGenerator:
         # # except:
         # #     Log.error('MillerCoors KPIs not calculated')
         #
-        # try:
-        #     self.tyson_tool_box.main_calculation()
-        #     self.tyson_tool_box.commit_results()
-        # except Exception:
-        #     Log.error('Tyson KPIs not calculated')
+        try:
+            self.tyson_tool_box.main_calculation()
+            self.tyson_tool_box.commit_results()
+        except Exception:
+            Log.error('Tyson KPIs not calculated')
 
         try:
             self.coldcut_tool_box.main_calculation()
