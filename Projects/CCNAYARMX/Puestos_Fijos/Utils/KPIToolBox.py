@@ -62,29 +62,160 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
         GlobalSessionToolBox.__init__(self, data_provider, output, common)
         self.ps_data_provider = PsDataProvider(data_provider)
         self.own_manufacturer = int(self.data_provider.own_manufacturer.param_value.values[0])
-        self.all_templates = self.data_provider[Data.ALL_TEMPLATES]
-        self.project_templates = {}
+        self.templates = {}
         self.parse_template()
         self.store_type = self.store_info['store_type'].iloc[0]
         self.survey = Survey(self.data_provider, output, ps_data_provider=self.ps_data_provider, common=self.common)
         self.att2 = self.store_info['additional_attribute_2'].iloc[0]
+        self.products = self.data_provider[Data.PRODUCTS]
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
                                                 'denominator_id', 'denominator_result', 'result', 'score',
                                                 'identifier_result', 'identifier_parent', 'should_enter'])
 
-        self.products = self.data_provider[Data.PRODUCTS]
-        scif = self.scif[['brand_fk', 'facings', 'product_type']].groupby(by='brand_fk').sum()
-        self.mpis = self.matches \
-            .merge(self.products, on='product_fk', suffixes=['', '_p']) \
-            .merge(self.scene_info, on='scene_fk', suffixes=['', '_s']) \
-            .merge(self.all_templates[['template_fk', TEMPLATE_GROUP]], on='template_fk') \
-            .merge(scif, on='brand_fk')[COLUMNS]
-        self.mpis['store_fk'] = self.store_id
+
 
     def parse_template(self):
         for sheet in SHEETS:
-            self.project_templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
+            self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
+        a = 1
         if not self.store_type == 'Puestos Fijos':
             return
+        relevant_kpi_template = self.templates[KPIS]
+        foundation_kpi_types = [SOS]
+        foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
+
+
+        self._calculate_kpis_from_template(foundation_kpi_template)
+        self.save_results_to_db()
+
+
+    def save_results_to_db(self):
+        self.results_df.drop(columns=['kpi_name'], inplace=True)
+        self.results_df.rename(columns={'kpi_fk': 'fk'}, inplace=True)
+        self.results_df.loc[~self.results_df['identifier_parent'].isnull(), 'should_enter'] = True
+        self.results_df['result'] = self.results_df.apply(
+            lambda row: row['result'] if (
+                    pd.notna(row['identifier_parent']) or pd.notna(row['identifier_result'])) else np.nan, axis=1)
+        self.results_df.dropna(subset=['result'], inplace=True)
+        self.results_df.fillna(0, inplace=True)
+        results = self.results_df.to_dict('records')
+        for result in results:
+            self.write_to_db(**result)
+
+    def _calculate_kpis_from_template(self, template_df):
+        for i, row in template_df.iterrows():
+            calculation_function = self._get_calculation_function_by_kpi_type(row[KPI_TYPE])
+            try:
+                kpi_row = self.templates[row[KPI_TYPE]][
+                    self.templates[row[KPI_TYPE]][KPI_NAME].str.encode('utf-8') == row[KPI_NAME].encode('utf-8')].iloc[
+                    0]
+            except IndexError:
+                pass
+            result_data = calculation_function(kpi_row)
+            if result_data:
+                if isinstance(result_data, dict):
+                    weight = row['Score']
+                    if weight and pd.notna(weight) and pd.notna(result_data['result']):
+                        if row[KPI_TYPE] == SCORING and 'score' not in result_data.keys():
+                            result_data['score'] = weight * result_data['result']
+                        elif row[KPI_TYPE] != SCORING:
+                            result_data['score'] = weight * result_data['result']
+                    parent_kpi_name = self._get_parent_name_from_kpi_name(result_data['kpi_name'])
+                    if parent_kpi_name and 'identifier_parent' not in result_data.keys():
+                        result_data['identifier_parent'] = parent_kpi_name
+                    if 'identifier_result' not in result_data.keys():
+                        result_data['identifier_result'] = result_data['kpi_name']
+                    if result_data['result'] <= 1:
+                        result_data['result'] = result_data['result'] * 100
+                    self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
+                else:  # must be a list
+                    for result in result_data:
+                        weight = row['Score']
+                        if weight and pd.notna(weight) and pd.notna(result['result']):
+                            if row[KPI_TYPE] == SCORING and 'score' not in result.keys():
+                                result['score'] = weight * result['result']
+                            elif row[KPI_TYPE] != SCORING:
+                                result['score'] = weight * result['result']
+                        parent_kpi_name = self._get_parent_name_from_kpi_name(result['kpi_name'])
+                        if parent_kpi_name and 'identifier_parent' not in result.keys():
+                            result['identifier_parent'] = parent_kpi_name
+                        if 'identifier_result' not in result.keys():
+                            result['identifier_result'] = result['kpi_name']
+                        if result['result'] <= 1:
+                            result['result'] = result['result'] * 100
+                        self.results_df.loc[len(self.results_df), result.keys()] = result
+
+    def _get_calculation_function_by_kpi_type(self, kpi_type):
+        if kpi_type == SOS:
+            return self.calculate_sos
+
+    def calculate_sos(self,row):
+        return_holder = self._get_kpi_name_and_fk(row)
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id':self.own_manufacturer, 'denominator_id':self.store_id, 'result':0}
+        denominator_relevant_scif = self._filter_scif(row, self.scif)
+        numerator_relevant_scif = self._filter_df(denominator_relevant_scif, {'manufacturer_name':'TCCC'})
+        if not numerator_relevant_scif.empty:
+            denominator_result = denominator_relevant_scif.facings_ign_stack.sum()
+            numerator_result = numerator_relevant_scif.facings_ign_stack.sum()
+            result = float(numerator_result)/denominator_result
+
+            result_dict['denominator_result'] = denominator_result
+            result_dict['numerator_result'] = numerator_result
+            result_dict['result'] = result
+        return result_dict
+
+    def _filter_scif(self, row, df):
+        columns_in_scif = row.index[np.in1d(row.index, df.columns)]
+        for column_name in columns_in_scif:
+            if pd.notna(row[column_name]) and not df.empty:
+                df = df[df[column_name].isin(self.sanitize_values(row[column_name]))]
+        return df
+
+    @staticmethod
+    def sanitize_values(item):
+        if pd.isna(item):
+            return item
+        else:
+            if type(item) == int:
+                return str(item)
+            else:
+                items = [x.strip() for x in item.split(',')]
+                return items
+
+    def _get_kpi_name_and_fk(self, row, generic_num_dem_id=False):
+        kpi_name = row[KPI_NAME]
+        kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
+        output = [kpi_name, kpi_fk]
+        if generic_num_dem_id:
+            numerator_id = self.scif[row[NUMERATOR_ENTITY]].mode().iloc[0]
+            denominator_id = self.scif[row[DENOMINATOR_ENTITY]].mode().iloc[0]
+            output.append(numerator_id)
+            output.append(denominator_id)
+        return output
+
+    @staticmethod
+    def _filter_df(df, filters, exclude=0):
+        cols = set(df.columns)
+        for key, val in filters.items():
+            if key not in cols:
+                return pd.DataFrame()
+            if not isinstance(val, list):
+                val = [val]
+            if exclude:
+                df = df[~df[key].isin(val)]
+            else:
+                df = df[df[key].isin(val)]
+        return df
+
+    def _get_parent_name_from_kpi_name(self, kpi_name):
+        template = self.templates[KPIS]
+        parent_kpi_name = \
+            template[template[KPI_NAME].str.encode('utf-8') == kpi_name.encode('utf-8')][PARENT_KPI].iloc[0]
+        if parent_kpi_name and pd.notna(parent_kpi_name):
+            return parent_kpi_name
+        else:
+            return None
+
+
