@@ -76,6 +76,8 @@ class ColdCutToolBox:
         return
 
     def calculate_blocking(self, row, df):
+        if df.empty:
+            return None
         additional_data = row['Config Params: JSON']
         location_data = row['Location: JSON']
         kpi_fk = row['kpi_fk']
@@ -160,6 +162,8 @@ class ColdCutToolBox:
         return result_dict_list
 
     def calculate_blocking_orientation(self,  row, df):
+        if df.empty:
+            return
         result_dict_list = []
         additional_data = row['Config Params: JSON']
         location_data = row['Location: JSON']
@@ -310,7 +314,8 @@ class ColdCutToolBox:
 
     def calculate_facings_sos(self, row, df):
         data_filter = {'population': row['Dataset 2: JSON']}
-        data_filter['population'].update({'include': [{'session_id': self.session_fk}]})
+        if 'include' not in data_filter['population'].keys():
+            data_filter['population'].update({'include': [{'session_id': self.session_fk}]})
         data_filter.update({'location': row['Location: JSON']})
         config_json = row['Config Params: JSON']
         numerator_type = config_json['numerator_type']
@@ -320,14 +325,22 @@ class ColdCutToolBox:
 
     def _logic_for_sos(self, row, df, numerator_type):
         result_list = []
+        facing_type = 'facings'
+        config_json = row['Config Params: JSON']
+
+        if 'include_stacking' in config_json:
+            if config_json['include_stacking']:
+                facing_type = 'facings_ign_stack'
+
         for num_item in df[numerator_type].unique().tolist():
             if num_item:
                 numerator_scif = df[df[numerator_type] == num_item]
             else:
                 numerator_scif = df[df[numerator_type].isnull()]
                 num_item = 'None'
-            numerator_result = numerator_scif.facings.sum()
-            denominator_result = df.facings.sum()
+
+            numerator_result = numerator_scif[facing_type].sum()
+            denominator_result = df[facing_type].sum()
             custom_entity_fk = self.get_custom_entity_value(num_item)
             sos_value = self.calculate_percentage_from_numerator_denominator(numerator_result, denominator_result)
 
