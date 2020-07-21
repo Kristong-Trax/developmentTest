@@ -11,7 +11,6 @@ import pandas as pd
 import numpy as np
 from collections import OrderedDict
 import re
-import ast
 
 from Projects.MONDELEZUSPS.Data.LocalConsts import Consts
 
@@ -116,7 +115,7 @@ class SceneToolBox(GlobalSceneToolBox):
                         last_inserted_value_key = container.items()[-1][0]
                         container.get(last_inserted_value_key).append(value[0])
         else:
-            container = ast.literal_eval(item)
+            container = eval(item)
         return container
 
     def get_store_area_df(self):
