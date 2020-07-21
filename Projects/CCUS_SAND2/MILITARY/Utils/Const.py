@@ -2,6 +2,7 @@ def get(coll, keys):
     return [coll.get(key) for key in keys]
 
 
+# kpi results
 FK = 'fk'
 NUMERATOR_ID = 'numerator_id'
 NUMERATOR_RESULT = 'numerator_result'
@@ -10,7 +11,7 @@ DENOMINATOR_RESULT = 'denominator_result'
 RESULT = 'result'
 CONTEXT_ID = 'context_id'
 
-# kpi keys
+# kpi specs keys
 NAME = 'name'
 TEMPLATE = 'template'
 MANUFACTURER = 'manufacturer'
@@ -21,10 +22,16 @@ DATASET_A = 'dataset_a'
 TEST_A = 'test_a'
 FACINGS = 'facings'
 
-COMPLIANT_BAY_COUNT = 'compliant_bay_count'
-SCENE_AVAILABILITY = 'scene_availability'
-FACINGS_SOS = 'facings_sos'
-SHARE_OF_SCENES = 'share_of_scenes'
+COMPLIANT_BAY_COUNT = 'Compliant Bay Count'
+SCENE_AVAILABILITY = 'Scene Availability'
+FACINGS_SOS = 'Facings SOS'
+SHARE_OF_SCENES = 'Share of Scenes'
+
+# db columns
+SCENE_FK = 'scene_fk'
+PRODUCT_FK = 'product_fk'
+PRODUCT_NAME = 'product_name'
+TEMPLATE_FK = 'template_fk'
 
 # template keys
 MAIN_COOLERS = 'main_coolers'
@@ -40,13 +47,26 @@ FAIRLIFE = 'fairlife'
 PEPSI = 'pepsi'
 
 #
+KPI_NAME = 'KPI Name'
 EMPTY = 'empty'
-
+QUESTION_TEXT = 'question_text'
 FILTER = 'filter'
+FILTERS = 'filters'
 NUMERATOR = 'numerator'
 DENOMINATOR = 'denominator'
 CONTEXT = 'context'
 KEY_PACKAGE = 'Key Package'
+TEMPLATE_NAME = 'template_name'
+IDENTIFIER_PARENT = 'identifier_parent'
+IDENTIFIER_RESULT = 'identifier_result'
+KPI_ID = 'KPI ID'
+KPI_PARENT_ID = 'KPI Parent ID'
+
+KPI = 'KPI'
+KPI_TYPE = 'KPI Type'
+# survey
+PALLET = 'pallet'
+RACK = 'rack'
 
 TEMPLATES = {
     MAIN_COOLERS: 'M - Main Checkout Coolers Only',
@@ -65,6 +85,11 @@ MANUFACTURERS = {
 
 PRODUCTS = {
     EMPTY: 'General Empty'
+}
+
+SURVEY_RESPONSES = {
+    PALLET: 'Pallat Drop',
+    RACK: 'Rack'
 }
 
 KPIs = {
@@ -108,8 +133,11 @@ KPIs = {
     ],
     SCENE_AVAILABILITY: [
         {
-            'name': 'Does this store have a display of Coca - Cola CSD Brands of 24 pack /12 oz cans ?',
-            TEMPLATE: TEMPLATES[DISPLAY],
+            NAME: 'Does this store have a display of Coca - Cola CSD Brands of 24 pack /12 oz cans ?',
+            FILTERS: {
+                TEMPLATE_NAME: TEMPLATES[DISPLAY],
+                'question_text': SURVEY_RESPONSES['pallet']
+            },
             'datasets': [
                 {
                     MANUFACTURER: MANUFACTURERS[COKE],
@@ -121,19 +149,39 @@ KPIs = {
             ],
         },
         {
-            'name': 'Where is the display of Coca-Cola CSD Brands of 24 pack/12 oz. cans located?',
+            NAME: 'Where is the display of Coca-Cola CSD Brands of 24 pack/12 oz. cans located?',
+            TEMPLATE: TEMPLATES[DISPLAY]
         },
         {
             'name': 'Does this store have a Coca-Cola branded endcap display?',
+            TEMPLATE: TEMPLATES[ENDCAP]
         },
         {
-            'name': 'If Yes, does the end cap include 6pk .5L Coca-Cola',
+            NAME: 'If Yes, does the end cap include 6pk .5L Coca-Cola',
+            FILTER: {TEMPLATE_NAME: TEMPLATES[ENDCAP]}
         },
         {
             'name': 'Does this store have a 24 pack 500 ml Dasani Water display anywhere in the store?',
         },
         {
-            'name': 'Does this store have a rack with Coca-Cola branding of Powerade and Core Power?',
+            NAME: 'Does this store have a rack with Coca-Cola branding of Powerade and Core Power?',
+            FILTERS: {
+                TEMPLATE_NAME: TEMPLATES[DISPLAY],
+                QUESTION_TEXT: SURVEY_RESPONSES[RACK]
+            },
+            'datasets': [
+                {
+                    PRODUCT_NAME: [
+                        "SKU: Core Power Milk Shake Vanilla Elite High Protein Bottle 14 fl oz",
+                        "Core Power Protein Milk Chocolate Bottle 14 fl oz",
+                        "Core Power Fairlife Protein Milk Shake Banana Bottle 14 fl oz",
+                        "Core Power Milk Shake Chocolate High Protein Bottle 14 fl oz",
+                        "Core Power Protein Milk Shake Strawberry Banana Bottle 14 fl oz",
+                        "Core Power Fairlife Elite Milk Shake Strawberry High Protein Bottle 14 fl oz",
+                        "Core Power Fairlife Protein Milk Shake Vanilla Bottle 14 fl oz"
+                    ]
+                }
+            ]
         },
         {
             'name': 'Does the store have a rack containing Coca-Cola 1.25 liter CSD brands and Gold Peak Tea?',
