@@ -17,7 +17,6 @@ import simplejson
 import os
 import numpy as np
 import re
-# import ast
 from math import sqrt
 from shapely import affinity
 from shapely.geometry import box
