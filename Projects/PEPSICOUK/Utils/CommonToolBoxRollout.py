@@ -431,16 +431,20 @@ class PEPSICOUKCommonToolBox:
     def calculate_product_length_in_matches_on_display(self, matches):
         matches = matches.drop_duplicates(
             subset=[MatchesConsts.PRODUCT_FK, MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER])
-        matches_no_pos = matches[~(matches[MatchesConsts.STACKING_LAYER] == -2)]
+        matches = matches.merge(self.all_products[[ScifConsts.PRODUCT_FK, ScifConsts.PRODUCT_TYPE]],
+                                       on=ScifConsts.PRODUCT_FK, how='left')
+        matches_no_pos = matches[~(matches[ScifConsts.PRODUCT_TYPE]=='POS')]
+        # matches_no_pos = matches[~(matches[MatchesConsts.STACKING_LAYER] == -2)]
         bay_sku = matches_no_pos.groupby([MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER],
                                   as_index=False).agg({'facings_matches': np.sum})
         bay_sku.rename(columns={'facings_matches': 'unique_skus'}, inplace=True)
         matches = matches.merge(bay_sku, on=[MatchesConsts.SCENE_FK, MatchesConsts.BAY_NUMBER], how='left')
         matches[MatchesConsts.WIDTH_MM_ADVANCE] = matches.apply(self.get_product_len, args=(matches,), axis=1)
+        matches.drop(columns=[ScifConsts.PRODUCT_TYPE], inplace=True)
         return matches
 
     def get_product_len(self, row, matches):
-        if row[MatchesConsts.STACKING_LAYER] == -2:
+        if row[ScifConsts.PRODUCT_TYPE] == 'POS':
             return 0
 
         # if Mix logic - then the length will depend of whether there are bins or bays in the bottom level

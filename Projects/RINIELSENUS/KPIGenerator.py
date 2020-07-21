@@ -5,6 +5,8 @@ from Projects.RINIELSENUS.Utils.Utils import log_runtime
 # from Projects.RINIELSENUS.PURINA.KPIToolBox import PURINAToolBox
 from Projects.RINIELSENUS.MILLERCOORS.Utils.KPIToolBox import MILLERCOORSToolBox
 from Projects.RINIELSENUS.TYSON.Utils.KPIToolBox import TysonToolBox
+from Projects.RINIELSENUS.COLDCUTS.KPIToolBox import ColdCutToolBox
+
 
 __author__ = 'nethanel'
 
@@ -20,6 +22,8 @@ class MarsUsGenerator:
         # self.purina_tool_box = PURINAToolBox(self.data_provider, self.output)
         self.millercoors_tool_box = MILLERCOORSToolBox(self.data_provider, self.output)
         self.tyson_tool_box = TysonToolBox(self.data_provider, self.output)
+        self.coldcut_tool_box = ColdCutToolBox(self.data_provider, self.output)
+
 
     @log_runtime('Total Calculations', log_start=True)
     def main_function(self):
@@ -33,24 +37,30 @@ class MarsUsGenerator:
         try:
             import time
             s = time.time()
-            self.tool_box.calculate_scores()
+            # self.tool_box.calculate_scores()
             print('__________________ Calculations took {} _________________'.format(round(time.time() - s)))
         except Exception:
             Log.error('Mars US kpis not calculated')
 
-        # try:
-        #     self.purina_tool_box.calculate_purina()
-        # except:
-        #     Log.error('Purina kpis not calculated')
-
-        # try:
-        #     self.millercoors_tool_box.main_calculation()
-        #     self.millercoors_tool_box.commit_results()
-        # except:
-        #     Log.error('MillerCoors KPIs not calculated')
-
+        # # try:
+        # #     self.purina_tool_box.calculate_purina()
+        # # except:
+        # #     Log.error('Purina kpis not calculated')
+        #
+        # # try:
+        # #     self.millercoors_tool_box.main_calculation()
+        # #     self.millercoors_tool_box.commit_results()
+        # # except:
+        # #     Log.error('MillerCoors KPIs not calculated')
+        #
         try:
             self.tyson_tool_box.main_calculation()
             self.tyson_tool_box.commit_results()
         except Exception:
             Log.error('Tyson KPIs not calculated')
+
+        try:
+            self.coldcut_tool_box.main_calculation()
+            self.coldcut_tool_box.commit_results()
+        except Exception:
+            Log.error('coldcuts KPIs not calculated')
