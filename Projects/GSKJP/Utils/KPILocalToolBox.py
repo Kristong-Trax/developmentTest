@@ -20,11 +20,12 @@ class GSKLocalToolBox(GSKToolBox, object):
             return
         self.assort_lvl3 = self.assort_lvl3.drop_duplicates(subset=[ProductsConsts.PRODUCT_FK])
 
-    def availability_calculation(self, availability_type):
+    def availability_calculation(self, availability_type, custom_suffix=''):
         """
             :param availability_type : "Store" , "Category", "SubCategory"
             Function initialize assortment_level_3 (class attribute) if not initialized before
             and calculate availability results according to availability type
+            :param custom_suffix: "Custom suffix to be added to the KPI name"
         """
 
         self.extract_data_set_up_file("availability")
@@ -62,11 +63,12 @@ class GSKLocalToolBox(GSKToolBox, object):
 
         return dict_list
 
-    def assortment_calculation(self, assort_lvl3, denominator_fk, availability_type):
+    def assortment_calculation(self, assort_lvl3, denominator_fk, availability_type, custom_suffix=''):
         """
            :param denominator_fk  : store_fk/category_fk/sub_category_fk
            :param assort_lvl3  : df of  level 3 assortment calculation
            :param availability_type : "Store"/"Category"/"SubCategory"
+           :param custom_suffix: "Custom suffix to be added to the KPI name"
            :return results_df that contains:
                - result in SKU level :  distribution 1/2/3  oos 1/2
                - result : stock rate for oos and distribution
