@@ -56,29 +56,36 @@ class SOVIToolBox:
 
         self._calculate_sos(Const.SHARE_TEMPLATE_GROUP, 'template_group', denominator_id='store_id',
                             united_numerator=True)
-        self._calculate_sos(Const.SHARE_SSD_TEMPLATE_GROUP, 'att4', denominator_id='template_group',
-                            united_numerator=True)
-        self._calculate_sos(Const.SHARE_CATEGORY_TEMPLATE_GROUP, 'category_fk', denominator_id='template_group',
-                            context_id='att4', united_numerator=True)
+        self._calculate_sos(Const.SHARE_SSD_TEMPLATE_GROUP, 'att4', denominator_id='store_id',
+                            context_id='template_group', united_numerator=True)
+        self._calculate_sos(Const.SHARE_CATEGORY_TEMPLATE_GROUP, 'category_fk', denominator_id='store_id',
+                            context_id=['att4', 'template_group'], united_numerator=True)
 
         self._calculate_sos(Const.MANUFACTURER_SHARE_STORE, 'manufacturer_fk', denominator_id='store_id')
         self._calculate_sos(Const.BRAND_SHARE_MANUFACTURER, 'brand_fk', denominator_id='store_id',
                             context_id='manufacturer_fk')
         self._calculate_sos(Const.PRODUCT_SHARE_MANUFACTURER, 'product_fk', denominator_id='store_id',
-                            context_id='brand_fk')
+                            context_id=['brand_fk', 'manufacturer_fk'])
 
         self._calculate_sos(Const.TEMPLATE_GROUP_STORE, 'template_group', denominator_id='store_id')
-        self._calculate_sos(Const.MANUFACTURER_TEMPLATE_GROUP, 'manufacturer_fk', denominator_id='template_group')
-        self._calculate_sos(Const.BRAND_TEMPLATE_GROUP, 'brand_fk', denominator_id='template_group',
-                            context_id='manufacturer_fk')
-        self._calculate_sos(Const.PRODUCT_TEMPLATE_GROUP, 'product_fk', denominator_id='template_group',
-                            context_id='brand_fk')
+        self._calculate_sos(Const.MANUFACTURER_TEMPLATE_GROUP, 'manufacturer_fk', denominator_id='store_id',
+                            context_id='template_group')
+        self._calculate_sos(Const.BRAND_TEMPLATE_GROUP, 'brand_fk', denominator_id='store_id',
+                            context_id=['manufacturer_fk', 'template_group'])
+        self._calculate_sos(Const.PRODUCT_TEMPLATE_GROUP, 'product_fk', denominator_id='store_id',
+                            context_id=['brand_fk', 'manufacturer_fk', 'template_group'])
 
     def _calculate_sos(self, kpi_name, numerator_id, denominator_id=None, context_id=None, united_numerator=False):
         kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         parent_fk = self._get_parent_kpi_fk_by_kpi_type(kpi_name)
 
-        num_columns = [col for col in [numerator_id, denominator_id, context_id] if col]
+        num_columns = [col for col in [numerator_id, denominator_id] if col]
+        if context_id:
+            if isinstance(context_id, list):
+                num_columns.extend(context_id)
+            else:
+                num_columns.append(context_id)
+
         if united_numerator:
             num_df = self.scif[self.scif[self.manufacturer_attribute] == self.manufacturer_value]
         else:
@@ -109,12 +116,21 @@ class SOVIToolBox:
                                  denominator_id: getattr(result, denominator_id)}
             identifier_result.pop('store_id', None)
             identifier_parent = {'kpi_fk': parent_fk, denominator_id: getattr(result, denominator_id)}
+            context_id_for_db = None
             if context_id:
-                identifier_parent.update({context_id: getattr(result, context_id)})
+                if isinstance(context_id, list):
+                    for attr_name in context_id:
+                        identifier_parent.update({attr_name: getattr(result, attr_name)})
+                        identifier_result.update({attr_name: getattr(result, attr_name)})
+                    context_id_for_db = getattr(result, str(context_id[0]), None)
+                else:
+                    identifier_parent.update({context_id: getattr(result, context_id)})
+                    identifier_result.update({context_id: getattr(result, context_id)})
+                    context_id_for_db = getattr(result, str(context_id), None)
             identifier_parent.pop('store_id', None)
             self.common.write_to_db_result(kpi_fk, numerator_id=getattr(result, numerator_id),
                                            denominator_id=getattr(result, denominator_id),
-                                           context_id=getattr(result, str(context_id), None),
+                                           context_id=context_id_for_db,
                                            numerator_result=getattr(result, 'numerator', 0),
                                            denominator_result=getattr(result, 'denominator', 0),
                                            result=result.sos * 100, identifier_parent=identifier_parent,
