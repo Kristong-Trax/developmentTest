@@ -50,7 +50,7 @@ KPIs = {
             'minimum_threshold': 40,
             'purity_threshold': 95,
             DEN_FILTERS: {TEMPLATE_NAME: ['Other Cooler']},
-            NUM_FILTERS: {UNITED_DELIVER: 'Y'},
+            NUM_FILTERS: {UNITED_DELIVER: 'Y', 'manufacturer_name': 'CCNA'},  # needs to be 'or'
             IDENTIFIER_PARENT: COOLER_PURITY
         },
         {

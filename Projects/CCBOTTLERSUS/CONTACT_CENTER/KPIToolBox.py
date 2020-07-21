@@ -11,8 +11,8 @@ from Projects.CCBOTTLERSUS.CONTACT_CENTER.Const import *
 
 __author__ = "trevaris"
 
-COLUMNS = ['scene_match_fk', TEMPLATE_FK, 'template_name', SCENE_FK, MANUFACTURER_FK, CATEGORY, BRAND_FK,
-           BRAND_NAME, PRODUCT_FK, UNITED_DELIVER, 'att4']
+COLUMNS = ['scene_match_fk', TEMPLATE_FK, 'template_name', SCENE_FK, MANUFACTURER_FK, 'manufacturer_name', CATEGORY,
+           BRAND_FK, BRAND_NAME, PRODUCT_FK, 'product_name', UNITED_DELIVER, 'att4']
 
 
 class ContactCenterToolBox(GlobalSessionToolBox):
@@ -51,7 +51,9 @@ class ContactCenterToolBox(GlobalSessionToolBox):
         kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi['name'])
         den_df = self._filter_df(self.mpis, kpi['den_filters']) \
             .rename(columns={'scene_match_fk': 'den_count'})
-        num_df = self._filter_df(den_df, kpi['num_filters']) \
+        den_df = self._filter_df(den_df, filters={'product_name': 'General Empty'}, exclude=True)
+        # num_df = self._filter_df(den_df, kpi['num_filters']) \
+        num_df = den_df[(den_df[UNITED_DELIVER] == 'Y') | (den_df['manufacturer_name'] == 'CCNA')] \
             .rename(columns={'den_count': 'num_count'})
 
         den_df = den_df.groupby(by='scene_fk', as_index=False).count()
