@@ -17,7 +17,6 @@ import simplejson
 import os
 import numpy as np
 import re
-import ast
 from math import sqrt
 from shapely import affinity
 from shapely.geometry import box
@@ -890,7 +889,7 @@ class ToolBox(GlobalSessionToolBox):
                         last_inserted_value_key = container.items()[-1][0]
                         container.get(last_inserted_value_key).append(value[0])
         else:
-            container = ast.literal_eval(item)
+            container = eval(item)
         return container
 
     def _get_kpi_name_and_fk(self, row):
