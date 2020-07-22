@@ -16,13 +16,13 @@ class INBEVCISANDCalculations(BaseCalculationsScript):
 
 
 # if __name__ == '__main__':
-#     LoggerInitializer.init('inbevci-sand calculations')
+#     LoggerInitializer.init('KEngine')
 #     Config.init()
 #     project_name = 'inbevci-sand'
 #     # sessions = ['fc314c82-bc68-4786-92a4-f55765593779']
 #     # sessions = ['31f63bc0-19d6-41df-9a24-c62a2f4f822d']
 #     # sessions = ['7d602b07-cccd-443d-bd71-ca5484bd41de']
-#     sessions = ['dd68c9a7-a7dd-428e-a8a9-9f6dea8dd070']
+#     sessions = ['fc01094a-8463-4bdb-a89c-b042a4023a27']
 #     # sessions = ['b9396193-0067-423f-ba74-8d560c4f6df4']
 #     for session in sessions:
 #         data_provider = KEngineDataProvider(project_name)

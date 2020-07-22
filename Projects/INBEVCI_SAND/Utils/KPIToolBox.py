@@ -621,7 +621,12 @@ class INBEVCISANDToolBox:
         brand_fk = params['entity_value']
         target = int(params[Const.TARGET])
         atomic_fk = self.get_kpi_fk_by_kpi_name(Const.ATOMIC_FACINGS)
-        facings = self.tools.calculate_availability(**{"brand_fk": brand_fk})
+        exclude_type = params["exclude_entity_name"]
+        exclude_value = params["exclude_entity_value"]
+        filters = {"brand_fk": brand_fk}
+        if exclude_type:
+            filters.update({exclude_type: (exclude_value, 0)})
+        facings = self.tools.calculate_availability(**filters)
         if facings >= target:
             atomic_score = 100
         result = round(facings / float(target), 4) * 100

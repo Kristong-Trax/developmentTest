@@ -543,9 +543,6 @@ class ComidasToolBox(GlobalSessionToolBox):
                 df = df[vert(func(df[col]))]
         return df
 
-    def get_fk(self, entity, df):
-        df
-
     def get_template_fk(self, template_name):
         """
         :param template_name: Name of template.
