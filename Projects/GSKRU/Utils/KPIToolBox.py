@@ -107,14 +107,14 @@ class GSKRUToolBox:
         self.common.save_json_to_new_tables(linear_sos_dict)
 
         # Main Shelf KPIs
-        self.set_up_data = LocalConsts.SET_UP_DATA
-        self.gsk_generator.tool_box.set_up_data = self.set_up_data
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                                           'gsk_set_up.xlsx'),
                                              sheet_name='Functional KPIs Main Shelf',
                                              keep_default_na=False)
         self.gsk_generator.set_up_file = self.set_up_template
         self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
             custom_suffix='_Stacking_Included_Main_Shelf',
@@ -144,11 +144,14 @@ class GSKRUToolBox:
         self.common.save_json_to_new_tables(linear_sos_dict)
 
         # Secondary Shelf KPIs
-        self.set_up_data = LocalConsts.SET_UP_DATA
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                                           'gsk_set_up.xlsx'),
                                              sheet_name='Functional KPIs Secondary Shelf',
                                              keep_default_na=False)
+        self.gsk_generator.set_up_file = self.set_up_template
+        self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
             custom_suffix='_Stacking_Included_Secondary_Shelf',
@@ -178,11 +181,14 @@ class GSKRUToolBox:
         self.common.save_json_to_new_tables(linear_sos_dict)
 
         # Local KPIs
-        self.set_up_data = LocalConsts.SET_UP_DATA
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                                           'gsk_set_up.xlsx'),
                                              sheet_name='Functional KPIs Local',
                                              keep_default_na=False)
+        self.gsk_generator.set_up_file = self.set_up_template
+        self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         # SOA
         soa_dict = self.gsk_soa_function()
