@@ -41,7 +41,10 @@ class SceneToolBox(GlobalSceneToolBox):
         GlobalSceneToolBox.__init__(self, data_provider, output)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        self.targets = self.ps_data_provider.get_kpi_external_targets()
+        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=['KPI Type'], data_fields=[
+                                                                                   'Location: JSON',
+                                                                                   'Config Params: JSON',
+                                                                                   'Dataset 1: JSON'])
         self.gold_zone_scene_location_kpi = ['Lobby/Entrance', 'Main Alley/Hot Zone', 'Gold Zone End Cap',
                                              'Lobby/Main Entrance']
 
@@ -114,8 +117,9 @@ class SceneToolBox(GlobalSceneToolBox):
                     else:
                         last_inserted_value_key = container.items()[-1][0]
                         container.get(last_inserted_value_key).append(value[0])
-        # else:
-        #     container = eval(item)
+        else:
+            container = eval(item)
+
         return container
 
     def get_store_area_df(self):
