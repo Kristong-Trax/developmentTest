@@ -6,7 +6,6 @@ import os
 import pandas as pd
 import re
 
-from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
@@ -18,34 +17,28 @@ __author__ = 'trevaris'
 
 PATH = os.path.dirname(__file__)
 SHEETS = [KPI, SCENE_AVAILABILITY, COMPLIANT_BAY_COUNT, FACINGS_SOS, SHARE_OF_SCENES]
-MPIS_COLUMNS = ['scene_match_fk',  'template_fk', 'template_name', SCENE_FK, 'location', 'bay_number',
-                'manufacturer_fk', 'brand_fk', 'product_fk', 'size', 'category_fk', FACINGS, 'SKUs', 'Key Package', 'survey_question_fk',
-                'question_text',
-                'scene_survey_response']
+MPIS_COLUMNS = ['scene_match_fk',  TEMPLATE_FK, 'template_name', SCENE_FK, 'location', 'bay_number',
+                'manufacturer_fk', 'brand_fk', 'product_fk', 'size', 'category_fk', FACINGS, 'SKUs', 'Key Package',
+                'survey_question_fk', 'question_text', 'scene_survey_response']
+
 
 def not_and(x, y): return x and not y
+
+
 LOGIC = {
+    '': op.pos,
     'AND': op.and_,
-    'AND NOT': not_and,
+    'NEVER': not_and,
     'OR': op.or_,
 }
 
 
 class MilitaryToolBox(GlobalSessionToolBox):
-    def __init__(self, data_provider, output):
-        self.data_provider = data_provider
-        self.output = output
+    def __init__(self, data_provider, output, common):
+        GlobalSessionToolBox.__init__(self, data_provider, output, common)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.common = Common(self.data_provider)
-        self.session_uid = self.data_provider.session_uid
         self.own_manufacturer = self.data_provider[Data.OWN_MANUFACTURER].iloc[0]['param_value']
-        self.store_info = data_provider[Data.STORE_INFO]
-        self.store_id = self.store_info['store_fk'][0]
-        self.match_product_in_scene = data_provider[Data.MATCHES]
         self.products = data_provider[Data.PRODUCTS]
-        self.scene_info = data_provider[Data.SCENES_INFO]
-        self.scif = data_provider[Data.SCENE_ITEM_FACTS]
-        self.templates = self.data_provider[Data.ALL_TEMPLATES]
 
         store_areas = self.ps_data_provider.get_store_area_df() \
             .rename(columns={"store_area_name": 'location'})
@@ -57,13 +50,13 @@ class MilitaryToolBox(GlobalSessionToolBox):
             .rename(columns={'question_fk': 'survey_question_fk', 'selected_option_text': 'scene_survey_response'})
 
         try:
-            self.mpis = self.match_product_in_scene \
+            self.mpis = self.matches \
                 .merge(self.products, how='left', on=PRODUCT_FK, suffixes=['', '_p']) \
                 .merge(self.scene_info, how='left', on=SCENE_FK, suffixes=['', '_s']) \
                 .merge(self.templates, how='left', on=TEMPLATE_FK, suffixes=['', '_t']) \
                 .merge(store_areas, how='left', on=SCENE_FK, suffixes=['', '_sa']) \
                 .merge(key_packages, how='left', on=PRODUCT_FK, suffixes=['', '_kp']) \
-                .merge(product_facings, how='left', on=[SCENE_FK, PRODUCT_FK], suffixes=['', '+pf']) \
+                .merge(product_facings, how='left', on=[SCENE_FK, PRODUCT_FK], suffixes=['', '_pf']) \
                 .merge(survey_response, how='left', on=SCENE_FK, suffixes=['', '_sr'])[MPIS_COLUMNS]
             self.mpis.loc[:, 'Own-Manufacturer'] = self.own_manufacturer
         except ValueError:
@@ -71,15 +64,13 @@ class MilitaryToolBox(GlobalSessionToolBox):
 
         self.kpi_templates = self.get_kpi_template(PATH, 'Data')
         self.results_df = pd.DataFrame(
-            columns=[FK, NUMERATOR_ID, NUMERATOR_RESULT, DENOMINATOR_ID, DENOMINATOR_RESULT, RESULT,
+            columns=[FK, KPI_NAME, NUMERATOR_ID, NUMERATOR_RESULT, DENOMINATOR_ID, DENOMINATOR_RESULT, RESULT,
                      IDENTIFIER_RESULT, IDENTIFIER_PARENT])
 
         self.calculations = {
-            SCENE_AVAILABILITY: self.calculate_scene_availability
+            SCENE_AVAILABILITY: self.calculate_scene_availability,
+            SHARE_OF_SCENES: self.calculate_share_of_scenes,
         }
-
-        # with open(os.path.join(PATH, "mock_data.csv"), 'rb') as f:
-        #     self.mpis = pd.read_csv(f)
 
     def main_calculation(self):
         if self.mpis.empty or self.filter_df(self.store_info, {'region_name': REGION}).empty:
@@ -87,11 +78,11 @@ class MilitaryToolBox(GlobalSessionToolBox):
 
         for _, row in self.kpi_templates[KPI].iterrows():
             if row[KPI_TYPE] in self.calculations:
-                self.calculations.get(row[KPI_TYPE])(row)
+                kpi = self.filter_df(self.kpi_templates[row[KPI_TYPE]], filters={KPI_NAME: row[KPI_NAME]}).iloc[0]
+                self.calculations.get(row[KPI_TYPE])(kpi)
 
         self.calculate_compliant_bay_kpi()
         self.calculate_facings_sos_kpi()
-        self.calculate_share_of_scenes_kpi()
         self.save_results()
 
     def calculate_compliant_bay_kpi(self):
@@ -101,18 +92,18 @@ class MilitaryToolBox(GlobalSessionToolBox):
             self.calculate_compliant_bay(
                 kpi[NAME], kpi[TEMPLATE], kpi[MANUFACTURER], kpi['exclude_manufacturers'])
 
-    def calculate_compliant_bay(self, kpi, templates, manufacturers, exclude_manufacturers=False, sos_threshold=.501):
+    def calculate_compliant_bay(self, kpi_name, templates, manufacturers, exclude_manufacturers=False, sos_threshold=.501):
         """
         Calculates the something I've already forgotten.
 
-        :param kpi: Name of KPI.
+        :param kpi_name: Name of KPI.
         :param templates:
         :param manufacturers:
         :param exclude_manufacturers: If True, excludes `manufacturers` in filter.
         :param sos_threshold: Minimum percentage to determine display branding.
         """
 
-        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
+        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi_name)
         template_ids = self.get_template_fks(templates)
         manufacturer_ids = self.get_manufacturer_fks(manufacturers)
 
@@ -137,20 +128,18 @@ class MilitaryToolBox(GlobalSessionToolBox):
 
         self.append_results({
             FK: kpi_id,
+            KPI_NAME: kpi_name,
             NUMERATOR_ID: self.own_manufacturer,
             NUMERATOR_RESULT: result,
             DENOMINATOR_ID: self.store_id,
             DENOMINATOR_RESULT: 1,
             RESULT: result})
 
-    def calculate_scene_availability(self, row):
+    def calculate_scene_availability(self, kpi):
         """
 
         """
 
-        kpi = self.filter_df(self.kpi_templates[row[KPI_TYPE]], filters={KPI_NAME: row[KPI_NAME]}).iloc[0]
-
-        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi[KPI_NAME])
         filtered_df = self.filter_df(self.mpis,
                                      filters={col: kpi[col] for col in MPIS_COLUMNS if col in kpi.index and kpi[col]})
 
@@ -158,35 +147,47 @@ class MilitaryToolBox(GlobalSessionToolBox):
             scene_df = self.filter_df(filtered_df, filters={SCENE_FK: scene})
             datasets = dict.fromkeys(['a', 'b', 'c'], pd.DataFrame())
             for dataset in datasets.keys():
-                if pd.notna(kpi[dataset+"_filter_1"]):
-                    filters = [kpi[index] for index in kpi.index if dataset+'_filter' in index]
-                    values = [kpi[index] for index in kpi.index if dataset+'_value' in index]
-                    df = self.filter_df(
-                        scene_df,
-                        filters={col: val for col, val in zip(filters, values) if pd.notna(col)})
-                    datasets[dataset] = df
+                for i in range(1, 3):
+                    try:
+                        if pd.notna(kpi[dataset+"_filter_"+str(i)]):
+                            filters = [kpi[index] for index in kpi.index if dataset+'_filter' in index and pd.notna(kpi[index])]
+                            values = [kpi[index] for index in kpi.index if dataset+'_value' in index and pd.notna(kpi[index])]
+                            df = self.filter_df(
+                                scene_df,
+                                filters={col: val for col, val in zip(filters, values) if pd.notna(col)})
+                            datasets[dataset] = df
+                    except KeyError:
+                        pass
 
-            result = int(any(True for dataset, data in datasets.items() if not data.empty and data[kpi[dataset+"_test"]].sum() >= kpi[dataset+"_threshold"]))
+            dataset_a_total = datasets['a'].groupby(PRODUCT_FK).count()[kpi['a_test']].sum()
+            result = dataset_a_total >= kpi['a_threshold']
+            for dataset, data in datasets.items()[1:]:
+                if not data.empty:
+                    conjunction = LOGIC.get(dataset+'_logic')
+                    test = data[kpi[dataset+'_test']].sum() >= kpi[dataset+'_threshold']
+                    result = conjunction(result, test)
 
             if kpi[KPI_NAME] == "Where is the 24 Pack 12 Ounce Coca-Cola CSD Brands Display Located?":
                 self.append_results({
-                    FK: kpi_id,
+                    FK: None,
+                    KPI_NAME: kpi[KPI_NAME],
                     NUMERATOR_ID: None,  # location
                     NUMERATOR_RESULT: None,  # ???
                     DENOMINATOR_ID: self.store_id,
                     DENOMINATOR_RESULT: scene,
-                    RESULT: result,
+                    RESULT: int(result),
                     IDENTIFIER_RESULT: kpi[KPI_ID],
                     IDENTIFIER_PARENT: kpi[KPI_PARENT_ID]
                 })
             else:
                 self.append_results({
-                    FK: kpi_id,
+                    FK: None,
+                    KPI_NAME: kpi[KPI_NAME],
                     NUMERATOR_ID: None,
-                    NUMERATOR_RESULT: result,
+                    NUMERATOR_RESULT: int(result),
                     DENOMINATOR_ID: self.store_id,
                     DENOMINATOR_RESULT: kpi[DENOMINATOR_RESULT],
-                    RESULT: "YES" if result else "NO",
+                    RESULT: int(result),
                     IDENTIFIER_RESULT: kpi[KPI_ID],
                     IDENTIFIER_PARENT: kpi[KPI_PARENT_ID]
                 })
@@ -203,18 +204,18 @@ class MilitaryToolBox(GlobalSessionToolBox):
                 kpi[CONTEXT]
             )
 
-    def calculate_facings_sos(self, kpi, templates, numerator, denominator, context):
+    def calculate_facings_sos(self, kpi_name, templates, numerator, denominator, context):
         """
         Calculates the SOS for manufacturer in category.
 
-        :param kpi: The KPI name.
+        :param kpi_name: The KPI name.
         :param templates: The list of templates to filter by.
         :param numerator:
         :param denominator:
         :param context:
         """
 
-        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
+        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi_name)
         template_ids = self.get_template_fks(templates)
 
         template_df = self.filter_df(self.mpis, filters={'template_fk': template_ids})
@@ -234,6 +235,7 @@ class MilitaryToolBox(GlobalSessionToolBox):
         for _, row in cat_man_count.iterrows():
             self.append_results({
                 FK: kpi_id,
+                KPI_NAME: kpi_name,
                 NUMERATOR_ID: row[numerator+'_fk'],
                 NUMERATOR_RESULT: row[numerator+'_count'],
                 DENOMINATOR_ID: row[denominator+'_fk'],
@@ -241,24 +243,12 @@ class MilitaryToolBox(GlobalSessionToolBox):
                 CONTEXT_ID: row.get(context+'_fk'),
                 RESULT: row[numerator+'_count'] / row[denominator+'_count']})
 
-    def calculate_share_of_scenes_kpi(self):
-        """Iterates through Share of Scenes type KPI."""
-
-        for kpi in KPIs[SHARE_OF_SCENES]:
-            self.calculate_share_of_scenes(
-                kpi['name'],
-                kpi['template']
-            )
-
-    def calculate_share_of_scenes(self, kpi, templates):
+    def calculate_share_of_scenes(self, kpi):
         """
         Calculates the number manufacturer-plurality scenes for manufacturer in category.
-
-        :param kpi: Name of KPI.
-        :param templates: List of templates to filter by.
         """
 
-        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi)
+        templates = kpi[TEMPLATE_NAME].split(",")
         template_ids = self.get_template_fks(templates)
 
         template_df = self.filter_df(self.mpis, {'template_fk': template_ids})
@@ -281,7 +271,8 @@ class MilitaryToolBox(GlobalSessionToolBox):
 
         for manufacturer_category in scene_max_count.itertuples():
             self.append_results({
-                FK: kpi_id,
+                FK: None,
+                KPI_NAME: kpi[KPI_NAME],
                 NUMERATOR_ID: manufacturer_category.manufacturer_fk,
                 NUMERATOR_RESULT: manufacturer_category.count,
                 DENOMINATOR_ID: manufacturer_category.category_fk,
@@ -361,6 +352,7 @@ class MilitaryToolBox(GlobalSessionToolBox):
         """
 
         for _, result in self.results_df.iterrows():
+            result[FK] = self.common.get_kpi_fk_by_kpi_name(result[KPI_NAME])
             self.write_to_db(**result.to_dict())
 
     def commit_results(self):

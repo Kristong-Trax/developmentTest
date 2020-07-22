@@ -37,8 +37,8 @@ def run_session(session_uid):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('CCUS/Military Calculations')
-    Config.init()
+    LoggerInitializer.init('KEngine')
+    Config.init('KEngine')
     project_name = 'ccus-sand2'
     data_provider = KEngineDataProvider(project_name)
     run_sessions(test_sessions)

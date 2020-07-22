@@ -95,127 +95,59 @@ SURVEY_RESPONSES = {
 KPIs = {
     COMPLIANT_BAY_COUNT: [
         {
-            NAME: 'How many Coca-Cola branded coolers does this store have at the front end checkout area?',
+            NAME: 'How Many Coca-Cola Branded Coolers are in the Front End Checkout Area?',
             TEMPLATE: TEMPLATES[MAIN_COOLERS],
             MANUFACTURER: get(MANUFACTURERS, [COKE, FAIRLIFE]),
             'exclude_manufacturers': False
         },
         {
-            NAME: 'How many Pepsi branded coolers does this store have at the front end checkout area?',
+            NAME: 'How Many Pepsi Branded Coolers are in the Front End Checkout Area?',
             TEMPLATE: TEMPLATES[MAIN_COOLERS],
             MANUFACTURER: [MANUFACTURERS[PEPSI]],
             'exclude_manufacturers': False
         },
         {
-            NAME: 'How many branded coolers from other brands does this store have at the front end checkout area?',
+            NAME: 'How Many Coolers From Other Brands are in the Front End Checkout Area?',
             TEMPLATE: TEMPLATES[MAIN_COOLERS],
             MANUFACTURER: get(MANUFACTURERS, [COKE, FAIRLIFE, PEPSI]),
             'exclude_manufacturers': True
         },
         {
-            NAME: 'How many Coca-Cola branded coolers does this store have at the self checkout area?',
+            NAME: 'How Many Coca-Cola Branded Coolers are in the Self Checkout Area?',
             TEMPLATE: TEMPLATES[SELF_COOLERS],
             MANUFACTURER: get(MANUFACTURERS, [COKE, FAIRLIFE]),
             'exclude_manufacturers': False
         },
         {
-            NAME: 'How many Pepsi branded coolers does this store have at the self checkout area?',
+            NAME: 'How Many Pepsi Branded Coolers are in the Self Checkout Area?',
             TEMPLATE: TEMPLATES[SELF_COOLERS],
             MANUFACTURER: [MANUFACTURERS[PEPSI]],
             'exclude_manufacturers': False
         },
         {
-            NAME: 'How many branded coolers from other brands does this store have at the self checkout area?',
+            NAME: 'How Many Other Coolers From Other Brands are in the Self Checkout Area?',
             TEMPLATE: TEMPLATES[SELF_COOLERS],
             MANUFACTURER: get(MANUFACTURERS, [COKE, FAIRLIFE, PEPSI]),
             'exclude_manufacturers': True
-        }
-    ],
-    SCENE_AVAILABILITY: [
-        {
-            NAME: 'Does this store have a display of Coca - Cola CSD Brands of 24 pack /12 oz cans ?',
-            FILTERS: {
-                TEMPLATE_NAME: TEMPLATES[DISPLAY],
-                'question_text': SURVEY_RESPONSES['pallet']
-            },
-            'datasets': [
-                {
-                    MANUFACTURER: MANUFACTURERS[COKE],
-                    KEY_PACKAGE: '12OZ 24PK CAN'
-                }
-            ],
-            'tests': [
-                {FACINGS: 3}
-            ],
-        },
-        {
-            NAME: 'Where is the display of Coca-Cola CSD Brands of 24 pack/12 oz. cans located?',
-            TEMPLATE: TEMPLATES[DISPLAY]
-        },
-        {
-            'name': 'Does this store have a Coca-Cola branded endcap display?',
-            TEMPLATE: TEMPLATES[ENDCAP]
-        },
-        {
-            NAME: 'If Yes, does the end cap include 6pk .5L Coca-Cola',
-            FILTER: {TEMPLATE_NAME: TEMPLATES[ENDCAP]}
-        },
-        {
-            'name': 'Does this store have a 24 pack 500 ml Dasani Water display anywhere in the store?',
-        },
-        {
-            NAME: 'Does this store have a rack with Coca-Cola branding of Powerade and Core Power?',
-            FILTERS: {
-                TEMPLATE_NAME: TEMPLATES[DISPLAY],
-                QUESTION_TEXT: SURVEY_RESPONSES[RACK]
-            },
-            'datasets': [
-                {
-                    PRODUCT_NAME: [
-                        "SKU: Core Power Milk Shake Vanilla Elite High Protein Bottle 14 fl oz",
-                        "Core Power Protein Milk Chocolate Bottle 14 fl oz",
-                        "Core Power Fairlife Protein Milk Shake Banana Bottle 14 fl oz",
-                        "Core Power Milk Shake Chocolate High Protein Bottle 14 fl oz",
-                        "Core Power Protein Milk Shake Strawberry Banana Bottle 14 fl oz",
-                        "Core Power Fairlife Elite Milk Shake Strawberry High Protein Bottle 14 fl oz",
-                        "Core Power Fairlife Protein Milk Shake Vanilla Bottle 14 fl oz"
-                    ]
-                }
-            ]
-        },
-        {
-            'name': 'Does the store have a rack containing Coca-Cola 1.25 liter CSD brands and Gold Peak Tea?',
-        },
-        {
-            'name': 'Does the store have a rack containing Coca-Cola 7.5oz mini cans?',
-        },
-        {
-            'name': 'Does this store have a rack with SmartWater and Vitamin Water?',
-        },
-        {
-            'name': 'Does this store have an Aha sparkling pallet?',
-        },
-        {
-            'name': 'Does the store have a mass display in the Lobby?',
         }
     ],
     FACINGS_SOS: [
         {
-            NAME: 'SOVI Main Bev Aisle Man win Cat',
+            NAME: 'SOVI Main Beverage Aisle',
             TEMPLATE: [TEMPLATES[BEVERAGE_AISLE]],
             NUMERATOR: MANUFACTURER,
             DENOMINATOR: CATEGORY,
             CONTEXT: ''
         },
         {
-            NAME: '% Empty By Manufacturer within Category',
+            NAME: '% Empty by Manufacturer Within Category',
             TEMPLATE: [TEMPLATES[BEVERAGE_AISLE]],
             NUMERATOR: EMPTY,
             DENOMINATOR: MANUFACTURER,
             CONTEXT: CATEGORY
         },
         {
-            NAME: 'SOVI Displays (all scenes) Man within Cat',
+            NAME: 'SOVI Displays',
             TEMPLATE: get(TEMPLATES, [DISPLAY, ENDCAP, FRONT_ENTRANCE]),
             NUMERATOR: MANUFACTURER,
             DENOMINATOR: CATEGORY,
