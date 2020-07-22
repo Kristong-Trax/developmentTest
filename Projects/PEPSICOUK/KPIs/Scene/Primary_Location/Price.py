@@ -25,7 +25,7 @@ class PriceKpi(UnifiedCalculationsScript):
         self.util.reset_filtered_scif_and_matches_to_exclusion_all_state()
 
     def calculate_hero_sku_price(self, sku, kpi_fk):
-        price = -1
+        # price = -1
         prices_df = self.util.filtered_matches[((~(self.util.filtered_matches[MatchesConsts.PRICE].isnull())) |
                                           (~(self.util.filtered_matches[MatchesConsts.PROMOTION_PRICE].isnull()))) &
                                           (self.util.filtered_matches[ScifConsts.PRODUCT_FK] == sku)]
@@ -36,5 +36,5 @@ class PriceKpi(UnifiedCalculationsScript):
             prices_list = filter(lambda v: v is not None, prices_list)
             if prices_list:
                 price = max(prices_list)
-        self.write_to_db_result(fk=kpi_fk, numerator_id=sku, denominator_id=sku,result=price)
-        self.util.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None, None])
+                self.write_to_db_result(fk=kpi_fk, numerator_id=sku, denominator_id=sku,result=price)
+                self.util.add_kpi_result_to_kpi_results_df([kpi_fk, sku, None, price, None, None])

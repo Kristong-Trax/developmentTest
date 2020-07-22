@@ -26,7 +26,7 @@ class SecondaryPriceKpi(UnifiedCalculationsScript):
                 store_area = self.util.filtered_scif_secondary['store_area_fk'].values[0]
                 kpi_fk = self.util.common.get_kpi_fk_by_kpi_type(self.kpi_name)
                 for i, row in product_display.iterrows():
-                    price = -1
+                    # price = -1
                     prices_df = filtered_matches[((~(filtered_matches[MatchesConsts.PRICE].isnull())) |
                                               (~(filtered_matches[MatchesConsts.PROMOTION_PRICE].isnull()))) &
                                               (filtered_matches[ScifConsts.PRODUCT_FK] == row[MatchesConsts.PRODUCT_FK]) &
@@ -37,8 +37,8 @@ class SecondaryPriceKpi(UnifiedCalculationsScript):
                     prices_list = filter(lambda v: v is not None, prices_list)
                     if prices_list:
                         price = max(prices_list)
-                    self.write_to_db_result(fk=kpi_fk, numerator_id=row[MatchesConsts.PRODUCT_FK],
-                                            denominator_id=row[MatchesConsts.PRODUCT_FK],
-                                            denominator_result=row['display_id'],
-                                            context_id=store_area, result=price)
+                        self.write_to_db_result(fk=kpi_fk, numerator_id=row[MatchesConsts.PRODUCT_FK],
+                                                denominator_id=row[MatchesConsts.PRODUCT_FK],
+                                                denominator_result=row['display_id'],
+                                                context_id=store_area, result=price)
             self.util.reset_secondary_filtered_scif_and_matches_to_exclusion_all_state()
