@@ -63,11 +63,12 @@ class GSKLocalToolBox(GSKToolBox, object):
 
         return dict_list
 
-    def assortment_calculation(self, assort_lvl3, denominator_fk, availability_type):
+    def assortment_calculation(self, assort_lvl3, denominator_fk, availability_type, custom_suffix=''):
         """
            :param denominator_fk  : store_fk/category_fk/sub_category_fk
            :param assort_lvl3  : df of  level 3 assortment calculation
            :param availability_type : "Store"/"Category"/"SubCategory"
+           :param custom_suffix: for global compatibility
            :return results_df that contains:
                - result in SKU level :  distribution 1/2/3  oos 1/2
                - result : stock rate for oos and distribution
