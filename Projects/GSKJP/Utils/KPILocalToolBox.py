@@ -20,11 +20,12 @@ class GSKLocalToolBox(GSKToolBox, object):
             return
         self.assort_lvl3 = self.assort_lvl3.drop_duplicates(subset=[ProductsConsts.PRODUCT_FK])
 
-    def availability_calculation(self, availability_type):
+    def availability_calculation(self, availability_type, custom_suffix=''):
         """
             :param availability_type : "Store" , "Category", "SubCategory"
             Function initialize assortment_level_3 (class attribute) if not initialized before
             and calculate availability results according to availability type
+            :param custom_suffix: for global compatibility
         """
 
         self.extract_data_set_up_file("availability")
