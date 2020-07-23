@@ -114,6 +114,7 @@ class GSKRUToolBox:
                                              keep_default_na=False)
         self.gsk_generator.set_up_file = self.set_up_template
         self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
         # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
@@ -151,6 +152,7 @@ class GSKRUToolBox:
                                              keep_default_na=False)
         self.gsk_generator.set_up_file = self.set_up_template
         self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
         # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
@@ -188,6 +190,7 @@ class GSKRUToolBox:
                                              keep_default_na=False)
         self.gsk_generator.set_up_file = self.set_up_template
         self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
         # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         # SOA
@@ -299,7 +302,7 @@ class GSKRUToolBox:
                 else 0
 
             target = targets[targets['sub_category_fk'].isnull()]['internal_target'].values
-            target = float(target[0]) if target else None
+            target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
                 score = 1 if result >= target else 0
@@ -318,7 +321,7 @@ class GSKRUToolBox:
                  'should_enter': True})
 
             target = targets[targets['sub_category_fk'].isnull()]['external_target'].values
-            target = float(target[0]) if target else None
+            target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
                 score = 1 if result >= target else 0
@@ -396,7 +399,8 @@ class GSKRUToolBox:
                 else:
                     subcat_size = len(df[df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk][
                                           'unique_product_id'].unique().tolist())
-                    cra_priority = round(subcat_size * self.core_range_targets[sub_category_fk])
+                    core_range_target = self.core_range_targets[sub_category_fk]
+                    cra_priority = round(subcat_size * core_range_target if core_range_target else 0)
 
                     cra_size_target = cra_priority
                     cra_size_actual = len(df[(df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk) &

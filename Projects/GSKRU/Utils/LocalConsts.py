@@ -7,18 +7,18 @@ class Consts(object):
 
     # from KPIToolBox
 
-    FRACTIONAL_FACINGS_PARAMETERS = None
-    # FRACTIONAL_FACINGS_PARAMETERS = \
-    #     [
-    #         {'product_filter':
-    #              {'product_ean_code': [],
-    #               'brand_name': [],
-    #               'manufacturer_name': ['GSK'],
-    #               'sub_category': ['Toothbrush'],
-    #               'category': []},
-    #          'ff_threshold': 0.5,  # ratio between width and height (min/max)
-    #          'ff_factor': 0.25},  # fractional factor to apply to the number of facings
-    #     ]
+    # FRACTIONAL_FACINGS_PARAMETERS = None
+    FRACTIONAL_FACINGS_PARAMETERS = \
+        [
+            {'product_filter':
+                 {'product_ean_code': [],
+                  'brand_name': [],
+                  'manufacturer_name': ['GSK'],
+                  'sub_category': ['***SKIP***'],
+                  'category': []},
+             'ff_threshold': 0.5,  # ratio between width and height (min/max)
+             'ff_factor': 0.25},  # fractional factor to apply to the number of facings
+        ]
 
     FACINGS_SOS = 'Facings SOS'
     LINEAR_SOS = 'Linear SOS'

@@ -10,7 +10,9 @@ if __name__ == '__main__':
     project_name = 'gskru'
     sessions = [
 
+        'f98497c6-1b30-4105-841b-0eafec5a7a9f',
         'aca2d140-d7dc-4817-9a42-95d2a69c70ff',
+        'c61f1054-e11f-41c3-b21e-54f7a4f776d7',
         '993cff34-c1b3-4659-95f5-44de06468f07',
         '87873358-fcb2-40d6-b68d-f59c07242e76'
 
@@ -22,6 +24,7 @@ if __name__ == '__main__':
     # 'fea0f508-cfa5-4968-be68-256575a122ea'
 
     for session in sessions:
+        print session
         data_provider = KEngineDataProvider(project_name)
         data_provider.load_session_data(session)
         output = Output()
