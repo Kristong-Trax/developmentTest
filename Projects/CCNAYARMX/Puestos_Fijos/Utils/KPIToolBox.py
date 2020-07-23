@@ -22,6 +22,7 @@ SURVEY = 'Survey'
 DISTRIBUTION = 'Distribution'
 COMBO = 'Combo'
 SCORING = 'Scoring'
+DISTRIBUTION_PREREQ = 'Distribution Prereq'
 
 # Column Name
 KPI_NAME = 'KPI Name'
@@ -37,7 +38,7 @@ TEMPLATE_GROUP = 'template_group'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                              'NayarPuestosFijos2020v1.xlsx')
 
-SHEETS = [KPIS, SOS, POSM_AVAILABILITY, DISTRIBUTION, COMBO, SCORING]
+SHEETS = [KPIS, SOS, POSM_AVAILABILITY, DISTRIBUTION, COMBO, SCORING, DISTRIBUTION_PREREQ]
 COLUMNS = ['scene_match_fk', 'scene_fk', TEMPLATE_GROUP, 'template_fk', 'brand_fk', 'brand_name', 'manufacturer_fk',
            'manufacturer_name', 'category_fk', 'category', 'product_type', 'product_fk', 'facings']
 
@@ -79,15 +80,19 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(TEMPLATE_PATH, sheet_name=sheet)
 
     def main_calculation(self):
-        a = 1
         if not self.store_type == 'Puestos Fijos':
             return
         relevant_kpi_template = self.templates[KPIS]
-        foundation_kpi_types = [SOS]
+        # SOS, DISTRIBUTION, POSM_AVAILABILITY
+        foundation_kpi_types = [SOS, DISTRIBUTION, POSM_AVAILABILITY]
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
+        scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(['Scoring'])]
+        combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(['Combo'])]
 
 
         self._calculate_kpis_from_template(foundation_kpi_template)
+        self._calculate_kpis_from_template(scoring_kpi_template)
+        self._calculate_kpis_from_template(combo_kpi_template)
         self.save_results_to_db()
 
 
@@ -150,21 +155,106 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
     def _get_calculation_function_by_kpi_type(self, kpi_type):
         if kpi_type == SOS:
             return self.calculate_sos
+        elif kpi_type == DISTRIBUTION:
+            return self.calculate_distribution
+        elif kpi_type == POSM_AVAILABILITY:
+            return self.calculate_posm_availability
+        elif kpi_type == COMBO:
+            return self.calculate_combo
+        elif kpi_type == SCORING:
+            return self.calculate_scoring
+
+    def calculate_scoring(self, row):
+        return_holder = self._get_kpi_name_and_fk(row)
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id':self.own_manufacturer, 'denominator_id':self.store_id, 'result':0}
+
+        component_kpis = self.sanitize_values(row['Component KPIs'])
+        relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
+        passing_results = relevant_results[(relevant_results['result'] != 0) &
+                                           (relevant_results['result'].notna()) &
+                                           (relevant_results['score'] != 0)]
+
+        if row['Component aggregation'] == 'one-passed':
+            if len(relevant_results) > 0 and len(passing_results) > 0:
+                result_dict['result'] = 1
+            else:
+                result_dict['result'] = 0
+        elif row['Component aggregation'] == 'max':
+            if len(relevant_results) > 0 and len(passing_results) > 0:
+                result_dict['score'] = passing_results.score.max()
+                result = float(result_dict['score']) / row.Score
+                result_dict['result'] = result
+            else:
+                result_dict['result'] = 0
+        elif row['Component aggregation'] == 'sum':
+            if len(relevant_results) > 0 and len(passing_results) > 0:
+                result_dict['result'] = float(passing_results.result.sum()) / len(passing_results)
+                result_dict['score'] = row.Score * result_dict['result']
+            else:
+                result_dict['result'] = 0
+
+        return result_dict
+
+
+
+
+    def calculate_combo(self,row):
+        a = 1
+
+    def calculate_posm_availability(self,row):
+        return_holder = self._get_kpi_name_and_fk(row)
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id':self.own_manufacturer, 'denominator_id':self.store_id, 'result':0}
+
+        product_fk = self.sanitize_values(row.product_fk)
+        relevant_scif = self._filter_df(self.scif, {'product_fk':product_fk})
+        if not relevant_scif.empty:
+            result_dict['numerator_id'] = relevant_scif.manufacturer_fk.iat[0]
+            result_dict['denominator_id'] = relevant_scif.template_fk.iat[0]
+            result_dict['result'] = 1
+            result_dict['score'] = row['KPI Total Points']
+        return result_dict
 
     def calculate_sos(self,row):
         return_holder = self._get_kpi_name_and_fk(row)
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id':self.own_manufacturer, 'denominator_id':self.store_id, 'result':0}
-        denominator_relevant_scif = self._filter_scif(row, self.scif)
-        numerator_relevant_scif = self._filter_df(denominator_relevant_scif, {'manufacturer_name':'TCCC'})
-        if not numerator_relevant_scif.empty:
-            denominator_result = denominator_relevant_scif.facings_ign_stack.sum()
-            numerator_result = numerator_relevant_scif.facings_ign_stack.sum()
-            result = float(numerator_result)/denominator_result
+        other_product_type_logic = self._logic_for_checking_if_product_other_exisits_for_sos(self.scif)
+        if other_product_type_logic:
+            denominator_relevant_scif = self._filter_scif(row, self.scif)
+            if denominator_relevant_scif.empty:
+                result_dict['result'] = 1
+            else:
+                numerator_relevant_scif = self._filter_df(denominator_relevant_scif, {'manufacturer_name':'TCCC'})
+                if not numerator_relevant_scif.empty:
+                    denominator_result = denominator_relevant_scif.facings_ign_stack.sum()
+                    numerator_result = numerator_relevant_scif.facings_ign_stack.sum()
+                    result = float(numerator_result)/denominator_result
 
-            result_dict['denominator_result'] = denominator_result
-            result_dict['numerator_result'] = numerator_result
-            result_dict['result'] = result
+                    result_dict['denominator_result'] = denominator_result
+                    result_dict['numerator_result'] = numerator_result
+                    result_dict['result'] = result
         return result_dict
+
+    def calculate_distribution(self,row):
+        return_holder = self._get_kpi_name_and_fk(row)
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id':self.own_manufacturer, 'denominator_id':self.store_id, 'result':0}
+
+        distribution_prereq = self.templates[DISTRIBUTION_PREREQ]
+        relevant_distribution_prereq = distribution_prereq[distribution_prereq.store_additional_attribute_2.str.contains(self.att2)]
+        max_score_potential = relevant_distribution_prereq['Score'].max()
+
+        for index, prereq in relevant_distribution_prereq.iterrows():
+            relevant_a_df = self._filter_df(self.scif, {prereq.a_filter_1:prereq.a_value_1, prereq.a_filter_2:prereq.a_value_2})
+            relevant_b_df = self._filter_df(self.scif, {prereq.b_filter: np.array(self.sanitize_values(prereq.b_value)).astype(int).tolist()})
+
+            if not relevant_a_df.empty and not relevant_b_df.empty:
+                unique_sub_category_fk_in_b_df = relevant_b_df[prereq.b_filter].unique()
+                result_dict['numerator_result'] = len(unique_sub_category_fk_in_b_df)
+                if len(unique_sub_category_fk_in_b_df) >= prereq.b_threshold_1:
+                    result_dict['result'] = float(prereq.Score) / max_score_potential
+                    # result_dict['score'] = result_dict['result'] * prereq.Score
+                    break
+        return result_dict
+
 
     def _filter_scif(self, row, df):
         columns_in_scif = row.index[np.in1d(row.index, df.columns)]
@@ -178,8 +268,8 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
         if pd.isna(item):
             return item
         else:
-            if type(item) == int:
-                return str(item)
+            if isinstance(item, int):
+                return [str(item)]
             else:
                 items = [x.strip() for x in item.split(',')]
                 return items
@@ -217,5 +307,17 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
             return parent_kpi_name
         else:
             return None
+
+    @staticmethod
+    def _logic_for_checking_if_product_other_exisits_for_sos(scif):
+        other_unique_product_types_in_scif = scif[scif.product_type == 'Other'].manufacturer_name.unique()
+        if ('TCCC' in other_unique_product_types_in_scif and len(other_unique_product_types_in_scif) == 1) or not other_unique_product_types_in_scif:
+            result = True
+        else:
+            result = False
+        return result
+
+
+
 
 
