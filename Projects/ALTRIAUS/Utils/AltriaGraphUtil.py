@@ -29,6 +29,7 @@ class AltriaGraphBuilder(object):
         self.matches_df = None
         self.pos_matches_df = None
         self.pos_masking_data = None
+        self.incorrect_tags_in_pos_area = []
         self.conversion_data = None
 
         self.base_adj_graph = None
@@ -58,7 +59,7 @@ class AltriaGraphBuilder(object):
         self.probe_groups = self.adp.get_probe_groups()
         self.matches_df = self.matches_df.merge(self.probe_groups, on='probe_match_fk', how='left')
         self.pos_matches_df = self.matches_df[self.matches_df['category'] == 'POS']
-        self.pos_masking_data = self.adp.get_masking_data(self.matches_df, y_axis_threshold=35, x_axis_threshold=100)
+        self.pos_masking_data = self.adp.get_masking_data(self.matches_df, y_axis_threshold=41, x_axis_threshold=100)
 
     def get_graph(self):
         return self.adj_component_graph
@@ -70,11 +71,12 @@ class AltriaGraphBuilder(object):
         self.matches_df.loc[(self.matches_df['stacking_layer'] < 1) &
                             (self.matches_df['probe_match_fk'].isin(self.check_and_add_menu_board_pos_item())),
                             'stacking_layer'] = 2
+        self._identify_incorrect_tags_in_pos_areas()
         filtered_mpis = self.matches_df.loc[~self.matches_df['category'].isin(['General'])]
 
         self.base_adj_graph = AdjacencyGraphBuilder.initiate_graph_by_dataframe(filtered_mpis, combined_maskings,
-                                                                      ['category', 'in_menu_board_area',
-                                                                       'probe_group_id'], use_masking_only=True,
+                                                                                ['category', 'in_menu_board_area',
+                                                                                 'probe_group_id'], use_masking_only=True,
                                                                                 minimal_overlap_ratio=0.4)
         self.base_adj_graph = self.remove_edges_between_probe_groups(self.base_adj_graph)
         self.base_adj_graph = self.remove_pos_to_pos_edges(self.base_adj_graph)
@@ -104,6 +106,23 @@ class AltriaGraphBuilder(object):
         # self.create_graph_image()
 
         return
+
+    def _identify_incorrect_tags_in_pos_areas(self):
+        # get non-pos tags from menu_board_area
+        incorrect_menu_board_tags = self.matches_df[(self.matches_df['in_menu_board_area']) &
+                                                    (self.matches_df['category'] != 'POS')]['scene_match_fk'].tolist()
+        signage_probe_matches = self.pos_masking_data['probe_match_fk'].tolist()
+        incorrect_tags_in_signage = \
+            self.matches_df[(self.matches_df['probe_match_fk'].isin(signage_probe_matches)) &
+                            (self.matches_df['category'] != 'POS')]['scene_match_fk'].tolist()
+        if incorrect_menu_board_tags:
+            self.incorrect_tags_in_pos_area.extend(incorrect_menu_board_tags)
+        if incorrect_tags_in_signage:
+            self.incorrect_tags_in_pos_area.extend(incorrect_tags_in_signage)
+        if self.incorrect_tags_in_pos_area:
+            # assign all of the incorrect tags to be 'POS' category so the rest of the calculations work correctly
+            self.matches_df.loc[self.matches_df['scene_match_fk'].isin(self.incorrect_tags_in_pos_area),
+                                'category'] = 'POS'
 
     def check_and_add_menu_board_pos_item(self):
         pos_probe_match_fks_to_keep = self.pos_masking_data.probe_match_fk.tolist()
@@ -408,7 +427,7 @@ class AltriaGraphBuilder(object):
         node_a_box = box(node_a_bounds[0], node_a_bounds[1], node_a_bounds[2], node_a_bounds[3])
         node_b_box = box(node_b_bounds[0], node_b_bounds[1], node_b_bounds[2], node_b_bounds[3])
         # return node_a_box.contains(node_b_box)
-        return (node_a_box.intersection(node_b_box).area / node_b_box.area) > 0.90
+        return (node_a_box.intersection(node_b_box).area / node_b_box.area) > 0.85
 
     @staticmethod
     def get_merged_node_attributes_from_nodes(selected_nodes, graph):

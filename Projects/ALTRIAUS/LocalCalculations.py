@@ -6,8 +6,8 @@ from Projects.ALTRIAUS.Calculations import Calculations
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('altriaus calculations')
-    Config.init()
+    LoggerInitializer.init('KEngine')
+    Config.init('KEngine')
     project_name = 'altriaus'
     sessions = [
         # 'A5629BC3-F3BD-4E16-BAA6-2DD046151C80',  # works!
@@ -169,8 +169,12 @@ if __name__ == '__main__':
         '646FA89D-790B-481E-96E9-E3D9AD950238'
     ]
 
-    sessions = ['BC08A792-CD69-45BB-BFF4-6E5354712A43']
-
+    sessions = [
+        '12D0C755-CCCE-45B1-9CCD-F1EAE8115E62',  # issue with top left bot right pairing
+        'CD3D48C3-22D0-42ED-B54A-ACF086D31B1A',
+        '834298AB-1AC2-4C05-B7CD-55935CE6E613',
+        'DC9BA929-7273-4963-9DDD-EAE416526C67'   # need to decrease required overlap to remove fixture 5
+    ]
     for session in sessions:
         print('===================={}===================='.format(session))
         data_provider = KEngineDataProvider(project_name)

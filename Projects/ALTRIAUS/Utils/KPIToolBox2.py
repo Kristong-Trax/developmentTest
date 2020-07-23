@@ -88,6 +88,7 @@ class ALTRIAUSToolBox:
         self._add_smart_attributes_to_mpis()
         self.scene_graphs = {}
         self.excessive_flipsigns = False
+        self.incorrect_tags_in_pos_areas = []
 
     def _add_smart_attributes_to_mpis(self):
         smart_attribute_data = \
@@ -132,6 +133,8 @@ class ALTRIAUSToolBox:
         for scene in relevant_scif['scene_id'].unique().tolist():
             agb = AltriaGraphBuilder(self.data_provider, scene)
             self.scene_graphs[scene] = agb.get_graph()
+            if agb.incorrect_tags_in_pos_area:
+                self.incorrect_tags_in_pos_areas.extend(agb.incorrect_tags_in_pos_area)
         if len(self.scene_graphs.keys()) > 1:
             Log.warning("More than one Tobacco Merchandising Space scene detected. Results could be mixed!")
         return
@@ -175,10 +178,11 @@ class ALTRIAUSToolBox:
             flip_signs_by_x_coord[center_x] = neighbor_data
 
         for i, pair in enumerate(sorted(flip_signs_by_x_coord.items())):
-            position_fk = self.get_custom_entity_pk(str(i+1))
-            if position_fk == 0 or position_fk > 8:
+            position = i+1
+            position_fk = self.get_custom_entity_pk(str(position))
+            if position_fk == 0 or position > 8:
                 self.excessive_flipsigns = True
-                Log.warning('More than 8 flip-sign positions found for a block')
+                Log.warning('More than 8 flip-sign positions found for a non-cigarettes block')
             product_fk = pair[1]['product_fk'].value
             width = pair[1]['calculated_width_ft'].value
             implied_facings = pair[1]['width_of_signage_in_facings'].value
@@ -223,8 +227,6 @@ class ALTRIAUSToolBox:
                 if overlap_ratio >= REQUIRED_FLIP_SIGN_FSLOT_OVERLAP_RATIO:
                     product_fk = neighbor_data['product_fk'].value
                     position_fk = self.get_custom_entity_pk(position)
-                    if position_fk == 0 or position_fk > 8:
-                        Log.warning('More than 8 flip-sign positions found for a block')
                     flip_sign_width = neighbor_data['calculated_width_ft'].value
                     flip_sign_width = self.round_threshold(flip_sign_width)
                     implied_facings = neighbor_data['width_of_signage_in_facings'].value
@@ -518,6 +520,13 @@ class ALTRIAUSToolBox:
         if self.excessive_flipsigns:
             kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Excessive Flip Signs Detected')
             self.common_v2.write_to_db_result(kpi_fk, numerator_id=49, denominator_id=self.store_id, result=1)
+        if self.incorrect_tags_in_pos_areas:
+            kpi_fk = self.common_v2.get_kpi_fk_by_kpi_type('Invalid Product in Header Areas')
+            relevant_product_fks = self.mpis[self.mpis['scene_match_fk'].isin(self.incorrect_tags_in_pos_areas)][
+                'product_fk'].unique().tolist()
+            for product_fk in relevant_product_fks:
+                self.common_v2.write_to_db_result(kpi_fk, numerator_id=product_fk, denominator_id=self.store_id,
+                                                  result=1)
 
     def mark_tags_in_explorer(self, probe_match_fk_list, mpipsr_name):
         if not probe_match_fk_list:
