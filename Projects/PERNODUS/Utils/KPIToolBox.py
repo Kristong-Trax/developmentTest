@@ -30,7 +30,7 @@ CATEGORIES = []
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                              '..', 'Data', "Pernod_US KPI_PS v0.1_Updated 8.29.19.xlsx")
 DISPLAY_TEMPLATE_PATH = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), '..', 'Data', "Pernod_Display4.20.20.xlsx")
+    os.path.realpath(__file__)), '..', 'Data', "Pernod_Display7.22.20.xlsx")
 
 
 class PERNODUSToolBox:
