@@ -20,53 +20,12 @@ class GSKLocalToolBox(GSKToolBox, object):
             return
         self.assort_lvl3 = self.assort_lvl3.drop_duplicates(subset=[ProductsConsts.PRODUCT_FK])
 
-    def availability_calculation(self, availability_type):
-        """
-            :param availability_type : "Store" , "Category", "SubCategory"
-            Function initialize assortment_level_3 (class attribute) if not initialized before
-            and calculate availability results according to availability type
-        """
-
-        self.extract_data_set_up_file("availability")
-        if self.assort_lvl3 is None:
-            self.assortment_lvl3_gsk_adjustments1()
-            if self.assort_lvl3 is None or self.assort_lvl3.empty:
-                return
-        dict_list = []
-        if availability_type == Consts.STORE:
-            return self.assortment_calculation(self.assort_lvl3, self.store_fk, Consts.STORE)
-
-        if availability_type == Consts.SUB_CATEGORY:
-            categories = self.assort_lvl3[ProductsConsts.CATEGORY_FK].dropna().unique()
-            for cat in categories:
-                assort_lvl3 = self.assort_lvl3[self.assort_lvl3[ProductsConsts.CATEGORY_FK] == cat]
-                if assort_lvl3.empty:
-                    continue
-                if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
-                    self.assortment.LVL2_HEADERS.extend(['total', 'passes'])
-                dict_list.extend(self.assortment_calculation(assort_lvl3, cat, Consts.SUB_CATEGORY_PARENT))
-                sub_categories = assort_lvl3[ProductsConsts.SUB_CATEGORY_FK].dropna().unique()
-                for sub_cat in sub_categories:
-                    assort_lvl3_sub_cat = assort_lvl3[assort_lvl3[ProductsConsts.SUB_CATEGORY_FK] == sub_cat]
-                    if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
-                         self.assortment.LVL2_HEADERS.extend(['total', 'passes'])
-                    dict_list.extend(self.assortment_calculation(assort_lvl3_sub_cat, sub_cat, Consts.SUB_CATEGORY))
-
-        if availability_type == Consts.CATEGORY:
-            categories = self.all_products[ProductsConsts.CATEGORY_FK].dropna().unique()
-            for cat in categories:
-                assort_lvl3 = self.assort_lvl3[self.assort_lvl3[ProductsConsts.CATEGORY_FK] == cat]
-                if 'total' not in self.assortment.LVL2_HEADERS or 'passes' not in self.assortment.LVL2_HEADERS:
-                    self.assortment.LVL2_HEADERS.extend(['total', 'passes'])
-                dict_list.extend(self.assortment_calculation(assort_lvl3, cat, Consts.CATEGORY))
-
-        return dict_list
-
-    def assortment_calculation(self, assort_lvl3, denominator_fk, availability_type):
+    def assortment_calculation(self, assort_lvl3, denominator_fk, availability_type, custom_suffix=''):
         """
            :param denominator_fk  : store_fk/category_fk/sub_category_fk
            :param assort_lvl3  : df of  level 3 assortment calculation
            :param availability_type : "Store"/"Category"/"SubCategory"
+           :param custom_suffix: for global compatibility
            :return results_df that contains:
                - result in SKU level :  distribution 1/2/3  oos 1/2
                - result : stock rate for oos and distribution
