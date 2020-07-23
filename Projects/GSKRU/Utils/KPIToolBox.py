@@ -387,7 +387,7 @@ class GSKRUToolBox:
                          'P' + str(r['priority']) if pd.notnull(r['priority']) else 'N' + str(r['product_fk']), axis=1)
 
             # Sub-Category
-            target_subcat_fks = targets['sub_category_fk'].unique().tolist()
+            target_subcat_fks = set(targets['sub_category_fk'].unique().tolist()) & set(self.core_range_targets.keys())
             for sub_category_fk in target_subcat_fks:
 
                 identifier_subcat = self.common.get_dictionary(manufacturer_fk=self.own_manufacturer_id,
