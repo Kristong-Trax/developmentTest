@@ -25,7 +25,6 @@ __author__ = 'sam, nicolaske'
 
 
 class SceneGPUSToolBox:
-
     def __init__(self, data_provider, common, output):
         self.output = output
         self.data_provider = data_provider
@@ -56,7 +55,6 @@ class SceneGPUSToolBox:
         self.brand_filter = {'brand_name': list(self.gp_brands.keys())}
         self.kpi_results = []
         self.dedupe = set()
-
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -126,7 +124,7 @@ class SceneGPUSToolBox:
                                    'denominator_id': row[den_id_col],
                                    'score': 1,
                                    'result': 1,
-                                   'context_id': category,
+                                   'context_id': row['category_fk'],
                                    'ident_result': res_ident,
                                    'ident_parent': res_parent}
                         self.kpi_results.append(kpi_res)
@@ -169,8 +167,10 @@ class SceneGPUSToolBox:
         return df
 
     def get_gp_categories(self):
-        cats = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['category', 'category_fk']]\
-                              .drop_duplicates().set_index('category')['category_fk'].to_dict()
+        cats = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['category', 'category_fk']] \
+            .drop_duplicates() \
+            .set_index('category')['category_fk'] \
+            .to_dict()
         return cats
 
     def get_brands(self):
@@ -181,8 +181,10 @@ class SceneGPUSToolBox:
         return brands
 
     def get_gp_brands(self):
-        brands = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['brand_name', 'brand_fk']]\
-                              .drop_duplicates().set_index('brand_name')['brand_fk'].to_dict()
+        brands = self.products[self.products['manufacturer_fk'] == self.manufacturer_fk][['brand_name', 'brand_fk']] \
+            .drop_duplicates() \
+            .set_index('brand_name')['brand_fk'] \
+            .to_dict()
         return brands
 
     def get_gp_manufacturer(self):
@@ -191,7 +193,6 @@ class SceneGPUSToolBox:
         return {name: self.manufacturer_fk}
 
     def get_brand_category(self, brand):
-        column = None
         if isinstance(brand, int):
             column = 'brand_fk'
         else:
@@ -200,7 +201,6 @@ class SceneGPUSToolBox:
         return self.products[self.products[column] == brand]['category_fk'].iloc[0]
 
     def get_brand_categories(self, brand):
-        column = None
         if isinstance(brand, int):
             column = 'brand_fk'
         else:

@@ -25,6 +25,7 @@ if __name__ == '__main__':
     project_name = 'gpus'
 
     sessions = [
+        '030c8999-cac2-42d6-8d65-fa01ee6ce980',
         '935d3484-f9a9-4b03-bce3-fd3013b4a3a0',
         'c2e92d0b-ae83-45a9-8a06-57dded7dfce3',
         '08465b37-6157-49f2-9ffd-852c8a00553b',
