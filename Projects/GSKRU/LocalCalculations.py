@@ -14,14 +14,11 @@ if __name__ == '__main__':
         'aca2d140-d7dc-4817-9a42-95d2a69c70ff',
         'c61f1054-e11f-41c3-b21e-54f7a4f776d7',
         '993cff34-c1b3-4659-95f5-44de06468f07',
-        '87873358-fcb2-40d6-b68d-f59c07242e76'
+        '87873358-fcb2-40d6-b68d-f59c07242e76',
+        'e161137e-5943-427c-acc2-2ecd30d0e16d',
+        'fea0f508-cfa5-4968-be68-256575a122ea'
 
         ]
-
-    # 'aca2d140-d7dc-4817-9a42-95d2a69c70ff'
-
-    # 'e161137e-5943-427c-acc2-2ecd30d0e16d'
-    # 'fea0f508-cfa5-4968-be68-256575a122ea'
 
     for session in sessions:
         print session
