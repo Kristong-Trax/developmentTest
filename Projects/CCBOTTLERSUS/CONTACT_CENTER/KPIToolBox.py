@@ -60,6 +60,9 @@ class ContactCenterToolBox(GlobalSessionToolBox):
         num_df = num_df.groupby(by='scene_fk', as_index=False).count()
         merged_df = num_df.merge(den_df[['scene_fk', 'den_count']], on=['scene_fk'])
 
+        if merged_df.empty:
+            return
+
         def calc_purity_result(row):
             purity = round(row['num_count'] / row['den_count'], 2) * 100
             result = int(purity >= kpi['purity_threshold']) * 100
