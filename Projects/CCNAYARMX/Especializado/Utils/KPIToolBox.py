@@ -104,11 +104,11 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
                               MERCADEO_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplateEspecializado2020v0.5.xlsx')
+                             'CCNayarTemplateEspecializado2020v0.7.xlsx')
 PORTAFOLIO_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                'CCNayarEspecializado_Portafolio.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                         'CCNayar_POS_Options_Especializado_v8.xlsx')
+                                         'CCNayar_POS_Options_Especializado_v10.xlsx')
 GENERAL_ASSORTMENTS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                         'CCNayar_Assortment_Templates_V3.xlsx')
 
@@ -161,6 +161,8 @@ class EspecializadoToolBox(GlobalSessionToolBox):
             self.templates[sheet] = pd.read_excel(GENERAL_ASSORTMENTS_PATH, sheet_name=sheet)
 
     def main_calculation(self):
+        if self.store_info.loc[0, 'store_type'] in ('Fondas-Rsr', 'Puestos Fijos'):
+            return
         relevant_kpi_template = self.templates[KPIS]
         att2 = self.store_info['additional_attribute_2'].iloc[0]
         relevant_kpi_template = relevant_kpi_template[(relevant_kpi_template[STORE_ADDITIONAL_ATTRIBUTE_2].isnull()) |
@@ -207,8 +209,10 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         for result in results:
             self.write_to_db(**result)
 
+    # 'Enfriador Rojo - NCBs - Especializado'
     def _calculate_kpis_from_template(self, template_df):
         for i, row in template_df.iterrows():
+
             calculation_function = self._get_calculation_function_by_kpi_type(row[KPI_TYPE])
             try:
                 kpi_row = self.templates[row[KPI_TYPE]][
@@ -216,6 +220,8 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                     0]
             except IndexError:
                 pass
+            # if kpi_row[KPI_NAME] == 'Enfriador Rojo - NCBs - Especializado':
+            #     a = 1
             result_data = calculation_function(kpi_row)
             if result_data:
                 if isinstance(result_data, dict):
@@ -230,7 +236,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                         result_data['identifier_parent'] = parent_kpi_name
                     if 'identifier_result' not in result_data.keys():
                         result_data['identifier_result'] = result_data['kpi_name']
-                    if result_data['result'] <= 1:
+                    if result_data['result'] <= 1 and (result_data['kpi_name'] not in ['Comunicacion - Especializado', 'Plataformas - Especializado']):
                         result_data['result'] = result_data['result'] * 100
                     self.results_df.loc[len(self.results_df), result_data.keys()] = result_data
                 else:  # must be a list
@@ -311,7 +317,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                 points = 3 if scif_df.facings.iloc[0] >= row.minimum_CC_SKU_facings_required else 0
                 rel_scif = scif_df[scif_df.product_short_name.isin([row.product_short_name_POSM])]
                 if not rel_scif.empty:
-                    points = 5 if rel_scif.facings.iloc[0] >= row.minimum_POS_facings_required else 3
+                    points = relevant_scif[relevant_scif.product_short_name.isin([row.product_short_name_POSM])]
                 if not container_for_result:
                     container_for_result.append([points, row.product_short_name, row.brand_name])
                 elif container_for_result[0][0] < points:
@@ -402,8 +408,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
 
         plat_template = self.templates[PLATFORMAS]
         plataformas = self.platformas_data
-        relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values)) & (
-                    plataformas.consumed == 'no')] if not df.empty else pd.DataFrame()
+        relevant_platformas = plataformas[(plataformas['Platform Name'].isin(df['Platform'].values))] if not df.empty else pd.DataFrame()
         if not relevant_platformas.empty:
             relevant_platformas = df.merge(relevant_platformas, how='left', on='scene_id')
 
@@ -512,7 +517,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                                            (relevant_results['score'] != 0)]
         nan_results = relevant_results[relevant_results['result'].isna()]
         if len(relevant_results) > 0 and len(relevant_results) == len(nan_results):
-            result_dict['result'] = pd.np.nan
+            result_dict['result'] = 0
         elif row['Component aggregation'] == 'one-passed':
             if len(relevant_results) > 0 and len(passing_results) > 0:
                 result_dict['result'] = 1
@@ -927,7 +932,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                 result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                 return result_dict
         else:
-            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,
+            relevant_scif_columns = [PK, SESSION_ID, TEMPLATE_GROUP, TEMPLATE_NAME, PRODUCT_TYPE, FACINGS,SCENE_FK,
                                      FACINGS_IGN_STACK] + \
                                     [denominator_entity, numerator_entity] + self.delete_filter_nan(
                 [numerator_param1, denominator_param1])
@@ -965,6 +970,13 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                 if denominator_scif.empty:
                     result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
                     return result_dict
+
+                if row['remove irrelevant logic'] == 'y':
+                    relevant_scene_for_removal = denominator_scif[denominator_scif.template_group == 'Enfriadores CC'].scene_fk.unique()
+                    if 'Irrelevant' in self.scif[self.scif.scene_fk.isin(relevant_scene_for_removal)].product_type.unique():
+                        result_dict = {'kpi_name': kpi_name, 'kpi_fk': kpi_fk, 'result': pd.np.nan}
+                        return result_dict
+
                 denominator_id = denominator_scif[denominator_entity].mode()[0]
                 denominator_result = denominator_scif[FINAL_FACINGS].sum()
 
@@ -1005,8 +1017,11 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         try:
             manufacturer_name = [row[MANUFACTURER_NAME]]
         except:
+            pass
+        try:
+            tamano_del_producto = row[TAMANDO_DEL_PRODUCTO]
+        except:
             a = 1
-        tamano_del_producto = row[TAMANDO_DEL_PRODUCTO]
         sub_category = self.sanitize_values(row[SUB_CATEGORY])
         iterate_by = row[ITERATE_BY]
 
@@ -1315,18 +1330,30 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         return result_dict
 
     def calculate_availability(self, row):
+        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         relevant_scif = self._filter_scif(row, self.scif)
         result = 0 if relevant_scif.empty else 1
         if pd.notna(row[RELEVANT_QUESTION_FK]):
             relevant_question_fk = self.sanitize_values(row[RELEVANT_QUESTION_FK])
             result = self.calculate_relevant_availability_survey_result(relevant_question_fk) + result
-            result = float(result) / 3
+            result = float(result) / self._get_relevant_passing_result_for_materiales_fijos(self.att2)
+            result = 1 if result > 1 else result
 
-        return_holder = self._get_kpi_name_and_fk(row, generic_num_dem_id=True)
         result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': return_holder[2],
                        'denominator_id': return_holder[3],
                        'result': result}
         return result_dict
+
+    @staticmethod
+    def _get_relevant_passing_result_for_materiales_fijos(store_size):
+        if store_size == 'Chico':
+            threshold = 1
+        elif store_size == 'Mediano':
+            threshold = 2
+        elif store_size == 'Grande':
+            threshold = 3
+        return threshold
+
         # kpi_name = row[KPI_NAME]
         # kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_name)
         # template_group = self.sanitize_values(row[TASK_TEMPLATE_GROUP])

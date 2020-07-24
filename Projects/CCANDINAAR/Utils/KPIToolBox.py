@@ -5,13 +5,13 @@ import pandas as pd
 import os
 # from Projects.CCANDINAAR.Data.LocalConsts import Consts
 
-# from KPIUtils_v2.Utils.Consts.DataProvider import 
-# from KPIUtils_v2.Utils.Consts.DB import 
-# from KPIUtils_v2.Utils.Consts.PS import 
-# from KPIUtils_v2.Utils.Consts.GlobalConsts import 
-# from KPIUtils_v2.Utils.Consts.Messages import 
-# from KPIUtils_v2.Utils.Consts.Custom import 
-# from KPIUtils_v2.Utils.Consts.OldDB import 
+# from Trax.Data.ProfessionalServices.PsConsts.DataProvider import 
+# from Trax.Data.ProfessionalServices.PsConsts.DB import 
+# from Trax.Data.ProfessionalServices.PsConsts.PS import 
+# from Trax.Data.ProfessionalServices.PsConsts.Consts import 
+# from Trax.Data.ProfessionalServices.PsConsts.Messages import 
+# from Trax.Data.ProfessionalServices.PsConsts.Custom import 
+# from Trax.Data.ProfessionalServices.PsConsts.OldDB import 
 
 # from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 # from KPIUtils_v2.Calculations.AvailabilityCalculations import Availability

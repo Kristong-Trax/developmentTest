@@ -1,4 +1,4 @@
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts, MatchesConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts, MatchesConsts
 
 class Consts(object):
 

@@ -23,6 +23,7 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.products = self.data_provider[Data.PRODUCTS]
         self.all_products = self.data_provider[Data.ALL_PRODUCTS]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
+        self.brand_mix_df = self.get_brand_mix_df()
         self.add_sub_brand_to_scif()
         self.add_brand_mix_to_scif()
         self.match_probe_in_scene = self.ps_data.get_product_special_attribute_data(self.session_uid)
@@ -57,6 +58,8 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
 
     def set_updated_assortment(self):
         assortment_result = self.assortment.get_lvl3_relevant_ass()
+        if assortment_result.empty:
+            return pd.DataFrame(columns=["kpi_fk_lvl2", "kpi_fk_lvl3"])
         assortment_result = self.calculate_lvl3_assortment(assortment_result)
         replacement_eans_df = pd.DataFrame([json_normalize(json.loads(js)).values[0] for js
                                             in assortment_result['additional_attributes']])
@@ -147,21 +150,25 @@ class StraussfritolayilUtil(UnifiedKPISingleton):
         self.scif = self.scif.merge(sub_brand_df, left_on='Sub_Brand_Local', right_on="entity_name", how="left")
         self.scif['sub_brand_fk'].fillna(Consts.SUB_BRAND_NO_VALUE, inplace=True)
 
-    def add_brand_mix_to_scif(self):
+    def get_brand_mix_df(self):
         brand_mix_df = self.ps_data.get_custom_entities_df(entity_type_name='Brand_Mix')
         brand_mix_df = brand_mix_df[['entity_name', 'entity_fk']].copy()
         brand_mix_df.rename({'entity_fk': 'brand_mix_fk'}, axis='columns', inplace=True)
         # delete duplicates by name and entity_type_fk to avoid recognition duplicates.
         brand_mix_df.drop_duplicates(subset=['entity_name'], keep='first', inplace=True)
+        return brand_mix_df
+
+    def add_brand_mix_to_scif(self):
+
         self.scif['Brand_Mix'] = self.scif['Brand_Mix'].fillna('no value')
-        self.scif = self.scif.merge(brand_mix_df, left_on='Brand_Mix', right_on="entity_name", how="left")
+        self.scif = self.scif.merge(self.brand_mix_df, left_on='Brand_Mix', right_on="entity_name", how="left")
         self.scif['brand_mix_fk'].fillna(Consts.BRAND_MIX_NO_VALUE, inplace=True)
 
     @staticmethod
     def calculate_sos_result(numerator, denominator):
         if denominator == 0:
             return 0
-        result = round((numerator / float(denominator)), 3)
+        result = 100 * round((numerator / float(denominator)), 3)
         return result
 
     def exclude_special_attribute_products(self, df):

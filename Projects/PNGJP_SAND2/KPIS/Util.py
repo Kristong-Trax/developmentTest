@@ -14,7 +14,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.PNGJP_SAND2.Utils.Fetcher import PNGJP_SAND2Queries
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ScifConsts, ProductsConsts, SceneInfoConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ScifConsts, ProductsConsts, SceneInfoConsts
 
 
 class PNGJP_SAND2Util(UnifiedKPISingleton):
@@ -49,6 +49,8 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
         self.kpi_static_data = self.common.get_kpi_static_data()
         self.external_targets = self.get_all_kpi_external_targets()
         self.all_targets_unpacked = self.unpack_all_external_targets()
+        self.bay_shelf_info = self.get_bay_shelf_combination_from_custom_entity()
+        self.bay_shelf_entity_type_fk = self.get_bay_shelf_entity_type_fk()
 
     def get_match_display_in_scene(self):
         query = PNGJP_SAND2Queries.get_match_display(self.session_uid)
@@ -125,6 +127,46 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
 
         filters.update(population_filters)
         return filters
+
+    def get_bay_shelf_combination_from_custom_entity(self):
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        query = PNGJP_SAND2Queries.get_all_custom_entities_query()
+        bay_shelf_number_info = pd.read_sql_query(query, self.rds_conn.db)
+        return bay_shelf_number_info
+
+    def get_bay_shelf_entity_type_fk(self):
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # entity_type_fk = 1601
+        entity_type_fk = pd.read_sql_query(
+            PNGJP_SAND2Queries.get_entity_type_fk_query(), self.rds_conn.db
+        )['pk'].iloc[0]
+        return entity_type_fk
+
+    def sync_bay_shelf_combination_to_custom_entity(self, bay_no, shelf_no):
+        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        # entity_type_fk = 1601
+        insert_query = PNGJP_SAND2Queries.insert_into_custom_entity_query(bay_no, shelf_no,
+                                                                          self.bay_shelf_entity_type_fk)
+        cur = self.rds_conn.db.cursor()
+        cur.execute(insert_query)
+        custom_entity_fk = cur.lastrowid
+        self.rds_conn.db.commit()
+        Log.info("Saved a record in custom_entity for bay:{} shelf:{} - pk = {}".format(bay_no, shelf_no,
+                                                                                        custom_entity_fk))
+        return custom_entity_fk
+
+    def get_context_fk_from_custom_entity(self, bay_no, shelf_no):
+        bay_shelf_comb_df = self.bay_shelf_info[
+            self.bay_shelf_info.bay_shelf_combination == '{}:{}'.format(bay_no, shelf_no)
+            ]
+        if bay_shelf_comb_df.empty:
+            Log.info("bay_shelf combination not found in custom entity bay:{} shelf:{}".format(bay_no, shelf_no))
+            custom_entity_pk = self.sync_bay_shelf_combination_to_custom_entity(bay_no, shelf_no)
+            # load again
+            self.bay_shelf_info = self.get_bay_shelf_combination_from_custom_entity()
+        else:
+            custom_entity_pk = bay_shelf_comb_df.iloc[0].pk
+        return custom_entity_pk
 
     # filters = {'location': {'scene_fk': [27898, 27896, 27894, 27859, 27892, 27854]},
     #            'population': {'exclude': {'template_name': 'Checkout Chocolate'},

@@ -32,18 +32,18 @@ if __name__ == '__main__':
 
     project_name = 'pngjp-sand2'
     sessions = [
-        {"session_uid": "86A09858-6B90-454B-9547-8C33CD12688C",
-         "scene_uid": "A83ADE17-2362-4B0A-861D-122DB168F8AA"
+        # {"session_uid": "95EB81AE-D7D5-4E40-87EB-771D504AAEB9",
+        #  "scene_uid": "5F002B6D-BE99-41CD-81B0-887A88D50DD0"
+        #  },
+        {"session_uid": "E2C4A7B5-AF2B-40BA-9D35-932FC1826568",
+         "scene_uid": "3C77CC9B-C41B-4382-AD12-C503B3C75724"
          },
-        {"session_uid": "0FFF1A54-5759-4EA1-B260-4D604F7D7334",
-         "scene_uid": "2B373278-8CF6-479F-9829-5B95A4D7930E"
-         },
-        {"session_uid": "86A09858-6B90-454B-9547-8C33CD12688C",
-         "scene_uid": "64FF34E4-82E9-4860-8759-B65B4C55BFB6"
-         },
-        {"session_uid": "86A09858-6B90-454B-9547-8C33CD12688C",
-         "scene_uid": "16DFB0C6-E86D-4B23-80DC-A3BFB6328CA1"
-         }
+        # {"session_uid": "86A09858-6B90-454B-9547-8C33CD12688C",
+        #  "scene_uid": "64FF34E4-82E9-4860-8759-B65B4C55BFB6"
+        #  },
+        # {"session_uid": "86A09858-6B90-454B-9547-8C33CD12688C",
+        #  "scene_uid": "16DFB0C6-E86D-4B23-80DC-A3BFB6328CA1"
+        #  }
     ]
 
     for session in sessions:

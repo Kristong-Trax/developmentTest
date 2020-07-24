@@ -1,8 +1,8 @@
 # coding=utf-8
 
-from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts, ProductTypeConsts, BasicConsts, HelperConsts
-from KPIUtils_v2.Utils.Consts.OldDB import KpiResults, KpkResults, KpsResults
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, StoreInfoConsts, SceneInfoConsts, \
+from Trax.Data.ProfessionalServices.PsConsts.Consts import HelperConsts, ProductTypeConsts, BasicConsts, HelperConsts
+from Trax.Data.ProfessionalServices.PsConsts.OldDB import KpiResults, KpkResults, KpsResults
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ProductsConsts, StoreInfoConsts, SceneInfoConsts, \
     TemplatesConsts
 from datetime import datetime
 import os
@@ -209,7 +209,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         for kpi in template_data['fixed KPI name'].unique().tolist():
             entity_kpis = template_data.loc[template_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
             entity_filters = filters
-
+            kpi_type = ""
             for p in xrange(len(entity_kpis)):
                 try:
                     score = threshold = result = None
@@ -252,7 +252,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
                     self.write_result(score, result, threshold, kpi,
                                       category, set_name, template_data, extra_data=extra_data)
                 except Exception as ex:
-                    Log.warning("Exception:{} no score/result for '{}'".format(ex.message, kpi_type))
+                    Log.warning("Exception:{} no score/result for '{}'".format(ex, kpi_type))
 
     def category_aggregation_calculation(self, category):
         template_data = self.template_data[
@@ -282,9 +282,26 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         return {ProductsConsts.PRODUCT_FK: list(filtered_products_fk)}
 
     def _get_ean_codes_by_product_group_id(self, column_name=Consts.PRODUCT_GROUP_ID, **params):
-        return self.product_groups_data[self.product_groups_data['Group Id'] ==
-                                        params[column_name].values[0].split('.')[0]]['Product EAN Code'].values[0].\
-            split(self.SEPARATOR)
+        lst_result = []
+        if column_name not in params.keys():
+            return lst_result
+        else:
+            product_group = params[column_name]
+            if product_group.empty:
+                return lst_result
+            else:
+                product_group_id = product_group.values[0].split('.')[0]
+
+        relevant_product_eans = self.product_groups_data[self.product_groups_data['Group Id'] == product_group_id]
+
+        if relevant_product_eans.empty:
+            return lst_result
+        else:
+            ean_codes = relevant_product_eans['Product EAN Code'].values[0].split(self.SEPARATOR)
+        return ean_codes
+        # return self.product_groups_data[self.product_groups_data['Group Id'] ==
+        #                                 params[column_name].values[0].split('.')[0]]['Product EAN Code'].values[0].\
+        #     split(self.SEPARATOR)
 
     def _get_allowed_products(self, allowed):
         allowed_products = set()
@@ -303,7 +320,7 @@ class PNGJPKpiQualitative_ToolBox(Consts):
     def check_bay(self, matches, probe_group, threshold, **filters):
         relevant_bays = matches[
             (matches[ProductsConsts.PRODUCT_FK].isin(filters[ProductsConsts.PRODUCT_FK]))
-            & (matches['probe_group_id'] == probe_group)]
+            & (matches['probe_group_id'] == probe_group)].copy()
         relevant_bays['freq'] = relevant_bays.groupby(MatchesConsts.BAY_NUMBER)[MatchesConsts.BAY_NUMBER].transform('count')
 
         relevant_bays = relevant_bays[relevant_bays['freq']
@@ -504,6 +521,9 @@ class PNGJPKpiQualitative_ToolBox(Consts):
 
     @kpi_runtime(kpi_desc='calculate_golden_zone', project_name='pngjp')
     def calculate_golden_zone(self, kpi, kpi_filters, params):
+        if params.empty:
+            print("kpi={} kpi_filters={}".format(kpi, kpi_filters))
+            return 0, 0, 0
 
         kpi_filter = kpi_filters.copy()
         assortment_entity = ProductsConsts.PRODUCT_EAN_CODE
@@ -632,6 +652,14 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         group_b = {ProductsConsts.PRODUCT_EAN_CODE: self._get_ean_codes_by_product_group_id(
             'Product Group Id;B', **params)}
 
+        if len(group_a[ProductsConsts.PRODUCT_EAN_CODE]) == 0:
+            Log.warning("group_a is empty for kpi = {} ".format(kpi))
+            return 0, 0, 0
+
+        if len(group_b[ProductsConsts.PRODUCT_EAN_CODE]) == 0:
+            Log.warning("group_b is empty for kpi = {} ".format(kpi))
+            return 0, 0, 0
+
         # allowed_filter = self._get_allowed_products({ProductsConsts.PRODUCT_TYPE:
         # ([self.EMPTY, self.IRRELEVANT], self.EXCLUDE_FILTER)})
 
@@ -726,8 +754,13 @@ class PNGJPKpiQualitative_ToolBox(Consts):
         return score, result, threshold
 
     def write_result(self, score, result, threshold, kpi, category, set_name, template_data, extra_data=None):
-        kpi_name = template_data.loc[template_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)][
-            'KPI name'].values[0]
+        df = template_data[template_data['fixed KPI name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+        if df.empty:
+            Log.warning("fixed KPI name {} not found in static.atomic_kpi table".format(kpi.encode(HelperConsts.UTF8)))
+            return
+        else:
+            kpi_name = df['KPI name'].iloc[0]
+
         if extra_data is not None:
             brand = extra_data['brand']
             group = extra_data['group']
@@ -742,12 +775,18 @@ class PNGJPKpiQualitative_ToolBox(Consts):
                 brand='XX',
                 group='XX',
                 question=kpi_name.encode(HelperConsts.UTF8))
+
         while '  ' in kpi_name:
             kpi_name = kpi_name.replace('  ', ' ')
-        atomic_kpi_fk = \
-            self.kpi_static_data[
-                self.kpi_static_data['fixed atomic_kpi_name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)][
-                KpiResults.ATOMIC_KPI_FK].values[0]
+
+        df = self.kpi_static_data[
+                self.kpi_static_data['fixed atomic_kpi_name'].str.encode(HelperConsts.UTF8) == kpi.encode(HelperConsts.UTF8)]
+
+        if df.empty:
+            Log.warning("fixed atomic_kpi_name {} not found in static.atomic_kpi table".format(kpi.encode(HelperConsts.UTF8)))
+            return
+        else:
+            atomic_kpi_fk = df[KpiResults.ATOMIC_KPI_FK].iloc[0]
 
         if result is not None or score is not None:
             if not kpi_name:

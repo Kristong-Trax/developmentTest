@@ -2,7 +2,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 from Projects.STRAUSSIL.Data.LocalConsts import Consts
-from KPIUtils_v2.Utils.Consts.PS import ExternalTargetsConsts
+from Trax.Data.ProfessionalServices.PsConsts.PS import ExternalTargetsConsts
 from KPIUtils_v2.Utils.Parsers import ParseInputKPI as Parser
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
@@ -66,7 +66,7 @@ class ToolBox(GlobalSessionToolBox):
             self.common.write_to_db_result(fk=dis_sku_kpi_fk, numerator_id=sku, denominator_id=category_fk,
                                            result=result, numerator_result=result, denominator_result=result,
                                            score=facings, should_enter=True,
-                                           identifier_parent=assortment_type + "mpa_{}".format(str(category_fk)))
+                                           identifier_parent=assortment_type + "_DIS_CAT_{}".format(str(category_fk)))
 
         # category level distribution
         for category_fk in categories_dict.keys():
@@ -162,7 +162,7 @@ class ToolBox(GlobalSessionToolBox):
                                                                              Consts.SOS_BY_CAT_BRAND))
         sku_kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type=(calculation_type + Consts.SOS_BY_CAT_BRAND_SKU))
         calculation_param = "facings_ign_stack" if calculation_type == 'FACINGS' else "gross_len_ign_stack"
-        sos_df = self.parser.filter_df(conditions={'rlv_sos_sc': 1, 'product_type': ['SKU', 'Empty']},
+        sos_df = self.parser.filter_df(conditions={'rlv_sos_sc': 1, 'product_type': ['SKU', 'Empty', 'Other']},
                                        data_frame_to_filter=self.scif)
         # brand level sos
         session_brands = set(sos_df['brand_fk'])

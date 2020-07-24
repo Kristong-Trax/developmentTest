@@ -20,7 +20,7 @@ from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
 
 from Projects.CCRU_SAND.Utils.Fetcher import CCRU_SANDCCHKPIFetcher
 from Projects.CCRU_SAND.Utils.Consts import CCRU_SANDConsts
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, StoreInfoConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts, StoreInfoConsts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 

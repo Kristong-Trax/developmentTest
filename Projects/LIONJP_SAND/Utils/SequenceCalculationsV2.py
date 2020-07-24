@@ -1,6 +1,6 @@
 from KPIUtils_v2.Calculations.CalculationsUtils.Constants import AdditionalAttr, CalcConst, ColumnNames
 from Trax.Algo.Calculations.Core.AdjacencyGraph.Builders import AdjacencyGraphBuilder
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts
 import KPIUtils_v2.Calculations.CalculationsUtils.DefaultValues as Default
 from KPIUtils_v2.Calculations.CalculationsUtils import CalculationUtils
 from KPIUtils_v2.Calculations.BaseCalculations import BaseCalculation

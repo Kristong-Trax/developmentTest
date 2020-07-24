@@ -13,23 +13,18 @@ class MenuToolBox(GlobalSessionToolBox):
     def __init__(self, data_provider, common):
         GlobalSessionToolBox.__init__(self, data_provider, None)
         # self.matches = self.get_filtered_matches()
+        self.store_number = self.store_info.store_number_1.iloc[0]
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalcAdmin)
         self.custom_entity = self.get_custom_entity()
 
-        self.targets = self.ps_data_provider.get_kpi_external_targets(key_fields=['store_number_1', 'ean_code'])
-        self.store_number = self.store_info.store_number_1
+        self.targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[6006],
+                                                                      key_fields=['store_number_1', 'product_fk'],
+                                                                      key_filters={'store_number_1': self.store_number})
         self.common = common
 
-    def _get_filtered_match_display_in_scene(self):
-        """ This method filters match display in scene - it saves only "close" and "open" tags"""
-        mdis = self.data_provider.match_display_in_scene.loc[
-            self.data_provider.match_display_in_scene.display_name.str.contains("Open|Close|open|close")]
-        return mdis
-
     def main_calculation(self):
-        """This method calculates the entire Case Count KPIs set."""
-        self.get_relevant_targets()
+        """This method calculates the entire Menu Brand KPIs set."""
         self.menu_count()
 
     def menu_count(self):
@@ -42,21 +37,18 @@ class MenuToolBox(GlobalSessionToolBox):
         if self.targets.empty:
             return
         try:
-            menu_ean_codes = self.targets.ean_code.unique().tolist()
+            menu_product_fks = [t for t in self.targets.product_fk.unique().tolist() if pd.notna(t)]
         except AttributeError:
             Log.warning('Menu Count targets are corrupt for this store')
             return
 
         filtered_scif = self.scif[self.scif['template_group'].str.contains('Menu')]
         present_menu_scif_sub_brands = filtered_scif.sub_brand.unique().tolist()
-        passed_eans = 0
+        passed_products = 0
 
-        # found_ean_codes = filtered_scif.product_ean_code.unique().tolist()
-
-        for ean_code in menu_ean_codes:
+        for product_fk in menu_product_fks:
             result = 0
-            sub_brand = self.all_products['sub_brand'][self.all_products['product_ean_code'] == ean_code].iloc[0]
-            product_fk = self.all_products['product_fk'][self.all_products['product_ean_code'] == ean_code].iloc[0]
+            sub_brand = self.all_products['sub_brand'][self.all_products['product_fk'] == product_fk].iloc[0]
 
             custom_entity_df = self.custom_entity['pk'][self.custom_entity['name'] == sub_brand]
             if custom_entity_df.empty:
@@ -66,7 +58,7 @@ class MenuToolBox(GlobalSessionToolBox):
 
             if sub_brand in present_menu_scif_sub_brands:
                 result = 1
-                passed_eans += 1
+                passed_products += 1
 
             self.write_to_db(fk=kpi_fk_mr, numerator_id=product_fk, numerator_result=0, denominator_result=0,
                              denominator_id=custom_entity_pk,
@@ -76,18 +68,14 @@ class MenuToolBox(GlobalSessionToolBox):
             self.write_to_db(fk=kpi_fk, numerator_id=product_fk, numerator_result=0, denominator_result=0,
                              denominator_id=custom_entity_pk, result=result, score=0)
 
-        target_eans = len(menu_ean_codes)
+        target_products = len(menu_product_fks)
         self.write_to_db(fk=parent_kpi_mr, numerator_id=self.manufacturer_fk, numerator_result=0, denominator_result=0,
                          denominator_id=self.store_id,
-                         result=passed_eans, score=0, target=target_eans, identifier_result=parent_kpi_mr)
+                         result=passed_products, score=0, target=target_products, identifier_result=parent_kpi_mr)
 
         self.write_to_db(fk=parent_kpi, numerator_id=self.manufacturer_fk, numerator_result=0, denominator_result=0,
                          denominator_id=self.store_id,
-                         result=passed_eans, score=0, target=target_eans)
-
-    def get_relevant_targets(self):
-        self.targets = self.targets[(self.targets['store_number_1'] == self.store_number.iloc[0])
-                                    & (self.targets['operation_type'] == 'menu_brand')]
+                         result=passed_products, score=0, target=target_products)
 
     def get_custom_entity(self):
         query = DiageoQueries.get_custom_entities_query()

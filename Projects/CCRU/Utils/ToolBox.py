@@ -20,7 +20,7 @@ from KPIUtils_v2.Utils.TargetFinder.KpiTargetFinder import KpiTargetFinder
 
 from Projects.CCRU.Utils.Fetcher import CCRUCCHKPIFetcher
 from Projects.CCRU.Utils.Consts import CCRUConsts
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, StoreInfoConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts, StoreInfoConsts
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 
@@ -2291,8 +2291,8 @@ class CCRUKPIToolBox:
                             break
                     if doors < 2:
                         return -1
-            else:
-                scenes = self.get_relevant_scenes(params)
+            # else:
+            #     scenes = self.get_relevant_scenes(params)
         children = self.children_to_int_list(params.get("Children"))
         total_res = 0
         for c in all_params.values()[0]:

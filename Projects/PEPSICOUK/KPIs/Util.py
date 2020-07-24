@@ -99,6 +99,7 @@ class PepsicoUtil(UnifiedKPISingleton):
     SUB_BRAND_SOS = 'Sub Brand SOS'
     PEPSICO_SEGMENT_SOS = 'PepsiCo Segment SOS'
     BRAND_SOS_OF_SEGMENT = 'Brand SOS of Segment'
+    BINS_NOT_RECOGNIZED = 'Bins_not_recognized'
 
     def __init__(self, output, data_provider):
         super(PepsicoUtil, self).__init__(data_provider)

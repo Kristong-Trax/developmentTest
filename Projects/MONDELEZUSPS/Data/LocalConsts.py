@@ -1,0 +1,17 @@
+
+class Consts(object):
+    SHELF_MAP = 'shelf_map'
+    SHARE_OF_SCENES = 'Share of Scenes'
+    SCENE_LOCATION = 'Scene Location'
+    SHELF_POSITION = 'Shelf Position'
+    BLOCKING = 'Blocking'
+    BAY_POSITION = 'Bay Position'
+    DIAMOND_POSITION = 'Diamond Position'
+    KPI_TYPE = 'KPI Type'
+    KPI_NAME = 'kpi_client_name'
+    FINAL_FACINGS = 'final_facings'
+    DISTRIBUTION = 'Distribution'
+    SCENE_FK = 'scene_fk'
+    GRANULAR_GROUP_NAME = 'Granular Group Name'
+    EAN_CODE = 'EAN Original'
+    ASSORTMENT_TYPE = 'Assortment type'

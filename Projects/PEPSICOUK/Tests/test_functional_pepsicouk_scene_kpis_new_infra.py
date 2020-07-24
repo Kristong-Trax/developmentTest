@@ -68,6 +68,12 @@ class Test_PEPSICOUK(TestFunctionalCase):
         self.mock_position_graph()
         self.mock_position_graph_block()
         self.mock_position_graph_adjacency()
+        self.mock_checK_if_all_bins_are_recognized()
+
+    def mock_checK_if_all_bins_are_recognized(self):
+        flag = self.mock_object('PEPSICOUKCommonToolBox.check_if_all_bins_are_recognized',
+                                    path='Projects.PEPSICOUK.Utils.CommonToolBoxRollout')
+        flag.return_value = True
 
     def mock_scene_store_area(self):
         sa = self.mock_object('PEPSICOUKCommonToolBox.get_scene_to_store_area_map',
@@ -447,13 +453,9 @@ class Test_PEPSICOUK(TestFunctionalCase):
         p = PriceKpi(self.data_provider_mock, config_params={})
         p.calculate()
         kpi_result = pd.DataFrame(p.kpi_results)
-        self.assertEquals(len(kpi_result), 4)
+        self.assertEquals(len(kpi_result), 1)
         expected_list = list()
         expected_list.append({'kpi_level_2_fk': 400, 'numerator_id': 1, 'result': 9})
-        expected_list.append({'kpi_level_2_fk': 400, 'numerator_id': 2, 'result': -1})
-        expected_list.append({'kpi_level_2_fk': 400, 'numerator_id': 3, 'result': -1})
-        expected_list.append({'kpi_level_2_fk': 400, 'numerator_id': 4, 'result': -1})
-
         test_result_list = []
         for expected_result in expected_list:
             test_result_list.append(self.check_kpi_results(kpi_result, expected_result) == 1)

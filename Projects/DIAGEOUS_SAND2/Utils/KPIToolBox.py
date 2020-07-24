@@ -1,8 +1,8 @@
-from KPIUtils_v2.Utils.Consts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts, \
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ProductsConsts, ScifConsts, StoreInfoConsts, \
     SceneInfoConsts
-from KPIUtils_v2.Utils.Consts.PS import ExternalTargetsConsts
+from Trax.Data.ProfessionalServices.PsConsts.PS import ExternalTargetsConsts
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
-from KPIUtils_v2.Utils.Consts.GlobalConsts import HelperConsts, ProductTypeConsts, BasicConsts
+from Trax.Data.ProfessionalServices.PsConsts.Consts import HelperConsts, ProductTypeConsts, BasicConsts
 from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
@@ -118,7 +118,9 @@ class ToolBox:
                                 Consts.EX_ATTR2],
                     data_fields=[Consts.EX_MIN_FACINGS, Consts.EX_MINIMUM_SHELF, Consts.EX_BENCHMARK_VALUE,
                                  Consts.EX_TARGET_MIN, Consts.EX_COMPETITOR_FK, Consts.EX_RELATIVE_MAX,
-                                 Consts.EX_RELATIVE_MIN, Consts.EX_TARGET_MAX])
+                                 Consts.EX_RELATIVE_MIN, Consts.EX_TARGET_MAX, Consts.EX_REQUIRED_BOTTLES,
+                                 Consts.EX_REQUIRED_NON_CASES, Consts.EX_REQUIRED_CASES,
+                                 Consts.EX_MIN_COMBINED_FACINGS])
                 self.external_targets = self.external_targets.fillna("N/A")
             else:
                 self.external_targets = self.ps_data.get_kpi_external_targets(
@@ -126,13 +128,18 @@ class ToolBox:
                     key_fields=[Consts.EX_PRODUCT_FK, Consts.EX_STATE_FK, Consts.EX_STORE_NUMBER, Consts.EX_SCENE_TYPE,
                                 Consts.EX_ATTR2],
                     data_fields=[Consts.EX_MIN_FACINGS, Consts.EX_MINIMUM_SHELF, Consts.EX_BENCHMARK_VALUE,
-                                 Consts.EX_COMPETITOR_FK])
+                                 Consts.EX_COMPETITOR_FK, Consts.EX_REQUIRED_BOTTLES,
+                                 Consts.EX_REQUIRED_NON_CASES, Consts.EX_REQUIRED_CASES,
+                                 Consts.EX_MIN_COMBINED_FACINGS])
                 self.external_targets = self.external_targets.fillna("N/A")
         elif self.attr6 != Consts.ON:
                 self.init_assortment()
                 self.external_targets = self.ps_data.get_kpi_external_targets(
                     kpi_operation_types=Consts.INDEPENDENT_OPERATION_TYPES,
-                    key_fields=[Consts.EX_SCENE_TYPE, Consts.EX_ATTR2], data_fields=[Consts.EX_MIN_FACINGS])
+                    key_fields=[Consts.EX_SCENE_TYPE, Consts.EX_ATTR2, Consts.EX_PRODUCT_FK],
+                    data_fields=[Consts.EX_MIN_FACINGS, Consts.EX_REQUIRED_BOTTLES,
+                                 Consts.EX_REQUIRED_NON_CASES, Consts.EX_REQUIRED_CASES,
+                                 Consts.EX_MIN_COMBINED_FACINGS])
                 self.external_targets = self.external_targets.fillna("N/A")
         if self.attr6 == Consts.OFF:
             total_off_trade_fk = self.common.get_kpi_fk_by_kpi_name(
@@ -267,10 +274,10 @@ class ToolBox:
         :return:
         """
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_ON_NAMES[kpi_name])
-        if kpi_name == Consts.BACK_BAR and self.no_back_bar_allowed:
-            self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
-            Log.debug("There is no back bar, Back Bar got 100")
-            return 1 * weight, 1 * weight, 1 * weight
+        # if kpi_name == Consts.BACK_BAR and self.no_back_bar_allowed:
+        #     self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
+        #     Log.debug("There is no back bar, Back Bar got 100")
+        #     return 1 * weight, 1 * weight, 1 * weight
         if self.assortment_products.empty:
             return 0, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
@@ -453,10 +460,10 @@ class ToolBox:
         relevant_assortment = self.relevant_assortment
         kpi_db_names = self.pull_kpi_fks_from_names(Consts.DB_OFF_NAMES[kpi_name])
         if kpi_name == Consts.DISPLAY_BRAND:
-            if self.no_display_allowed:
-                self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
-                Log.debug("There is no display, Display Brand got 100")
-                return 1 * weight, 1 * weight, 1 * weight
+            # if self.no_display_allowed:
+            #     self.survey_display_back_bar_write_to_db(weight, kpi_db_names)
+            #     Log.debug("There is no display, Display Brand got 100")
+            #     return 1 * weight, 1 * weight, 1 * weight
             if self.attr11 in Consts.NOT_INDEPENDENT_STORES and kpi_name == Consts.DISPLAY_BRAND:
                 relevant_assortment = relevant_assortment[relevant_assortment[Consts.DISPLAY].isin([1, '1'])]
             relevant_scif = relevant_scif[relevant_scif[ScifConsts.LOCATION_TYPE] == 'Secondary Shelf']
@@ -592,20 +599,27 @@ class ToolBox:
         total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_ON_NAMES[Consts.MENU][Consts.TOTAL])
         result_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         total_dict = self.common.get_dictionary(name=Consts.TOTAL)
-        if self.no_menu_allowed:
-            Log.debug("There is no menu, Menu got 100")
-            score = 1
-            self.common.write_to_db_result(
-                fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
-                result=score, should_enter=True, weight=weight * 100, score=score,
-                identifier_parent=total_dict)
-            return score * weight, 0, 0
+        # if self.no_menu_allowed:
+        #     Log.debug("There is no menu, Menu got 100")
+        #     score = 1
+        #     self.common.write_to_db_result(
+        #         fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
+        #         result=score, should_enter=True, weight=weight * 100, score=score,
+        #         identifier_parent=total_dict)
+        #     return score * weight, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
+        # relevant_scif = self.scif_without_emptys[
+        #     (self.scif_without_emptys[ScifConsts.SCENE_ID].isin(relevant_scenes)) &
+        #     (self.scif_without_emptys[ProductsConsts.PRODUCT_TYPE] == ProductTypeConsts.POS) &
+        #     ~(self.scif_without_emptys
+        #       [ProductsConsts.SUB_CATEGORY_LOCAL_NAME].isin(Consts.MENU_EXCLUDE_SUB_CATEGORIES))]
         relevant_scif = self.scif_without_emptys[
             (self.scif_without_emptys[ScifConsts.SCENE_ID].isin(relevant_scenes)) &
             (self.scif_without_emptys[ProductsConsts.PRODUCT_TYPE] == ProductTypeConsts.POS) &
             ~(self.scif_without_emptys
-              [ProductsConsts.SUB_CATEGORY_LOCAL_NAME].isin(Consts.MENU_EXCLUDE_SUB_CATEGORIES))]
+              [ProductsConsts.CATEGORY].isin(Consts.MENU_EXCLUDE_CATEGORIES)) &
+            ~(self.scif_without_emptys[ProductsConsts.MANUFACTURER_NAME].isin(Consts.MENU_EXCLUDE_MANUFACTURERS))]
+
         diageo_facings, den_res = 0, 0
         if self.attr11 == Consts.NATIONAL_STORE:
             total_kpi_fk = self.common.get_kpi_fk_by_kpi_name(Consts.DB_ON_NAMES[Consts.MENU_NATIONAL][Consts.TOTAL])
@@ -705,14 +719,14 @@ class ToolBox:
         total_dict = self.common.get_dictionary(kpi_fk=total_kpi_fk)
         manufacturer_kpi_fk = self.common.get_kpi_fk_by_kpi_name(
             Consts.DB_OFF_NAMES[Consts.DISPLAY_SHARE][Consts.MANUFACTURER])
-        if self.no_display_allowed:
-            Log.debug("There is no display, Display Share got 100")
-            score = 1
-            self.common.write_to_db_result(
-                fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
-                result=score, should_enter=True, weight=weight * 100, score=score,
-                identifier_parent=self.common.get_dictionary(name=Consts.TOTAL))
-            return score * weight, 0, 0
+        # if self.no_display_allowed:
+        #     Log.debug("There is no display, Display Share got 100")
+        #     score = 1
+        #     self.common.write_to_db_result(
+        #         fk=total_kpi_fk, numerator_id=self.manufacturer_fk, target=target,
+        #         result=score, should_enter=True, weight=weight * 100, score=score,
+        #         identifier_parent=self.common.get_dictionary(name=Consts.TOTAL))
+        #     return score * weight, 0, 0
         relevant_scenes = self.get_relevant_scenes(scene_types)
         relevant_products = self.scif_without_emptys[
             (self.scif_without_emptys[ScifConsts.SCENE_FK].isin(relevant_scenes)) &
@@ -1337,26 +1351,79 @@ class ToolBox:
         template = external_template[external_template[Consts.EX_ATTR2] == self.attr2]
         if template.empty:
             template = external_template[external_template[Consts.EX_ATTR2] == Consts.OTHER]
+
+        product_specific_targets = template[[Consts.EX_PRODUCT_FK, Consts.EX_MIN_FACINGS]].dropna()
+        product_specific_targets = product_specific_targets[(product_specific_targets[Consts.EX_PRODUCT_FK] != 'N/A') &
+                                                            (product_specific_targets[Consts.EX_MIN_FACINGS] != 'N/A')]
+
         sum_scenes_passed, sum_facings = 0, 0
         product_fk_with_substs = [product_fk]
-        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] 
+        product_fk_with_substs += self.all_products[self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK]
                                                     == product_fk][ScifConsts.PRODUCT_FK].tolist()
+        product_bottles = [product_fk]
+        product_bottles += self.all_products[(self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] == product_fk) &
+                                             (self.all_products[ProductsConsts.SKU_TYPE].str.lower() != 'case')][
+            ScifConsts.PRODUCT_FK].tolist()
+        product_cases = self.all_products[(self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] == product_fk) &
+                                          (self.all_products[ProductsConsts.SKU_TYPE].str.lower() == 'case')][
+            ScifConsts.PRODUCT_FK].tolist()
+        product_non_cases = [product_fk]
+        product_non_cases += \
+            self.all_products[(self.all_products[ProductsConsts.SUBSTITUTION_PRODUCT_FK] == product_fk) &
+                              (self.all_products[ProductsConsts.SKU_TYPE].str.lower() != 'case')][
+                ScifConsts.PRODUCT_FK].tolist()
         for scene in relevant_products[ScifConsts.SCENE_FK].unique().tolist():
-            for product in product_fk_with_substs:
-                scene_products = self.match_product_in_scene[
-                    (self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene) &
-                    (self.match_product_in_scene[MatchesConsts.PRODUCT_FK] == product)]
-                if scene_products.empty:
-                    continue
-                scene_type = self.scif[self.scif[ScifConsts.SCENE_FK] == scene][ScifConsts.TEMPLATE_NAME].iloc[0]
-                minimum_products = template[template[Consts.EX_SCENE_TYPE] == scene_type]
-                if minimum_products.empty:
-                    minimum_products = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
-                minimum_products = minimum_products[Consts.EX_MIN_FACINGS].iloc[0]
-                facings = len(scene_products)
-                if facings >= minimum_products:
+            scene_type = self.scif[self.scif[ScifConsts.SCENE_FK] == scene][ScifConsts.TEMPLATE_NAME].iloc[0]
+            scene_mpis = self.match_product_in_scene[self.match_product_in_scene[MatchesConsts.SCENE_FK] == scene]
+            scene_mpis = \
+                scene_mpis.groupby(MatchesConsts.PRODUCT_FK, as_index=False)[MatchesConsts.SCENE_MATCH_FK].count()
+            scene_mpis.rename(columns={MatchesConsts.SCENE_MATCH_FK: 'facings'}, inplace=True)
+            scene_mpis = pd.merge(scene_mpis, product_specific_targets, how='left', on='product_fk')
+
+            if Consts.EX_MIN_FACINGS in scene_mpis.columns.tolist():
+                scene_mpis[Consts.EX_MIN_FACINGS].fillna(0)
+                relevant_mpis = scene_mpis[scene_mpis[MatchesConsts.PRODUCT_FK].isin(product_fk_with_substs)]
+                relevant_mpis['result'] = relevant_mpis['facings'] >= relevant_mpis[Consts.EX_MIN_FACINGS]
+                if relevant_mpis['result'].any():
                     sum_scenes_passed += 1
                     break
+
+            product_targets = template[template[Consts.EX_SCENE_TYPE] == scene_type]
+            if product_targets.empty:
+                product_targets = template[template[Consts.EX_SCENE_TYPE] == Consts.OTHER]
+
+            minimum_facings = product_targets[Consts.EX_MIN_FACINGS].iloc[0]
+            if minimum_facings and pd.notna(minimum_facings) and minimum_facings != 'N/A':
+                max_sku_facings = scene_mpis['facings'].max()
+                if max_sku_facings >= minimum_facings:
+                    sum_scenes_passed += 1
+                    break
+
+            minimum_combined_facings = product_targets[Consts.EX_MIN_COMBINED_FACINGS].iloc[0]
+            if minimum_combined_facings and pd.notna(minimum_combined_facings) and minimum_combined_facings != 'N/A':
+                combined_sku_facings = \
+                    scene_mpis[scene_mpis[MatchesConsts.PRODUCT_FK].isin(product_non_cases)]['facings'].sum()
+                if combined_sku_facings >= minimum_combined_facings:
+                    sum_scenes_passed += 1
+                    break
+
+            required_cases = product_targets[Consts.EX_REQUIRED_CASES].iloc[0]
+            required_non_cases = product_targets[Consts.EX_REQUIRED_NON_CASES].iloc[0]
+            if (required_cases and pd.notna(required_cases) and required_cases != 'N/A') and (
+                    required_non_cases and pd.notna(required_non_cases) and required_cases != 'N/A'):
+                cases = scene_mpis[scene_mpis[MatchesConsts.PRODUCT_FK].isin(product_cases)]['facings'].sum()
+                non_cases = scene_mpis[scene_mpis[MatchesConsts.PRODUCT_FK].isin(product_non_cases)]['facings'].sum()
+                if cases >= required_cases and non_cases >= required_non_cases:
+                    sum_scenes_passed += 1
+                    break
+
+            required_bottles = product_targets[Consts.EX_REQUIRED_BOTTLES].iloc[0]
+            if required_bottles and pd.notna(required_bottles) and required_bottles != 'N/A':
+                bottles = scene_mpis[scene_mpis[MatchesConsts.PRODUCT_FK].isin(product_bottles)]['facings'].sum()
+                if bottles >= required_bottles:
+                    sum_scenes_passed += 1
+                    break
+
         return sum_scenes_passed
 
     def get_relevant_scenes(self, scene_types):

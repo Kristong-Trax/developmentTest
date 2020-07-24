@@ -11,6 +11,9 @@ if __name__ == '__main__':
     project_name = 'henkelus'
     data_provider = KEngineDataProvider(project_name)
     session_list = [
+        'ffa5e905-538e-427f-8275-8bf240fe35e0',
+        '74d11cd7-e945-497a-bbe9-02c847cddac8',
+        'fce93069-4b83-4842-9416-66dda5eb2e12',
         # "be04d3a9-e4ee-4ea8-b7c7-4ed2c39f4548",
         #             '23388796-e888-497b-bcbe-efe3d95f286d',
                     'a8e1b893-e0cc-475b-8537-f459bdc21f4d',

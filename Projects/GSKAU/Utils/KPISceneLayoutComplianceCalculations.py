@@ -3,7 +3,7 @@ import pandas as pd
 
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
-from KPIUtils_v2.Utils.Consts.DataProvider import ProductsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ProductsConsts
 from collections import defaultdict
 __author__ = 'nidhinb'
 

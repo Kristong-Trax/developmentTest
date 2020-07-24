@@ -16,8 +16,8 @@ from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils.Calculations.Assortment import Assortment
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider as DataProvider_v2
-from KPIUtils_v2.Utils.Consts.DB import StaticKpis, SessionResultsConsts
-from KPIUtils_v2.Utils.Consts.DataProvider import ScifConsts, StoreInfoConsts
+from Trax.Data.ProfessionalServices.PsConsts.DB import StaticKpis, SessionResultsConsts
+from Trax.Data.ProfessionalServices.PsConsts.DataProvider import ScifConsts, StoreInfoConsts
 
 __author__ = 'Elyashiv'
 
@@ -621,7 +621,12 @@ class INBEVCISANDToolBox:
         brand_fk = params['entity_value']
         target = int(params[Const.TARGET])
         atomic_fk = self.get_kpi_fk_by_kpi_name(Const.ATOMIC_FACINGS)
-        facings = self.tools.calculate_availability(**{"brand_fk": brand_fk})
+        exclude_type = params["exclude_entity_name"]
+        exclude_value = params["exclude_entity_value"]
+        filters = {"brand_fk": brand_fk}
+        if exclude_type:
+            filters.update({exclude_type: (exclude_value, 0)})
+        facings = self.tools.calculate_availability(**filters)
         if facings >= target:
             atomic_score = 100
         result = round(facings / float(target), 4) * 100

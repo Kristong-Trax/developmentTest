@@ -32,6 +32,7 @@ static	kpi	all
 static	kpi_set	all
 static	kpi_targets	all
 static	kpi_level_2	all
+static	kpi_level_2_configuration	all
 static	kpi_view_configuration	all
 static	kpi_entity_type	all
 static	kpi_family	all

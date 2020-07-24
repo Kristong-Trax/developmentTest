@@ -362,11 +362,11 @@ class HEINZCRToolBox:
                 except KeyError:
                     continue
             if not df1.empty:
-                stores = self.store_sos_policies[(self.store_sos_policies['store_policy'] == row.store_policy.encode('utf-8'))
-                                                 & (
-                                                         self.store_sos_policies[
-                                                             'target_validity_start_date'] <= datetime.date(
-                                                     self.current_date))]
+                stores = \
+                    self.store_sos_policies[(self.store_sos_policies['store_policy'].str.encode(
+                                                'utf-8') == row.store_policy.encode('utf-8')) &
+                                            (self.store_sos_policies['target_validity_start_date'] <= datetime.date(
+                                                self.current_date))]
                 if stores.empty:
                     relevant_stores = stores
                 else:

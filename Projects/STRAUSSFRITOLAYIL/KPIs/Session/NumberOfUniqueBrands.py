@@ -19,17 +19,17 @@ class NumberOfUniqueBrandsKpi(UnifiedCalculationsScript):
             target = template.iloc[0][Consts.TARGET_MAX]
         else:
             Log.warning("There are no fitting rows or more than one fitting row for KPI {}".format(str(kpi_fk)))
-            target = -1
+            target = None
         # strauss are looking at sub_brand as brand in this KPI
         if sku_results.empty:
             number_of_sub_brands = 0
         else:
             number_of_sub_brands = len(sku_results[sku_results['result'] >= 1])
-        if target == -1:
+        if not target:
             score = Consts.NO_TARGET
         else:
             score = Consts.PASS if number_of_sub_brands >= target else Consts.FAIL
-        self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
+        self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, target=target,
                                 result=number_of_sub_brands, denominator_id=self.utils.store_id, score=score)
 
     def kpi_type(self):
