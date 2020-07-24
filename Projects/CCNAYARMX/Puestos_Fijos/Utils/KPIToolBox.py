@@ -298,7 +298,6 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
                         result_dict['result'] = float(prereq.Score) / max_score_potential
                         result_dict['score'] = prereq.Score
                         break
-
         return result_dict
 
 
