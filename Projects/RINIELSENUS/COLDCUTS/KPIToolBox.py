@@ -241,7 +241,7 @@ class ColdCutToolBox:
 
         mpis['position'] = mpis.apply(self._calculate_vertical_position, axis=1)
         mpis['result_type_fk'] = mpis['position'].apply(lambda x: Consts.CUSTOM_RESULT.get(x, 0))
-        mpis = mpis.groupby(['product_fk'], as_index=False)['result_type_fk'].agg(pd.Series.mode)
+        mpis = mpis.groupby(['product_fk'], as_index=False)['result_type_fk'].agg(lambda x: pd.Series.mode(x).iat[0])
 
         for result in mpis.itertuples():
             custom_fk_result = result.result_type_fk
@@ -272,7 +272,7 @@ class ColdCutToolBox:
         mpis = pd.merge(pre_sort_mpis, bay_df, how='left', on='scene_fk')
         mpis['position'] = mpis.apply(self._calculate_horizontal_position, axis=1)
         mpis['result_type_fk'] = mpis['position'].apply(lambda x: Consts.CUSTOM_RESULT.get(x, 0))
-        mpis = mpis.groupby(['product_fk'], as_index=False)['result_type_fk'].agg(pd.Series.mode)
+        mpis = mpis.groupby(['product_fk'], as_index=False)['result_type_fk'].agg(lambda x: pd.Series.mode(x).iat[0])
 
         for result in mpis.itertuples():
             custom_fk_result = result.result_type_fk
