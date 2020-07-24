@@ -17,8 +17,8 @@ __author__ = 'trevaris'
 
 PATH = os.path.dirname(__file__)
 SHEETS = [KPI, SCENE_AVAILABILITY, COMPLIANT_BAY_COUNT, FACINGS_SOS, SHARE_OF_SCENES]
-MPIS_COLUMNS = ['scene_match_fk',  TEMPLATE_FK, 'template_name', SCENE_FK, 'location', 'bay_number',
-                'manufacturer_fk', 'brand_fk', 'product_fk', 'size', 'category_fk', FACINGS, 'SKUs', 'Key Package',
+MPIS_COLUMNS = ['scene_match_fk',  TEMPLATE_FK, TEMPLATE_NAME, SCENE_FK, LOCATION, 'bay_number',
+                'manufacturer_fk', 'brand_fk', 'product_fk', PRODUCT_TYPE, 'size', 'category_fk', FACINGS, 'SKUs', KEY_PACKAGE,
                 'survey_question_fk', 'question_text', 'scene_survey_response']
 
 
@@ -41,11 +41,11 @@ class MilitaryToolBox(GlobalSessionToolBox):
         self.products = data_provider[Data.PRODUCTS]
 
         store_areas = self.ps_data_provider.get_store_area_df() \
-            .rename(columns={"store_area_name": 'location'})
+            .rename(columns={"store_area_name": LOCATION})
         key_packages = self.scif[[PRODUCT_FK, 'Key Package']] \
             .drop_duplicates()
-        product_facings = self.scif[[SCENE_FK, PRODUCT_FK, FACINGS, 'facings_ign_stack']] \
-            .rename(columns={'facings_ign_stack': 'SKUs'})
+        product_facings = self.scif[[SCENE_FK, 'location_type_fk', PRODUCT_FK, FACINGS, 'facings_ign_stack']] \
+            .rename(columns={'facings_ign_stack': 'SKUs', 'location_type_fk': LOCATION})
         survey_response = self.ps_data_provider.get_scene_surveys_responses() \
             .rename(columns={'question_fk': 'survey_question_fk', 'selected_option_text': 'scene_survey_response'})
 
@@ -64,19 +64,27 @@ class MilitaryToolBox(GlobalSessionToolBox):
 
         self.kpi_templates = self.get_kpi_template(PATH, 'Data')
         self.results_df = pd.DataFrame(
-            columns=[FK, KPI_NAME, NUMERATOR_ID, NUMERATOR_RESULT, DENOMINATOR_ID, DENOMINATOR_RESULT, RESULT,
-                     IDENTIFIER_RESULT, IDENTIFIER_PARENT])
+            columns=[FK, KPI_NAME, SCENE_FK, NUMERATOR_ID, NUMERATOR_RESULT, DENOMINATOR_ID, DENOMINATOR_RESULT, RESULT,
+                     IDENTIFIER_RESULT, IDENTIFIER_PARENT, SHOULD_ENTER])
 
         self.calculations = {
             SCENE_AVAILABILITY: self.calculate_scene_availability,
             SHARE_OF_SCENES: self.calculate_share_of_scenes,
+            FACINGS_SOS: self.calculate_facings_sos2,
         }
 
     def main_calculation(self):
         if self.mpis.empty or self.filter_df(self.store_info, {'region_name': REGION}).empty:
             return
 
-        for _, row in self.kpi_templates[KPI].iterrows():
+        parent_kpi = self.filter_df(self.kpi_templates[KPI], filters=[KPI_PARENT_ID], func='isna')
+        for _, row in parent_kpi.iterrows():
+            if row[KPI_TYPE] in self.calculations:
+                kpi = self.filter_df(self.kpi_templates[row[KPI_TYPE]], filters={KPI_NAME: row[KPI_NAME]}).iloc[0]
+                self.calculations.get(row[KPI_TYPE])(kpi)
+
+        child_kpi = self.filter_df(self.kpi_templates[KPI], filters=[KPI_PARENT_ID], func='notna')
+        for _, row in child_kpi.iterrows():
             if row[KPI_TYPE] in self.calculations:
                 kpi = self.filter_df(self.kpi_templates[row[KPI_TYPE]], filters={KPI_NAME: row[KPI_NAME]}).iloc[0]
                 self.calculations.get(row[KPI_TYPE])(kpi)
@@ -136,14 +144,16 @@ class MilitaryToolBox(GlobalSessionToolBox):
             RESULT: result})
 
     def calculate_scene_availability(self, kpi):
-        """
-
-        """
-
-        filtered_df = self.filter_df(self.mpis,
-                                     filters={col: kpi[col] for col in MPIS_COLUMNS if col in kpi.index and kpi[col]})
+        filters = {col: kpi[col] for col in MPIS_COLUMNS if col in kpi.index and kpi[col]}
+        filtered_df = self.filter_df(self.mpis, filters=filters)
 
         for scene in filtered_df[SCENE_FK].unique():
+            if pd.notna(kpi[KPI_PARENT_ID]):
+                parent = self.filter_df(self.results_df,
+                                    filters={IDENTIFIER_RESULT: kpi[KPI_PARENT_ID], SCENE_FK: scene})[RESULT].any()
+                if not parent:
+                    return
+
             scene_df = self.filter_df(filtered_df, filters={SCENE_FK: scene})
             datasets = dict.fromkeys(['a', 'b', 'c'], pd.DataFrame())
             for dataset in datasets.keys():
@@ -167,29 +177,36 @@ class MilitaryToolBox(GlobalSessionToolBox):
                     test = data[kpi[dataset+'_test']].sum() >= kpi[dataset+'_threshold']
                     result = conjunction(result, test)
 
+            if kpi['no_failures'] and not result:
+                return
+
             if kpi[KPI_NAME] == "Where is the 24 Pack 12 Ounce Coca-Cola CSD Brands Display Located?":
                 self.append_results({
                     FK: None,
                     KPI_NAME: kpi[KPI_NAME],
-                    NUMERATOR_ID: None,  # location
+                    SCENE_FK: scene,
+                    NUMERATOR_ID: scene_df.iloc[0][LOCATION],
                     NUMERATOR_RESULT: None,  # ???
                     DENOMINATOR_ID: self.store_id,
                     DENOMINATOR_RESULT: scene,
                     RESULT: int(result),
                     IDENTIFIER_RESULT: kpi[KPI_ID],
-                    IDENTIFIER_PARENT: kpi[KPI_PARENT_ID]
+                    IDENTIFIER_PARENT: kpi[KPI_PARENT_ID],
+                    SHOULD_ENTER: True
                 })
             else:
                 self.append_results({
                     FK: None,
                     KPI_NAME: kpi[KPI_NAME],
-                    NUMERATOR_ID: None,
+                    SCENE_FK: scene,
+                    NUMERATOR_ID: self.own_manufacturer,
                     NUMERATOR_RESULT: int(result),
                     DENOMINATOR_ID: self.store_id,
                     DENOMINATOR_RESULT: kpi[DENOMINATOR_RESULT],
                     RESULT: int(result),
                     IDENTIFIER_RESULT: kpi[KPI_ID],
-                    IDENTIFIER_PARENT: kpi[KPI_PARENT_ID]
+                    IDENTIFIER_PARENT: kpi[KPI_PARENT_ID],
+                    SHOULD_ENTER: True
                 })
 
     def calculate_facings_sos_kpi(self):
@@ -204,44 +221,41 @@ class MilitaryToolBox(GlobalSessionToolBox):
                 kpi[CONTEXT]
             )
 
-    def calculate_facings_sos(self, kpi_name, templates, numerator, denominator, context):
-        """
-        Calculates the SOS for manufacturer in category.
-
-        :param kpi_name: The KPI name.
-        :param templates: The list of templates to filter by.
-        :param numerator:
-        :param denominator:
-        :param context:
+    def calculate_facings_sos(self, kpi):
         """
 
-        kpi_id = self.common.get_kpi_fk_by_kpi_name(kpi_name)
-        template_ids = self.get_template_fks(templates)
+        """
 
-        template_df = self.filter_df(self.mpis, filters={'template_fk': template_ids})
-        empty_df = self.filter_df(template_df, filters={'product_fk': 0}) \
-            .groupby(by=['category_fk', 'manufacturer_fk'], as_index=False) \
-            .count()[['category_fk', 'manufacturer_fk', 'scene_match_fk']] \
-            .rename(columns={'scene_match_fk': 'empty_count'})
-        cat_man = template_df.groupby(by=['category_fk', 'manufacturer_fk'], as_index=False) \
-            .count() \
-            .rename(columns={'scene_match_fk': 'manufacturer_count'})
-        cat_count = cat_man.groupby('category_fk', as_index=False) \
-            .sum() \
-            .rename(columns={'manufacturer_count': 'category_count'})[['category_fk', 'category_count']]
-        cat_man = cat_man.merge(empty_df, on=['category_fk', 'manufacturer_fk'])
-        cat_man_count = cat_man.merge(cat_count, on='category_fk')
+        templates = kpi[TEMPLATE_NAME].split(",")
+        template_df = self.filter_df(self.mpis, filters={TEMPLATE_NAME: templates})
+        den_df = self.filter_df(template_df, filters={kpi['b_filter_1']: kpi['b_value_1'].split(',')}) \
+            .rename(columns={'scene_match_fk': 'total'}) \
+            .groupby(by=['category_fk'], as_index=False) \
+            .count()
+        num_df = self.filter_df(template_df, filters={kpi['a_filter_1']: kpi['a_value_1'].split(',')}) \
+            .rename(columns={'scene_match_fk': 'count'}) \
+            .groupby(by=[CATEGORY_FK, MANUFACTURER_FK], as_index=False) \
+            .count()
+        num_df = num_df.merge(den_df[[CATEGORY_FK, 'total']], how='left', on=[CATEGORY_FK])
 
-        for _, row in cat_man_count.iterrows():
+        num_entity = kpi[NUMERATOR_ENTITY]
+        den_entity = kpi[DENOMINATOR_ENTITY]
+        for _, row in num_df.iterrows():
+            try:
+                result = row['count'] / row['total'] * 100
+            except ZeroDivisionError:
+                result = 0
+
             self.append_results({
-                FK: kpi_id,
-                KPI_NAME: kpi_name,
-                NUMERATOR_ID: row[numerator+'_fk'],
-                NUMERATOR_RESULT: row[numerator+'_count'],
-                DENOMINATOR_ID: row[denominator+'_fk'],
-                DENOMINATOR_RESULT: row[denominator+'_count'],
-                CONTEXT_ID: row.get(context+'_fk'),
-                RESULT: row[numerator+'_count'] / row[denominator+'_count']})
+                FK: None,
+                KPI_NAME: kpi[KPI_NAME],
+                NUMERATOR_ID: row[num_entity],
+                NUMERATOR_RESULT: row['count'],
+                DENOMINATOR_ID: row[den_entity],
+                DENOMINATOR_RESULT: row['total'],
+                CONTEXT_ID: getattr(row, 'Context Entity', None),
+                RESULT: result
+            })
 
     def calculate_share_of_scenes(self, kpi):
         """
@@ -305,7 +319,7 @@ class MilitaryToolBox(GlobalSessionToolBox):
         return self.products[self.products['product_name'].isin(product_names)]['product_fk']  # unique?
 
     @staticmethod
-    def filter_df(df, filters, exclude=False):
+    def filter_df(df, filters, exclude=False, func='isin'):
         """
         Filters `df`` based on `filters`.
 
@@ -315,13 +329,27 @@ class MilitaryToolBox(GlobalSessionToolBox):
         :return: Returns filtered DataFrame.
         """
 
-        for key, val in filters.items():
-            if not hasattr(val, '__iter__') or isinstance(val, str):
-                val = [val]
-            if exclude:
-                df = df[~df[key].isin(val)]
-            else:
-                df = df[df[key].isin(val)]
+        funcs = {
+            'isin': pd.Series.isin,
+            'isna': pd.Series.isna,
+            'notna': pd.Series.notna
+        }
+
+        vert = op.inv if exclude or 'not ' in func else op.pos
+        func = funcs.get(func, func)
+
+
+        if not hasattr(filters, '__iter__') or isinstance(filters, str):
+            filters = [filters]
+
+        for col in filters:
+            try:
+                val = filters.get(col)
+                if not hasattr(val, '__iter__') or isinstance(val, str):
+                    val = [val]
+                df = df[vert(func(df[col], val))]
+            except AttributeError:
+                df = df[vert(func(df[col]))]
         return df
 
     @staticmethod

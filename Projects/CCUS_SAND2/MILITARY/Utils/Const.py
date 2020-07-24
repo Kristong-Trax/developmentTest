@@ -55,7 +55,7 @@ FILTERS = 'filters'
 NUMERATOR = 'numerator'
 DENOMINATOR = 'denominator'
 CONTEXT = 'context'
-KEY_PACKAGE = 'Key Package'
+KEY_PACKAGE = 'KEY PACKAGE'
 TEMPLATE_NAME = 'template_name'
 IDENTIFIER_PARENT = 'identifier_parent'
 IDENTIFIER_RESULT = 'identifier_result'
@@ -67,6 +67,13 @@ KPI_TYPE = 'KPI Type'
 # survey
 PALLET = 'pallet'
 RACK = 'rack'
+SHOULD_ENTER = 'should_enter'
+LOCATION = 'location'
+PRODUCT_TYPE = 'product_type'
+CATEGORY_FK = 'category_fk'
+MANUFACTURER_FK = 'manufacturer_fk'
+NUMERATOR_ENTITY = 'Numerator Entity'
+DENOMINATOR_ENTITY = 'Denominator Entity'
 
 TEMPLATES = {
     MAIN_COOLERS: 'M - Main Checkout Coolers Only',
@@ -153,12 +160,6 @@ KPIs = {
             DENOMINATOR: CATEGORY,
             CONTEXT: ''
         },
-    ],
-    SHARE_OF_SCENES: [
-        {
-            NAME: 'Share of Displays',
-            TEMPLATE: get(TEMPLATES, [DISPLAY, ENDCAP, FRONT_ENTRANCE])
-        }
     ]
 }
 
