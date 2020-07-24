@@ -23,6 +23,7 @@ DISTRIBUTION = 'Distribution'
 COMBO = 'Combo'
 SCORING = 'Scoring'
 DISTRIBUTION_PREREQ = 'Distribution Prereq'
+FINAL_SCORING = 'Final Scoring'
 
 # Column Name
 KPI_NAME = 'KPI Name'
@@ -38,7 +39,7 @@ TEMPLATE_GROUP = 'template_group'
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                              'NayarPuestosFijos2020v1.xlsx')
 
-SHEETS = [KPIS, SOS, POSM_AVAILABILITY, DISTRIBUTION, COMBO, SCORING, DISTRIBUTION_PREREQ]
+SHEETS = [KPIS, SOS, POSM_AVAILABILITY, DISTRIBUTION, COMBO, SCORING, DISTRIBUTION_PREREQ, FINAL_SCORING]
 COLUMNS = ['scene_match_fk', 'scene_fk', TEMPLATE_GROUP, 'template_fk', 'brand_fk', 'brand_name', 'manufacturer_fk',
            'manufacturer_name', 'category_fk', 'category', 'product_type', 'product_fk', 'facings']
 
@@ -69,6 +70,7 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
         self.survey = Survey(self.data_provider, output, ps_data_provider=self.ps_data_provider, common=self.common)
         self.att2 = self.store_info['additional_attribute_2'].iloc[0]
         self.products = self.data_provider[Data.PRODUCTS]
+        self.survey = self.data_provider.survey_responses
         self.results_df = pd.DataFrame(columns=['kpi_name', 'kpi_fk', 'numerator_id', 'numerator_result',
                                                 'denominator_id', 'denominator_result', 'result', 'score',
                                                 'identifier_result', 'identifier_parent', 'should_enter'])
@@ -88,11 +90,14 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
         foundation_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(foundation_kpi_types)]
         scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(['Scoring'])]
         combo_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin(['Combo'])]
+        final_scoring_kpi_template = relevant_kpi_template[relevant_kpi_template[KPI_TYPE].isin([FINAL_SCORING])]
 
 
         self._calculate_kpis_from_template(foundation_kpi_template)
         self._calculate_kpis_from_template(scoring_kpi_template)
         self._calculate_kpis_from_template(combo_kpi_template)
+        self._calculate_kpis_from_template(final_scoring_kpi_template)
+
         self.save_results_to_db()
 
 
@@ -123,9 +128,9 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
                 if isinstance(result_data, dict):
                     weight = row['Score']
                     if weight and pd.notna(weight) and pd.notna(result_data['result']):
-                        if row[KPI_TYPE] == SCORING and 'score' not in result_data.keys():
+                        if row[KPI_TYPE] in [SCORING,FINAL_SCORING] and 'score' not in result_data.keys():
                             result_data['score'] = weight * result_data['result']
-                        elif row[KPI_TYPE] != SCORING:
+                        elif row[KPI_TYPE] not in [SCORING,FINAL_SCORING]:
                             result_data['score'] = weight * result_data['result']
                     parent_kpi_name = self._get_parent_name_from_kpi_name(result_data['kpi_name'])
                     if parent_kpi_name and 'identifier_parent' not in result_data.keys():
@@ -139,9 +144,9 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
                     for result in result_data:
                         weight = row['Score']
                         if weight and pd.notna(weight) and pd.notna(result['result']):
-                            if row[KPI_TYPE] == SCORING and 'score' not in result.keys():
+                            if row[KPI_TYPE] in [SCORING,FINAL_SCORING] and 'score' not in result.keys():
                                 result['score'] = weight * result['result']
-                            elif row[KPI_TYPE] != SCORING:
+                            elif row[KPI_TYPE] not in [SCORING,FINAL_SCORING]:
                                 result['score'] = weight * result['result']
                         parent_kpi_name = self._get_parent_name_from_kpi_name(result['kpi_name'])
                         if parent_kpi_name and 'identifier_parent' not in result.keys():
@@ -163,6 +168,30 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
             return self.calculate_combo
         elif kpi_type == SCORING:
             return self.calculate_scoring
+        elif kpi_type == FINAL_SCORING:
+            return self.calculate_final_scoring
+
+    def calculate_final_scoring(self,row):
+        return_holder = self._get_kpi_name_and_fk(row)
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id': self.own_manufacturer,
+                       'denominator_id': self.store_id, 'result': 0}
+        component_kpis = self.sanitize_values(row['Component KPIs'])
+        relevant_results = self.results_df[self.results_df['kpi_name'].isin(component_kpis)]
+        passing_results = relevant_results[(relevant_results['result'] != 0) &
+                                           (relevant_results['result'].notna()) &
+                                           (relevant_results['score'] != 0)]
+        if row['Component aggregation'] == 'sum':
+            if len(relevant_results) > 0 and len(passing_results) > 0:
+                # result_dict['result'] = float(passing_results.result.sum()) / len(relevant_results)
+                # result_dict['score'] = row.Score * result_dict['result']
+                result_dict['score'] = relevant_results.score.sum()
+                result_dict['result'] = result_dict['score']
+
+            else:
+                result_dict['result'] = 0
+
+        return result_dict
+
 
     def calculate_scoring(self, row):
         return_holder = self._get_kpi_name_and_fk(row)
@@ -176,7 +205,8 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
 
         if row['Component aggregation'] == 'one-passed':
             if len(relevant_results) > 0 and len(passing_results) > 0:
-                result_dict['result'] = 1
+                result_dict['score'] = row.Score * float(passing_results.result.sum())/100
+                result_dict['result'] = result_dict['score']
             else:
                 result_dict['result'] = 0
         elif row['Component aggregation'] == 'max':
@@ -188,18 +218,23 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
                 result_dict['result'] = 0
         elif row['Component aggregation'] == 'sum':
             if len(relevant_results) > 0 and len(passing_results) > 0:
-                result_dict['result'] = float(passing_results.result.sum()) / len(passing_results)
-                result_dict['score'] = row.Score * result_dict['result']
+                score_percentage = float(passing_results.result.sum()) / len(relevant_results)
+                result_dict['score'] = float(row.Score * score_percentage)/100 if score_percentage != 0 else 0
+                result_dict['result'] = result_dict['score']
             else:
                 result_dict['result'] = 0
 
         return result_dict
 
-
-
-
     def calculate_combo(self,row):
-        a = 1
+        return_holder = self._get_kpi_name_and_fk(row)
+        result_dict = {'kpi_name': return_holder[0], 'kpi_fk': return_holder[1], 'numerator_id':self.own_manufacturer, 'denominator_id':self.store_id, 'result':0}
+        relevant_scif = self._filter_df(self.scif, {row.b_filter:row.b_value})
+        if not relevant_scif.empty:
+            relevant_kpis = self.sanitize_values(row.a_value) #Portafolio Frio-Puestos,Comunicacion-Puestos,Puntos de Conexion-Puestos
+            relevant_result = self.results_df[self.results_df.kpi_name.isin(relevant_kpis)]
+            result_dict['result'] = 1 if relevant_result.score.sum() >= row.a_threshold else 0
+        return result_dict
 
     def calculate_posm_availability(self,row):
         return_holder = self._get_kpi_name_and_fk(row)
@@ -243,16 +278,27 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
         max_score_potential = relevant_distribution_prereq['Score'].max()
 
         for index, prereq in relevant_distribution_prereq.iterrows():
-            relevant_a_df = self._filter_df(self.scif, {prereq.a_filter_1:prereq.a_value_1, prereq.a_filter_2:prereq.a_value_2})
-            relevant_b_df = self._filter_df(self.scif, {prereq.b_filter: np.array(self.sanitize_values(prereq.b_value)).astype(int).tolist()})
+            relevant_scif = self.scif[self.scif.template_group.str.encode('utf-8') == prereq.template_group.encode('utf-8')]
+            relevant_a_df = self._filter_df(relevant_scif, {prereq.a_filter_1:prereq.a_value_1, prereq.a_filter_2:prereq.a_value_2})
+            relevant_b_df = self._filter_df(relevant_scif, {prereq.b_filter: np.array(self.sanitize_values(prereq.b_value)).astype(int).tolist()})
 
             if not relevant_a_df.empty and not relevant_b_df.empty:
                 unique_sub_category_fk_in_b_df = relevant_b_df[prereq.b_filter].unique()
                 result_dict['numerator_result'] = len(unique_sub_category_fk_in_b_df)
                 if len(unique_sub_category_fk_in_b_df) >= prereq.b_threshold_1:
                     result_dict['result'] = float(prereq.Score) / max_score_potential
-                    # result_dict['score'] = result_dict['result'] * prereq.Score
+                    result_dict['score'] = prereq.Score
                     break
+            else:
+                mandatory_survey_result = self.get_relevant_survey_result(self.survey, [prereq.mandatory_survey_question_fk])
+                if mandatory_survey_result:
+                    additional_survey_question_fks = np.array(self.sanitize_values(prereq.additional_survey_question_fk)).astype(int)
+                    additional_survey_result = self.get_relevant_survey_result(self.survey, additional_survey_question_fks)
+                    if additional_survey_result >= prereq.additional_survey_question_requirement_pass:
+                        result_dict['result'] = float(prereq.Score) / max_score_potential
+                        result_dict['score'] = prereq.Score
+                        break
+
         return result_dict
 
 
@@ -316,6 +362,21 @@ class PuestosFijosToolBox(GlobalSessionToolBox):
         else:
             result = False
         return result
+
+    @staticmethod
+    def get_relevant_survey_result(survey_response_df,relevant_question_fk):
+        result = 0
+        if survey_response_df.empty:
+            return 0
+        accepted_results = ['Si', 1, u'1', u'Si']
+        for question_fk in relevant_question_fk:
+            relevant_survey_response = survey_response_df[survey_response_df['question_fk'].isin([question_fk])]
+            if not relevant_survey_response.empty:
+                survey_answer = relevant_survey_response.loc[:,'selected_option_text'].iat[0]
+                if survey_answer in accepted_results:
+                    result = result + 1
+        return result
+
 
 
 
