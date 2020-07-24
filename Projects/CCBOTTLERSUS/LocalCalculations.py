@@ -50,6 +50,10 @@ if __name__ == '__main__':
         '826ace9e-abec-4660-9b65-96d7a4604bf8',  # Contact Center
     ]
 
+    sessions = [
+        'fd4b1898-618c-4c74-a0f9-f8d2e12c2bd9'
+    ]
+
     for session in sessions:
         print('***********************************************************************************')
         print('_______________________ {} ____________________'.format(session))
