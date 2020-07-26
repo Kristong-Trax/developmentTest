@@ -402,15 +402,17 @@ class GSKRUToolBox:
                     core_range_target = self.core_range_targets[sub_category_fk]
                     cra_priority = round(subcat_size * core_range_target if core_range_target else 0)
 
-                    cra_size_target = cra_priority
-                    cra_size_actual = len(df[(df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk) &
-                                             (df['priority'] <= cra_priority)]['priority'].unique().tolist())
-
                     cra_products_target = targets[(targets['sub_category_fk'] == sub_category_fk) &
-                                                  (targets['priority'] <= cra_priority)][['product_fk', 'priority']]
+                                                  (targets['priority'] <= cra_priority)][
+                        ['product_fk', 'priority']]
                     cra_products_actual = df[(df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk) &
                                              (df['priority'] <= cra_priority)][
                         [ScifConsts.PRODUCT_FK, facings_column]]
+
+                    cra_size_target = len(targets[(targets['sub_category_fk'] == sub_category_fk) &
+                                                  (targets['priority'] <= cra_priority)]['priority'].unique().tolist())
+                    cra_size_actual = len(df[(df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk) &
+                                             (df['priority'] <= cra_priority)]['priority'].unique().tolist())
 
                     if cra_size_target == 0:
                         numerator_result = denominator_result = result = score = 0
