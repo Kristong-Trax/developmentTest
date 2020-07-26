@@ -51,11 +51,16 @@ class GSKRUToolBox:
         self.store_format = self.ps_data_provider.session_info.additional_attribute_12.encode('utf-8')
         self.retailer_fk = self.ps_data_provider.session_info.retailer_fk
 
-        # self.kpi_results_queries = []
-        self.set_up_data = LocalConsts.SET_UP_DATA
         self.set_up_template = None
         self.gsk_generator = None
         self.core_range_targets = {}
+
+        self.set_up_data = LocalConsts.SET_UP_DATA
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                          'gsk_set_up.xlsx'),
+                                             sheet_name='Functional KPIs All Store',
+                                             keep_default_na=False)
+        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
     def main_calculation(self, *args, **kwargs):
         """
@@ -65,12 +70,6 @@ class GSKRUToolBox:
         # Global KPIs
 
         # All Store KPIs
-        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                                                          'gsk_set_up.xlsx'),
-                                             sheet_name='Functional KPIs All Store',
-                                             keep_default_na=False)
-        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
-
         assortment_store_dict = self.gsk_generator.availability_store_function(
             custom_suffix='_Stacking_Included')
         self.common.save_json_to_new_tables(assortment_store_dict)
@@ -108,11 +107,15 @@ class GSKRUToolBox:
         self.common.save_json_to_new_tables(linear_sos_dict)
 
         # Main Shelf KPIs
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                                           'gsk_set_up.xlsx'),
                                              sheet_name='Functional KPIs Main Shelf',
                                              keep_default_na=False)
-        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+        self.gsk_generator.set_up_file = self.set_up_template
+        self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
+        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
             custom_suffix='_Stacking_Included_Main_Shelf',
@@ -142,11 +145,15 @@ class GSKRUToolBox:
         self.common.save_json_to_new_tables(linear_sos_dict)
 
         # Secondary Shelf KPIs
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                                           'gsk_set_up.xlsx'),
                                              sheet_name='Functional KPIs Secondary Shelf',
                                              keep_default_na=False)
-        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+        self.gsk_generator.set_up_file = self.set_up_template
+        self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
+        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
             custom_suffix='_Stacking_Included_Secondary_Shelf',
@@ -176,11 +183,15 @@ class GSKRUToolBox:
         self.common.save_json_to_new_tables(linear_sos_dict)
 
         # Local KPIs
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                                           'gsk_set_up.xlsx'),
                                              sheet_name='Functional KPIs Local',
                                              keep_default_na=False)
-        self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+        self.gsk_generator.set_up_file = self.set_up_template
+        self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
+        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         # SOA
         soa_dict = self.gsk_soa_function()
@@ -214,9 +225,10 @@ class GSKRUToolBox:
         identifier_external = self.common.get_dictionary(manufacturer_fk=self.own_manufacturer_id,
                                                          kpi_fk=kpi_soa_manufacturer_external_target_fk)
 
-        targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[kpi_soa_fk],
-                                                                 key_filters={'store_type': self.store_type,
-                                                                              'retailer_fk': self.retailer_fk})
+        targets = \
+            self.ps_data_provider.get_kpi_external_targets(kpi_fks=[kpi_soa_fk],
+                                                           key_filters={'additional_attribute_12': self.store_format,
+                                                                        'retailer_fk': self.retailer_fk})
 
         if targets.empty:
             Log.warning('No SOA targets defined for this session')
@@ -290,7 +302,7 @@ class GSKRUToolBox:
                 else 0
 
             target = targets[targets['sub_category_fk'].isnull()]['internal_target'].values
-            target = float(target[0]) if target else None
+            target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
                 score = 1 if result >= target else 0
@@ -309,7 +321,7 @@ class GSKRUToolBox:
                  'should_enter': True})
 
             target = targets[targets['sub_category_fk'].isnull()]['external_target'].values
-            target = float(target[0]) if target else None
+            target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
                 score = 1 if result >= target else 0
@@ -348,9 +360,10 @@ class GSKRUToolBox:
         total_cra_size_target = 0
         total_cra_size_actual = 0
 
-        targets = self.ps_data_provider.get_kpi_external_targets(kpi_fks=[kpi_cra_fk],
-                                                                 key_filters={'store_type': self.store_type,
-                                                                              'retailer_fk': self.retailer_fk})
+        targets = \
+            self.ps_data_provider.get_kpi_external_targets(kpi_fks=[kpi_cra_fk],
+                                                           key_filters={'additional_attribute_12': self.store_format,
+                                                                        'retailer_fk': self.retailer_fk})
 
         if targets.empty:
             Log.warning('No CRA targets defined for this session')
@@ -374,7 +387,7 @@ class GSKRUToolBox:
                          'P' + str(r['priority']) if pd.notnull(r['priority']) else 'N' + str(r['product_fk']), axis=1)
 
             # Sub-Category
-            target_subcat_fks = targets['sub_category_fk'].unique().tolist()
+            target_subcat_fks = set(targets['sub_category_fk'].unique().tolist()) & set(self.core_range_targets.keys())
             for sub_category_fk in target_subcat_fks:
 
                 identifier_subcat = self.common.get_dictionary(manufacturer_fk=self.own_manufacturer_id,
@@ -386,30 +399,36 @@ class GSKRUToolBox:
                 else:
                     subcat_size = len(df[df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk][
                                           'unique_product_id'].unique().tolist())
-                    cra_priority = round(subcat_size * self.core_range_targets[sub_category_fk])
+                    core_range_target = self.core_range_targets[sub_category_fk]
+                    cra_priority = round(subcat_size * core_range_target if core_range_target else 0)
+
                     cra_size_target = cra_priority
-                    # cra_size_target = len(targets[(targets['sub_category_fk'] == sub_category_fk) &
-                    #                               (targets['priority'] <= cra_priority)]['priority'].unique().tolist())
                     cra_size_actual = len(df[(df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk) &
                                              (df['priority'] <= cra_priority)]['priority'].unique().tolist())
-                    cra_products = df[(df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk) &
-                                      (df['priority'] <= cra_priority)][
-                        [ScifConsts.PRODUCT_FK, facings_column, 'priority']]
+
+                    cra_products_target = targets[(targets['sub_category_fk'] == sub_category_fk) &
+                                                  (targets['priority'] <= cra_priority)][['product_fk', 'priority']]
+                    cra_products_actual = df[(df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk) &
+                                             (df['priority'] <= cra_priority)][
+                        [ScifConsts.PRODUCT_FK, facings_column]]
 
                     if cra_size_target == 0:
                         numerator_result = denominator_result = result = score = 0
                     else:
 
                         # Product
-                        for i, product in cra_products.iterrows():
+                        for i, product in cra_products_target.iterrows():
 
-                            numerator_result = product[facings_column]
+                            numerator_result = \
+                                cra_products_actual[cra_products_actual[ScifConsts.PRODUCT_FK] ==
+                                                    product['product_fk']][facings_column].sum()
                             denominator_result = product['priority']
-                            score = result = 1
+                            result = 1 if numerator_result else 0
+                            score = result
 
                             results.append(
                                 {'fk': kpi_cra_subcat_by_product_fk,
-                                 SessionResultsConsts.NUMERATOR_ID: product[ScifConsts.PRODUCT_FK],
+                                 SessionResultsConsts.NUMERATOR_ID: product['product_fk'],
                                  SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
                                  SessionResultsConsts.DENOMINATOR_ID: self.own_manufacturer_id,
                                  SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
