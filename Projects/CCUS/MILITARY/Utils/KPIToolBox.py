@@ -17,10 +17,11 @@ __author__ = 'trevaris'
 
 PATH = os.path.dirname(__file__)
 SHEETS = [KPI, SCENE_AVAILABILITY, COMPLIANT_BAY_COUNT, FACINGS_SOS, SHARE_OF_SCENES]
-MPIS_COLUMNS = [SCENE_MATCH_FK,  TEMPLATE_FK, TEMPLATE_NAME, SCENE_FK, LOCATION, BAY_NUMBER, MANUFACTURER_FK,
-                BRAND_FK, PRODUCT_FK, PRODUCT_TYPE, 'size', 'category_fk', FACINGS, 'SKUs', KEY_PACKAGE,
+MPIS_COLUMNS = [SCENE_MATCH_FK,  TEMPLATE_FK, TEMPLATE_NAME, SCENE_FK, LOCATION_FK, LOCATION, BAY_NUMBER,
+                MANUFACTURER_FK, BRAND_FK, PRODUCT_FK, PRODUCT_TYPE, 'size', CATEGORY_FK, FACINGS, 'SKUs', KEY_PACKAGE,
                 'survey_question_fk', 'question_text', 'scene_survey_response']
-
+RESULTS_COLUMNS = [FK, KPI_NAME, SCENE_FK, NUMERATOR_ID, NUMERATOR_RESULT, DENOMINATOR_ID, DENOMINATOR_RESULT,
+                   CONTEXT_ID, RESULT, IDENTIFIER_RESULT, IDENTIFIER_PARENT, SHOULD_ENTER]
 LOGIC = {
     '': op.pos,
     'AND': op.and_,
@@ -36,8 +37,8 @@ class MilitaryToolBox(GlobalSessionToolBox):
         self.own_manufacturer = self.data_provider[Data.OWN_MANUFACTURER].iloc[0]['param_value']
         self.products = data_provider[Data.PRODUCTS]
 
-        store_areas = self.ps_data_provider.get_store_area_df() \
-            .rename(columns={"store_area_name": LOCATION})
+        self.store_areas = self.get_store_area_df() \
+            .rename(columns={"store_area_name": LOCATION, 'store_area_fk': 'location_fk'})
         key_packages = self.scif[[PRODUCT_FK, KEY_PACKAGE]] \
             .drop_duplicates()
         product_facings = self.scif[[SCENE_FK, 'location_type_fk', PRODUCT_FK, FACINGS, 'facings_ign_stack']] \
@@ -50,7 +51,7 @@ class MilitaryToolBox(GlobalSessionToolBox):
                 .merge(self.products, how='left', on=PRODUCT_FK, suffixes=['', '_p']) \
                 .merge(self.scene_info, how='left', on=SCENE_FK, suffixes=['', '_s']) \
                 .merge(self.templates, how='left', on=TEMPLATE_FK, suffixes=['', '_t']) \
-                .merge(store_areas, how='left', on=SCENE_FK, suffixes=['', '_sa']) \
+                .merge(self.store_areas, how='left', on=SCENE_FK, suffixes=['', '_sa']) \
                 .merge(key_packages, how='left', on=PRODUCT_FK, suffixes=['', '_kp']) \
                 .merge(product_facings, how='left', on=[SCENE_FK, PRODUCT_FK], suffixes=['', '_pf']) \
                 .merge(survey_response, how='left', on=SCENE_FK, suffixes=['', '_sr'])[MPIS_COLUMNS]
@@ -60,8 +61,9 @@ class MilitaryToolBox(GlobalSessionToolBox):
 
         self.kpi_templates = self.get_kpi_template(PATH, 'Data')
         self.results_df = pd.DataFrame(
-            columns=[FK, KPI_NAME, SCENE_FK, NUMERATOR_ID, NUMERATOR_RESULT, DENOMINATOR_ID, DENOMINATOR_RESULT, RESULT,
-                     IDENTIFIER_RESULT, IDENTIFIER_PARENT, SHOULD_ENTER])
+            columns=RESULTS_COLUMNS)
+        self.scene_availability_df = pd.DataFrame(
+            columns=RESULTS_COLUMNS)
 
         self.calculations = {
             COMPLIANT_BAY_COUNT: self.calculate_compliant_bay,
@@ -125,7 +127,7 @@ class MilitaryToolBox(GlobalSessionToolBox):
         scenes = filtered_df[SCENE_FK].unique()
         for scene in scenes:
             if pd.notna(kpi[KPI_PARENT_ID]):
-                parent = self.filter_df(self.results_df,
+                parent = self.filter_df(self.scene_availability_df,
                                         filters={IDENTIFIER_RESULT: kpi[KPI_PARENT_ID], SCENE_FK: scene})[RESULT].any()
                 if not parent:
                     continue
@@ -161,8 +163,8 @@ class MilitaryToolBox(GlobalSessionToolBox):
                     FK: None,
                     KPI_NAME: kpi[KPI_NAME],
                     SCENE_FK: scene,
-                    NUMERATOR_ID: scene_df.iloc[0][LOCATION],
-                    NUMERATOR_RESULT: self.get_scene_location(scene),
+                    NUMERATOR_ID: self.get_store_area_fk_by_scene(scene),
+                    NUMERATOR_RESULT: self.get_scene_location(scene),  # scene_df.iloc[0][LOCATION]
                     DENOMINATOR_ID: self.store_id,
                     DENOMINATOR_RESULT: scene,
                     RESULT: int(result),
@@ -183,7 +185,7 @@ class MilitaryToolBox(GlobalSessionToolBox):
                     IDENTIFIER_RESULT: kpi[KPI_ID],
                     IDENTIFIER_PARENT: kpi[KPI_PARENT_ID],
                     SHOULD_ENTER: True
-                })
+                }, scene_availability=True)
 
     def calculate_facings_sos(self, kpi):
         """
@@ -194,19 +196,20 @@ class MilitaryToolBox(GlobalSessionToolBox):
         template_df = self.filter_df(self.mpis, filters={TEMPLATE_NAME: templates})
         den_df = self.filter_df(template_df, filters={kpi['b_filter_1']: kpi['b_value_1'].split(',')}) \
             .rename(columns={'scene_match_fk': 'total'}) \
-            .groupby(by=['category_fk'], as_index=False) \
+            .groupby(by=[CATEGORY_FK], as_index=False) \
             .count()
         num_df = self.filter_df(template_df, filters={kpi['a_filter_1']: kpi['a_value_1'].split(',')}) \
-            .rename(columns={'scene_match_fk': 'count'}) \
+            .rename(columns={SCENE_MATCH_FK: COUNT}) \
             .groupby(by=[CATEGORY_FK, MANUFACTURER_FK], as_index=False) \
             .count()
-        num_df = num_df.merge(den_df[[CATEGORY_FK, 'total']], how='left', on=[CATEGORY_FK])
+        num_df = num_df.merge(den_df[[CATEGORY_FK, TOTAL]], how='left', on=[CATEGORY_FK])
 
         num_entity = kpi[NUMERATOR_ENTITY]
         den_entity = kpi[DENOMINATOR_ENTITY]
+        context_entity = kpi[CONTEXT_ENTITY]
         for _, row in num_df.iterrows():
             try:
-                result = row['count'] / row['total'] * 100
+                result = row[COUNT] / row[TOTAL] * 100
             except ZeroDivisionError:
                 result = 0
 
@@ -214,10 +217,10 @@ class MilitaryToolBox(GlobalSessionToolBox):
                 FK: None,
                 KPI_NAME: kpi[KPI_NAME],
                 NUMERATOR_ID: row[num_entity],
-                NUMERATOR_RESULT: row['count'],
+                NUMERATOR_RESULT: row[COUNT],
                 DENOMINATOR_ID: row[den_entity],
-                DENOMINATOR_RESULT: row['total'],
-                CONTEXT_ID: getattr(row, 'Context Entity', None),
+                DENOMINATOR_RESULT: row[TOTAL],
+                CONTEXT_ID: getattr(row, str(context_entity), None),
                 RESULT: result
             })
 
@@ -307,6 +310,24 @@ class MilitaryToolBox(GlobalSessionToolBox):
 
         return kpi_templates
 
+    def get_store_area_df(self):
+        query = """
+            SELECT scene_fk, store_task_area_group_item_fk, name 
+            FROM probedata.scene_store_task_area_group_items AS scene_areas
+            LEFT JOIN probedata.scene ON scene.pk = scene_areas.scene_fk
+            LEFT JOIN static.store_task_area_group_items AS store_areas
+            ON store_areas.pk = scene_areas.store_task_area_group_item_fk
+            WHERE scene.session_uid = '{}';""".format(self.session_uid)
+        cur = self.ps_data_provider.rds_conn.db.cursor()
+        cur.execute(query)
+        res = cur.fetchall()
+        df = pd.DataFrame(list(res), columns=[SCENE_FK, 'store_area_fk', 'store_area_name'])
+        return df
+
+    def get_store_area_fk_by_scene(self, scene):
+        store_area_fk = self.filter_df(self.store_areas, filters={SCENE_FK: scene}).iloc[0][LOCATION_FK]
+        return store_area_fk
+
     @staticmethod
     def sanitize(data, separator=","):
         sanitized = data
@@ -322,21 +343,30 @@ class MilitaryToolBox(GlobalSessionToolBox):
 
         return sanitized
 
-    def append_results(self, results):
+    def append_results(self, results, scene_availability=False):
         """
         Organizes `results` according to the columns in `results_df` then appends them.
 
         :param results: Dictionary containing column-value pairs to add to results DataFrame.
+        :param scene_availability: If True, appends `results` to self.scene_availability_df.
         """
 
+        df = self.scene_availability_df if scene_availability else self.results_df
+
         if isinstance(results, dict):
-            results = [results.get(col) for col in self.results_df.columns]
-        self.results_df.loc[self.results_df.shape[0], self.results_df.columns.tolist()] = results
+            results = [results.get(col) for col in df.columns]
+        df.loc[df.shape[0], df.columns.tolist()] = results
 
     def save_results(self):
         """
         Writes results to database.
         """
+
+        self.scene_availability_df[FK] = self.scene_availability_df.apply(lambda row: self.get_kpi_fk_by_kpi_name(row[KPI_NAME]), axis=1)
+        scene_availability_dfs = [kpi[1] for kpi in list(self.scene_availability_df.groupby(by=FK, as_index=False))]
+        scene_availability_dfs = [df.groupby(by=[FK, NUMERATOR_ID, DENOMINATOR_ID, SHOULD_ENTER], as_index=False).agg(lambda x: 1 if any(x) else 0) for df in scene_availability_dfs]
+        for df in scene_availability_dfs:
+            self.write_to_db(**df.iloc[0].to_dict())
 
         for _, result in self.results_df.iterrows():
             result[FK] = self.common.get_kpi_fk_by_kpi_name(result[KPI_NAME])

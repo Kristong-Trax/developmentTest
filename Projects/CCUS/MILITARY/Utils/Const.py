@@ -61,14 +61,50 @@ KPI_PARENT_ID = 'KPI Parent ID'
 KPI = 'KPI'
 KPI_TYPE = 'KPI Type'
 SHOULD_ENTER = 'should_enter'
+LOCATION_FK = 'location_fk'
 LOCATION = 'location'
 PRODUCT_TYPE = 'product_type'
 CATEGORY_FK = 'category_fk'
 MANUFACTURER_FK = 'manufacturer_fk'
 NUMERATOR_ENTITY = 'Numerator Entity'
 DENOMINATOR_ENTITY = 'Denominator Entity'
+CONTEXT_ENTITY = 'Context Entity'
 BAY_NUMBER = 'bay_number'
 SCENE_MATCH_FK = 'scene_match_fk'
 COUNT = 'count'
 REGION = 'Military'
 BRAND_FK = 'brand_fk'
+TOTAL = 'total'
+
+# sub-optimal
+store_task_area_group_items = {
+    1: 'Regular checkouts',
+    2: 'Self-service checkouts',
+    3: 'Main Aisle/ Primary Shelf',
+    4: 'Main Aisle area',
+    5: 'Entry/Lobby',
+    6: 'Cooler zone/ cold vault',
+    7: 'Outside',
+    8: 'Front perimeter',
+    9: 'Rear perimeter',
+    10: 'Right perimeter',
+    11: 'Left perimeter',
+    12: 'Deli',
+    13: 'Bakery',
+    14: 'Dairy',
+    15: 'Pharmacy',
+    16: 'Food and beverage prep area',
+    17: 'Seasonal/Promotional',
+    18: 'Produce',
+    19: 'Electronic/Gaming',
+    20: 'Meat/Poultry/Seafood',
+    21: 'Sporting Goods',
+    22: 'Frozen',
+    23: 'Organic',
+    24: 'Other',
+    25: 'Front endcap',
+    26: 'Rear endcap',
+    27: 'Mid endcap',
+    28: 'Discount area',
+    29: 'Express checkout'
+}

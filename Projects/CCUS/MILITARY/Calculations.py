@@ -9,10 +9,10 @@ from Projects.CCUS.MILITARY.KPIGenerator import MilitaryGenerator
 __author__ = "trevaris"
 
 test_sessions = [
+    '7cd9609e-40cb-48fe-aade-04470bbcd082',
     'ecf47463-bf81-43da-8078-6d9c5caa074c',
     '97304f07-2ac1-4f1a-bb08-a57ca625aaa6',
     '92945c9b-ec85-404b-a7c8-dc5fcb3b7180',
-    '7cd9609e-40cb-48fe-aade-04470bbcd082',
 ]
 
 
