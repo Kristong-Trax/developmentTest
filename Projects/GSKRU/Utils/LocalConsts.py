@@ -14,7 +14,7 @@ class Consts(object):
                  {'product_ean_code': [],
                   'brand_name': [],
                   'manufacturer_name': ['GSK'],
-                  'sub_category': ['***SKPI***'],
+                  'sub_category': ['***SKIP***'],
                   'category': []},
              'ff_threshold': 0.5,  # ratio between width and height (min/max)
              'ff_factor_horizontal': 1,  # fractional factor to apply to the number of facings
