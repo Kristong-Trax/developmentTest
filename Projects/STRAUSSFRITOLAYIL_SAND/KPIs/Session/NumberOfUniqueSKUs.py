@@ -46,7 +46,7 @@ class NumberOfUniqueSKUsKpi(UnifiedCalculationsScript):
             ratio = self.utils.calculate_sos_result(number_of_unique_skus, upper_target)
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk, denominator_id=self.utils.store_id,
                                 numerator_result=sadot, denominator_result=denominator, result=number_of_unique_skus,
-                                target=target, weight=ratio, score=score)
+                                target=upper_target, weight=ratio, score=score)
 
     @staticmethod
     def get_target(fields_df, sadot):
