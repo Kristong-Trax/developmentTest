@@ -1,10 +1,10 @@
 from Projects.PNGJP_SAND2.KPIS.BlockGoldenUtil import PNGJP_SAND2BlockGoldenUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from Trax.Utils.Logging.Logger import Log
+import pandas as pd
 
 
 class GoldenZoneComplianceByScene(UnifiedCalculationsScript):
-
     PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE = 'PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE'
     KPI_TYPE_COL = 'type'
 
@@ -58,8 +58,14 @@ class GoldenZoneComplianceByScene(UnifiedCalculationsScript):
             return False
         else:
             # target_shelf_config_keys => '1_5_shelf, 6_7_shelf, above_12_shelf etc'
+            # merge block_targets with ext_targets
+            goldenzone_targets = goldenzone_targets.merge(self.util.external_targets,
+                                                          left_on=['KPI Name', 'Product Group Name'],
+                                                          right_on=["kpi_type", "Product_Group_Name"],
+                                                          how="left",
+                                                          suffixes=['', '_y'])
             for idx, each_target in goldenzone_targets.iterrows():
-
+                context_fk = 0 if pd.isnull(each_target.pk) else each_target.pk
                 product_group_df = self.util.custom_entity_data[
                     self.util.custom_entity_data['pk'].isin(each_target.product_group_name_fks)
                 ]
@@ -172,6 +178,7 @@ class GoldenZoneComplianceByScene(UnifiedCalculationsScript):
                     fk=kpi_details.iloc[0].pk,
                     numerator_id=product_group_fk,
                     denominator_id=current_template_fk,
+                    context_id=context_fk,
                     numerator_result=numerator,
                     denominator_result=denominator,
                     result=result,
