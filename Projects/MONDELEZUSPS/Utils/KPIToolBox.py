@@ -66,8 +66,10 @@ class ToolBox(GlobalSessionToolBox):
         self.merged_scif_mpis = self.match_product_in_scene.merge(self.scif, how='left',
                                                                   left_on=['scene_fk', 'product_fk'],
                                                                   right_on=['scene_fk', 'product_fk'])
+        self.merged_scif_mpis = self.merged_scif_mpis.rename(columns = {'Sub PPG':'Sub_PPG'})
         self.gold_zone_scene_location_kpi = ['Lobby/Entrance', 'Main Alley/Hot Zone', 'Gold Zone End Cap',
                                              'Lobby/Main Entrance']
+        self.kpi_entity_type_df = self.get_kpi_entity_type_fk()
         self.custom_entity_table = self.get_kpi_custom_entity_table()
         self.final_custom_entity_table = self.custom_entity_table.copy()
         self.store_area = self.get_store_area_df()
@@ -97,7 +99,7 @@ class ToolBox(GlobalSessionToolBox):
     def main_calculation(self):
         # Consts.SHARE_OF_SCENES, Consts.SCENE_LOCATION, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION
         relevant_kpi_types = [Consts.SHARE_OF_SCENES, Consts.SHELF_POSITION, Consts.BLOCKING, Consts.BAY_POSITION, Consts.DISTRIBUTION, Consts.DIAMOND_POSITION]
-        # relevant_kpi_types = [Consts.DISTRIBUTION]
+        # relevant_kpi_types = [Consts.BLOCKING]
         targets = self.targets[(self.targets[Consts.KPI_TYPE].isin(relevant_kpi_types)) & (
             self.targets[Consts.GRANULAR_GROUP_NAME].isnull())]
 
@@ -658,7 +660,7 @@ class ToolBox(GlobalSessionToolBox):
                 scene_relevant_df = self._filter_df(relevant_df, {'scene_fk': unique_scene_fk})
                 location = {Consts.SCENE_FK: unique_scene_fk}
                 for unique_numerator_id in set(scene_relevant_df[numerator_type]):
-                    relevant_filter = {numerator_type: [unique_numerator_id]}
+                    relevant_filter = {numerator_type: [unique_numerator_id]} if numerator_type != 'Sub_PPG' else {'Sub PPG': [unique_numerator_id]}
                     block = self.block.network_x_block_together(population=relevant_filter, location=location,
                                                                 additional={'calculate_all_scenes': False,
                                                                             'use_masking_only': True,
@@ -817,9 +819,8 @@ class ToolBox(GlobalSessionToolBox):
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
-    def get_kpi_entity_type_fk(self, numerator_type):
-        query = """select pk, name, table_name from static.kpi_entity_type 
-                    where name = '{}';""".format(numerator_type)
+    def get_kpi_entity_type_fk(self):
+        query = """select pk, name from static.kpi_entity_type ;"""
         df = pd.read_sql_query(query, self.rds_conn.db)
         return df
 
@@ -915,7 +916,8 @@ class ToolBox(GlobalSessionToolBox):
         '''
 
         # performs a query on static.kpi_entity_type table and then gets the relevant custom entity fk
-        relevant_entity_type_fk = self.get_kpi_entity_type_fk(numerator_type).loc[0, 'pk']
+        # relevant_entity_type_fk = self.get_kpi_entity_type_fk(numerator_type).loc[0, 'pk']
+        relevant_entity_type_fk = self.kpi_entity_type_df[self.kpi_entity_type_df.name == numerator_type].iloc[0]['pk']
         if self.final_custom_entity_table.empty:
             final_numerator_id = 1
             self.final_custom_entity_table.loc[final_numerator_id, self.final_custom_entity_table.columns] = [
