@@ -36,14 +36,25 @@ class SKUFacingsbySceneKpi(UnifiedCalculationsScript):
                     result_df = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SHELF_NUMBER,
                                                  MatchesConsts.BAY_NUMBER], as_index=False).agg({'count': np.sum})
                     result_df = result_df.merge(max_shelf, on=MatchesConsts.BAY_NUMBER, how='left')
+
+                total_sku_in_bay_shelf = result_df.groupby(
+                    [MatchesConsts.BAY_NUMBER, MatchesConsts.SHELF_NUMBER])['count'].sum().to_dict()
                 for i, row in result_df.iterrows():
                     bay_shelf_comb_fk = self.util.get_context_fk_from_custom_entity(
                         bay_no=row[MatchesConsts.BAY_NUMBER],
                         shelf_no=row[MatchesConsts.SHELF_NUMBER]
+                    )
+                    target = total_sku_in_bay_shelf.get(
+                        (row[MatchesConsts.BAY_NUMBER], row[MatchesConsts.SHELF_NUMBER]), 0)
+                    weight = self.util.get_product_position_code(
+                        product_fk=row[MatchesConsts.PRODUCT_FK],
+                        shelf_number=row[MatchesConsts.SHELF_NUMBER]
                     )
                     self.write_to_db_result(fk=kpi_fk, numerator_id=row[MatchesConsts.PRODUCT_FK],
                                             numerator_result=row[MatchesConsts.BAY_NUMBER],
                                             denominator_id=template_fk,
                                             denominator_result=row[MatchesConsts.SHELF_NUMBER],
                                             context_id=bay_shelf_comb_fk,
-                                            result=row['count'], score=row[self.util.MAX_SHELF], by_scene=True)
+                                            result=row['count'], score=row[self.util.MAX_SHELF], by_scene=True,
+                                            target=target,
+                                            weight=weight)

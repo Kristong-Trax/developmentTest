@@ -7,6 +7,11 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Configuration import Config
 from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
 from collections import defaultdict, OrderedDict
+from Trax.Algo.Calculations.Core.DataProvider import Data
+from KPIUtils_v2.DB.CommonV2 import Common
+from datetime import datetime, timedelta
+import json
+from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 
 
 class PNGJPTemplateParser(object):
@@ -30,6 +35,8 @@ class PNGJPTemplateParser(object):
         self.golden_zone_config = self.load_sheet("Golden Zone")
         self.load_data_from_db()
         self.preprocess_all_sheets()
+        self.sync = SyncTemplateWithExternalTargets(data_provider, rds_conn, self.get_targets())
+        self.sync.execute()
 
     def load_sheet(self, sheet_name):
         df = pd.read_excel(self.filename, sheet_name=sheet_name)
@@ -177,15 +184,240 @@ class PNGJPTemplateParser(object):
     def get_custom_entity(self):
         return self.custom_entity
 
+    def get_external_targets(self):
+        df = pd.DataFrame()
+        try:
+            df = self.sync.get_all_kpi_external_targets()
+            df = self.sync.post_process_ext_targets(df)
+        except Exception as e:
+            print("Failed {}".format(e))
+        return df
 
+
+class SyncTemplateWithExternalTargets(object):
+
+    def __init__(self, data_provider, rds_conn, targets_from_template):
+        self.data_provider = data_provider
+        self.common = Common(self.data_provider)
+        self.rds_conn = rds_conn
+        self.visit_date = self.data_provider[Data.VISIT_DATE]
+        self.all_products = data_provider['all_products']
+        self.targets_from_template = targets_from_template
+        self.ext_targets = self.get_all_kpi_external_targets()
+        self.ext_targets = self.post_process_ext_targets(self.ext_targets)
+        self.session_uid = self.data_provider.session_uid
+        self.is_old_visit = self.check_if_the_current_session_has_json()
+
+    def check_if_the_current_session_has_json(self):
+        query = "select * from probedata.analysis_results where session_uid = '{}'".format(self.session_uid)
+        df = pd.read_sql_query(query, self.rds_conn.db)
+        if len(df) > 0:
+            return True
+        else:
+            return False
+
+    def population_filter_to_ean_codes(self, targets):
+        current_ean_codes = pd.DataFrame()
+        for idx, each_target in targets.iterrows():
+            boolean_masks = []
+            population_filters = each_target.population_filter
+            for column_name, values in population_filters.items():
+                boolean_masks.append(
+                    self.all_products[column_name].isin(values)
+                    # self.match_product_data[column_name].isin(values)
+                )
+            population_filter_final_mask = reduce(lambda x, y: x & y, boolean_masks)
+            ean_codes = self.all_products[population_filter_final_mask]['product_ean_code'].unique()
+            record = {
+                "KPI_NAME": each_target['KPI Name'],
+                "Product_Group_Name": each_target['Product Group Name'],
+                "Population_Filter": population_filters,
+                "entities": ean_codes
+            }
+            current_ean_codes = current_ean_codes.append(record, ignore_index=True)
+        return current_ean_codes
+
+    @staticmethod
+    def get_kpi_external_targets(visit_date):
+        operation_type = 'config'
+        return """SELECT ext.*, ot.operation_type, kpi.type as kpi_type
+        FROM static.kpi_external_targets ext
+        LEFT JOIN static.kpi_operation_type ot on ext.kpi_operation_type_fk=ot.pk
+        LEFT JOIN static.kpi_level_2 kpi on ext.kpi_level_2_fk = kpi.pk
+        WHERE ot.operation_type = '{}' 
+        AND ( (ext.start_date<='{}' and ext.end_date is null) or  (ext.start_date<='{}' and ext.end_date>='{}'));
+        """.format(operation_type, visit_date, visit_date, visit_date)
+
+    def get_all_kpi_external_targets(self):
+        query = self.get_kpi_external_targets(self.visit_date)
+        external_targets = pd.read_sql_query(query, self.rds_conn.db)
+        return external_targets
+
+    def post_process_ext_targets(self, ext_targets):
+        ext_targets['Config Name'] = ext_targets['key_json'].apply(
+            lambda x: json.loads(x).get("Config Name", ""))
+        ext_targets['Product_Group_Name'] = ext_targets['Config Name']
+        ext_targets['entities'] = ext_targets['data_json'].apply(
+            lambda x: json.loads(x).get("entities"))
+        return ext_targets
+
+    def execute(self):
+        # self.is_old_visit = False
+        self.sync_external_targets('Block', "PGJAPAN_BLOCK_COMPLIANCE_BY_SCENE")
+        self.sync_external_targets('Golden Zone', "PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE")
+
+    def sync_external_targets(self, kpi_group_name, kpi_type):
+        # print("Syncing => {} - {}".format(kpi_group_name, kpi_type))
+        current_eans = self.population_filter_to_ean_codes(self.targets_from_template[kpi_group_name])
+        # print(current_eans.shape)
+
+        insert_queries = []
+        insert_queries_after_patch = []
+        for idx, row in current_eans.iterrows():
+            kpi_fk = self.common.get_kpi_fk_by_kpi_type(kpi_type)
+            product_group_name = row["Product_Group_Name"]
+            rel_ext_targets = self.ext_targets[
+                (self.ext_targets['Config Name'].str.encode('utf8') == product_group_name.encode('utf8'))
+                &
+                (self.ext_targets['kpi_type'] == kpi_type)]
+            if rel_ext_targets.empty:
+                if self.is_old_visit:
+                    # print("Ignoring this line item, since its a recalc")
+                    continue
+                # print("Product group not found in ext_targets")
+                # print("Inserting valid product_groups into external_targets")
+                kpi_level_2_fk = kpi_fk
+                kpi_operation_type_fk = 2
+                start_date = str(datetime.now().date())
+                key_json = {
+                    "Config Name": row['Product_Group_Name'].replace("'", "\\'").encode('utf-8'),
+                }
+                data_json = {
+                    "Population": row['Population_Filter'],
+                    "Config Name": row['Product_Group_Name'].replace("'", "\\'").encode('utf-8'),
+                    "entities": row['entities'].tolist()
+                }
+                # check if we need to re-insert / insert
+                new_record = {
+                    "kpi_operation_type_fk": {0: kpi_operation_type_fk},
+                    "kpi_level_2_fk": {0: kpi_level_2_fk},
+                    "start_date": {0: start_date},
+                    # "key_json": {0: key_json},
+                    # "data_json": {0: data_json}
+                    "key_json": {0: json.dumps(key_json).encode('ascii').decode('unicode-escape')},
+                    "data_json": {0: json.dumps(data_json).encode('ascii').decode('unicode-escape')}
+                 }
+                insert_queries.append(insert(new_record, "static.kpi_external_targets"))
+            else:
+                # check if the entities in the product_group changed recently.
+                if rel_ext_targets.shape[0] > 1:
+                    print("More than one records...")
+                else:
+                    if self.is_old_visit:
+                        print("use the current eans stored in db")
+                        # rel_ext_targets['entities'].iloc[0]
+                        continue
+                    # print("Only one record.")
+                    # print("If the entities matching with curr_eancodes")
+                    # relv_current_eans = block_current_eans[
+                    #     (current_eans['Product_Group_Name'].str.encode('utf8') == product_group_name.encode('utf8'))
+                    #     &
+                    #     (current_eans['KPI_NAME'] == KPI_NAME)]['entities'].iloc[0]
+                    relv_current_eans = row['entities']
+                    relv_target_eans = rel_ext_targets['entities'].iloc[0]
+                    if len(set(relv_target_eans) - set(relv_current_eans)) == 0:
+                        pass
+                        # print("Same")
+                        # print("Use this pk")
+                    else:
+                        # if the visit is a new visit, then apply this
+                        # self.new_session
+                        # if not, use old
+                        # print("There are diff in entities. So end the current pk and save the new one.")
+                        ext_target_pk_to_end = rel_ext_targets.pk.iloc[0]
+                        # print("PK to update {}".format(ext_target_pk_to_end))
+                        # update the end date for this pk
+                        end_date = str((datetime.now() - timedelta(days=1)).date())
+                        to_update = {"end_date": {0: end_date}}
+                        update_query = self.get_table_update_query(to_update,
+                                                                   "static.kpi_external_targets",
+                                                                   "pk = {}".format(ext_target_pk_to_end))
+                        self.commit_to_db([update_query])
+                        # insert the new record to external_target with relv_current_eans.
+                        kpi_level_2_fk = kpi_fk
+                        kpi_operation_type_fk = 2
+                        start_date = str(datetime.now().date())
+                        key_json = {
+                            "Config Name": row['Product_Group_Name'].replace("'", "\\'").encode('utf-8'),
+                        }
+                        data_json = {
+                            "Population": row['Population_Filter'],
+                            "Config Name": row['Product_Group_Name'].replace("'", "\\'").encode('utf-8'),
+                            "entities": row['entities'].tolist()
+                        }
+                        # check if we need to re-insert / insert
+                        new_record = {
+                            "kpi_operation_type_fk": {0: kpi_operation_type_fk},
+                            "kpi_level_2_fk": {0: kpi_level_2_fk},
+                            "start_date": {0: start_date},
+                            # "key_json": {0: key_json},
+                            # "data_json": {0: data_json}
+                            "key_json": {0: json.dumps(key_json).encode('ascii').decode('unicode-escape')},
+                            "data_json": {0: json.dumps(data_json).encode('ascii').decode('unicode-escape')}
+                        }
+                        insert_queries_after_patch.append(insert(new_record, "static.kpi_external_targets"))
+
+        if len(insert_queries) > 0:
+            # print("call insert_statement check")
+            self.commit_to_db(insert_queries)
+
+        if len(insert_queries_after_patch) > 0:
+            # print("call insert_statement after updating old ones")
+            self.commit_to_db(insert_queries_after_patch)
+
+    @staticmethod
+    def get_table_update_query(entries, table, condition):
+        updated_values = []
+        for key in entries.keys():
+            if key == "pk":
+                # print("Skipping pk in update stmt generation")
+                continue
+            updated_values.append("{} = '{}'".format(key, entries[key][0]))
+
+        query = "UPDATE {} SET {} WHERE {}".format(table, ", ".join(updated_values), condition)
+
+        return query
+
+    def commit_to_db(self, queries):
+        pass
+        # self.rds_conn.connect_rds()
+        # cur = self.rds_conn.db.cursor()
+        # for query in queries:
+        #     try:
+        #         print(query)
+        #         print("Check if any queries!")
+        #         # cur.execute(query)
+        #         # self.rds_conn.db.commit()
+        #         print 'kpis were added/updated to the db'
+        #     except Exception as e:
+        #         print 'kpis were not inserted: {}'.format(repr(e))
+
+
+#
 # if __name__ == "__main__":
+#     from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 #     print("Testing template parser")
 #     LoggerInitializer.init('pngjp-sand2 Scene Calculations')
 #     Config.init()
-#     rds_conn = PSProjectConnector("pngjp-sand2", DbUsers.CalculationEng)
-#     p = PNGJPTemplateParser(data_provider=None, rds_conn=rds_conn)
-#     for k, v in p.get_targets().items():
-#         print(k)
-#         print(v)
-#     targets = p.get_targets()
-#     print()
+#     project_name = "pngjp-sand2"
+#     session = 'E2C4A7B5-AF2B-40BA-9D35-932FC1826568'
+#     data_provider = KEngineDataProvider(project_name)
+#     data_provider.load_session_data(session_uid=session)
+#     rds_conn = PSProjectConnector(project_name, DbUsers.CalculationEng)
+#     p = PNGJPTemplateParser(data_provider=data_provider, rds_conn=rds_conn)
+    # for k, v in p.get_targets().items():
+    #     print(k)
+    #     print(v)
+    # targets = p.get_targets()
+    # print()
+

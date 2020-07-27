@@ -15,7 +15,8 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Projects.PNGJP_SAND2.Utils.Fetcher import PNGJP_SAND2Queries
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ScifConsts, ProductsConsts, SceneInfoConsts
-
+from pathlib import Path
+from Projects.PNGJP_SAND2.Data.LocalConsts import Consts
 
 class PNGJP_SAND2Util(UnifiedKPISingleton):
     MAX_SHELF = 'max_shelf'
@@ -51,6 +52,10 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
         self.all_targets_unpacked = self.unpack_all_external_targets()
         self.bay_shelf_info = self.get_bay_shelf_combination_from_custom_entity()
         self.bay_shelf_entity_type_fk = self.get_bay_shelf_entity_type_fk()
+        shelf_range_template_path = Path(__file__).parent / '../Data/shelf_range_template.xlsx'
+        self.shelf_range_template = pd.read_excel(shelf_range_template_path)
+        self.session_info = self.data_provider[Data.SESSION_INFO]
+        self.store_fk = self.session_info['store_fk'].values[0]
 
     def get_match_display_in_scene(self):
         query = PNGJP_SAND2Queries.get_match_display(self.session_uid)
@@ -171,3 +176,44 @@ class PNGJP_SAND2Util(UnifiedKPISingleton):
     # filters = {'location': {'scene_fk': [27898, 27896, 27894, 27859, 27892, 27854]},
     #            'population': {'exclude': {'template_name': 'Checkout Chocolate'},
     #                           'include': [{'category_fk': 6, 'manufacturer_fk': 3}]}}
+
+    def get_product_position_code(self, product_fk, shelf_number):
+
+        def to_list(x):
+            x = str(x).strip()
+            values = [v.strip() for v in x.split("-")]
+            if len(values) == 1:
+                return [int(o) for o in values]
+            else:
+                start_i, end_i = [int(o) for o in values][:2]
+                return list(range(start_i, end_i+1))
+
+        rel_sku = self.all_products[self.all_products['product_fk'] == product_fk]
+        rel_template = self.shelf_range_template[
+            self.shelf_range_template['Category'] == rel_sku['category'].iloc[0]
+            ].copy()
+        rel_template['Shelf_Range_lst'] = rel_template['Shelf Range'].apply(to_list)
+        rel_template['Top_lst'] = rel_template['Top'].apply(to_list)
+        rel_template['GoldenZone_lst'] = rel_template['GoldenZone'].apply(to_list)
+        rel_template['Bottom_lst'] = rel_template['Bottom'].apply(to_list)
+
+        bins = []
+        for idx, row in rel_template.iterrows():
+            if shelf_number in row['Shelf_Range_lst']:
+                if shelf_number in row['Top_lst']:
+                    bins.append(Consts.CODE_TOP)
+                if shelf_number in row['GoldenZone_lst']:
+                    bins.append(Consts.CODE_GOLDEN_ZONE)
+                if shelf_number in row['Bottom_lst']:
+                    bins.append(Consts.CODE_BOTTOM)
+                break
+
+        if len(bins) > 1:
+            final_result = Consts.CODE_TOP_GZ
+        elif len(bins) == 1:
+            final_result = bins[0]
+        else:
+            Log.info("For Product {} in shelf_number {}, No matching shelf_template info".format(product_fk, shelf_number))
+            final_result = 0
+
+        return final_result

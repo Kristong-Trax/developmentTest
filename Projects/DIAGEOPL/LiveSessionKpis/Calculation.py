@@ -6,7 +6,7 @@ from KPIUtils.GlobalProjects.DIAGEO.Utils.DiageoLiveAssortment import DiageoAsso
 from KPIUtils_v2.DB.CommonV3 import Common
 from KPIUtils_v2.GlobalDataProvider.LivePsDataProvider import PsDataProvider
 from KPIUtils.GlobalProjects.DIAGEO.Utils.Consts import Consts
-from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
+from KPIUtils_v2.Utils.Decorators.Decorators import kpi_runtime
 # from Trax.Utils.Logging.Logger import Log
 
 
@@ -33,7 +33,7 @@ class CalculateKpi(LiveSessionBaseClass):
         self.live_ps_provider = PsDataProvider(data_provider, None)
         self.assortment = DiageoAssortment(data_provider, self.common, self.live_ps_provider, False, True)
 
-    @log_runtime('Total Live Calculations', log_start=True)
+    @kpi_runtime()
     def calculate_session_live_kpi(self):
         """
         Main function of live project
