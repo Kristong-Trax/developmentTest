@@ -14,10 +14,12 @@ class Consts(object):
                  {'product_ean_code': [],
                   'brand_name': [],
                   'manufacturer_name': ['GSK'],
-                  'sub_category': ['***SKIP***'],
+                  'sub_category': ['***SKPI***'],
                   'category': []},
              'ff_threshold': 0.5,  # ratio between width and height (min/max)
-             'ff_factor': 0.25},  # fractional factor to apply to the number of facings
+             'ff_factor_horizontal': 1,  # fractional factor to apply to the number of facings
+             'ff_factor_vertical': 1,
+             'ff_factor_backside': 0.25},
         ]
 
     FACINGS_SOS = 'Facings SOS'
