@@ -2,6 +2,7 @@ from Projects.PNGJP_SAND2.KPIS.Util import PNGJP_SAND2Util
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from Trax.Data.ProfessionalServices.PsConsts.DataProvider import MatchesConsts, ScifConsts
 import numpy as np
+import pandas as pd
 
 
 class BayCountbySceneKpi(UnifiedCalculationsScript):
@@ -26,6 +27,7 @@ class BayCountbySceneKpi(UnifiedCalculationsScript):
                 if not target_prameters['Include Stacking']:
                     matches = matches[matches[MatchesConsts.STACKING_LAYER] == 1]
                 bay_count = matches[MatchesConsts.BAY_NUMBER].max()
+                bay_count = 0 if pd.isnull(bay_count) else bay_count
                 self.write_to_db_result(fk=kpi_fk,
                                         numerator_id=self.util.store_fk,
                                         denominator_id=template_fk,
