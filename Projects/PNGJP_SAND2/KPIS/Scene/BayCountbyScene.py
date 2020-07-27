@@ -20,14 +20,11 @@ class BayCountbySceneKpi(UnifiedCalculationsScript):
             if not ext_targets.empty:
                 template_fk = self.util.scif[ScifConsts.TEMPLATE_FK].values[0]
                 kpi_fk = self.util.common.get_kpi_fk_by_kpi_type('PGJAPAN_BAY_COUNT_BY_SCENE')
-                target_prameters = ext_targets.iloc[0]
-                matches = self.util.filter_matches_for_scene_kpis(target_prameters)
-                matches = matches[~(matches[ScifConsts.PRODUCT_TYPE] == 'POS')]
-                matches = matches[~(matches[MatchesConsts.BAY_NUMBER] == -1)]
-                if not target_prameters['Include Stacking']:
-                    matches = matches[matches[MatchesConsts.STACKING_LAYER] == 1]
+                matches = self.util.matches_product
                 bay_count = matches[MatchesConsts.BAY_NUMBER].max()
-                bay_count = 0 if pd.isnull(bay_count) else bay_count
+                # if bay num  is <= 0 or null , then it should be 1
+                if pd.isnull(bay_count) or (bay_count <= 0):
+                    bay_count = 1
                 self.write_to_db_result(fk=kpi_fk,
                                         numerator_id=self.util.store_fk,
                                         denominator_id=template_fk,

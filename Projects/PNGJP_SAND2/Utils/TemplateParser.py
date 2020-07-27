@@ -194,7 +194,6 @@ class PNGJPTemplateParser(object):
         return df
 
 
-
 class SyncTemplateWithExternalTargets(object):
 
     def __init__(self, data_provider, rds_conn, targets_from_template):
@@ -268,9 +267,9 @@ class SyncTemplateWithExternalTargets(object):
         self.sync_external_targets('Golden Zone', "PGJAPAN_GOLDEN_ZONE_COMPLIANCE_BY_SCENE")
 
     def sync_external_targets(self, kpi_group_name, kpi_type):
-        print("Syncing => {} - {}".format(kpi_group_name, kpi_type))
+        # print("Syncing => {} - {}".format(kpi_group_name, kpi_type))
         current_eans = self.population_filter_to_ean_codes(self.targets_from_template[kpi_group_name])
-        print(current_eans.shape)
+        # print(current_eans.shape)
 
         insert_queries = []
         insert_queries_after_patch = []
@@ -282,12 +281,11 @@ class SyncTemplateWithExternalTargets(object):
                 &
                 (self.ext_targets['kpi_type'] == kpi_type)]
             if rel_ext_targets.empty:
-                if (self.is_old_visit):
-                    print("Ignoring this line item, since its a recalc")
+                if self.is_old_visit:
+                    # print("Ignoring this line item, since its a recalc")
                     continue
-                print("Product group not found in ext_targets")
-                print("Inserting valid product_groups into external_targets")
-                ## INSERT ------------------------------
+                # print("Product group not found in ext_targets")
+                # print("Inserting valid product_groups into external_targets")
                 kpi_level_2_fk = kpi_fk
                 kpi_operation_type_fk = 2
                 start_date = str(datetime.now().date())
@@ -312,15 +310,15 @@ class SyncTemplateWithExternalTargets(object):
                 insert_queries.append(insert(new_record, "static.kpi_external_targets"))
             else:
                 # check if the entities in the product_group changed recently.
-                if (rel_ext_targets.shape[0]>1):
+                if rel_ext_targets.shape[0] > 1:
                     print("More than one records...")
                 else:
-                    if (self.is_old_visit):
+                    if self.is_old_visit:
                         print("use the current eans stored in db")
                         # rel_ext_targets['entities'].iloc[0]
                         continue
-                    print("Only one record.")
-                    print("If the entities matching with curr_eancodes")
+                    # print("Only one record.")
+                    # print("If the entities matching with curr_eancodes")
                     # relv_current_eans = block_current_eans[
                     #     (current_eans['Product_Group_Name'].str.encode('utf8') == product_group_name.encode('utf8'))
                     #     &
@@ -328,15 +326,16 @@ class SyncTemplateWithExternalTargets(object):
                     relv_current_eans = row['entities']
                     relv_target_eans = rel_ext_targets['entities'].iloc[0]
                     if len(set(relv_target_eans) - set(relv_current_eans)) == 0:
-                        print("Same")
-                        print("Use this pk")
+                        pass
+                        # print("Same")
+                        # print("Use this pk")
                     else:
                         # if the visit is a new visit, then apply this
                         # self.new_session
                         # if not, use old
-                        print("There are diff in entities. So end the current pk and save the new one.")
+                        # print("There are diff in entities. So end the current pk and save the new one.")
                         ext_target_pk_to_end = rel_ext_targets.pk.iloc[0]
-                        print("PK to update {}".format(ext_target_pk_to_end))
+                        # print("PK to update {}".format(ext_target_pk_to_end))
                         # update the end date for this pk
                         end_date = str((datetime.now() - timedelta(days=1)).date())
                         to_update = {"end_date": {0: end_date}}
@@ -369,11 +368,11 @@ class SyncTemplateWithExternalTargets(object):
                         insert_queries_after_patch.append(insert(new_record, "static.kpi_external_targets"))
 
         if len(insert_queries) > 0:
-            print("call insert_statement check")
+            # print("call insert_statement check")
             self.commit_to_db(insert_queries)
 
         if len(insert_queries_after_patch) > 0:
-            print("call insert_statement after updating old ones")
+            # print("call insert_statement after updating old ones")
             self.commit_to_db(insert_queries_after_patch)
 
     @staticmethod
@@ -381,7 +380,7 @@ class SyncTemplateWithExternalTargets(object):
         updated_values = []
         for key in entries.keys():
             if key == "pk":
-                print("Skipping pk in update stmt generation")
+                # print("Skipping pk in update stmt generation")
                 continue
             updated_values.append("{} = '{}'".format(key, entries[key][0]))
 
@@ -390,17 +389,18 @@ class SyncTemplateWithExternalTargets(object):
         return query
 
     def commit_to_db(self, queries):
-        self.rds_conn.connect_rds()
-        cur = self.rds_conn.db.cursor()
-        for query in queries:
-            try:
-                print(query)
-                print("Dummy sql executor:")
-                cur.execute(query)
-                self.rds_conn.db.commit()
-                print 'kpis were added/updated to the db'
-            except Exception as e:
-                print 'kpis were not inserted: {}'.format(repr(e))
+        pass
+        # self.rds_conn.connect_rds()
+        # cur = self.rds_conn.db.cursor()
+        # for query in queries:
+        #     try:
+        #         print(query)
+        #         print("Check if any queries!")
+        #         # cur.execute(query)
+        #         # self.rds_conn.db.commit()
+        #         print 'kpis were added/updated to the db'
+        #     except Exception as e:
+        #         print 'kpis were not inserted: {}'.format(repr(e))
 
 
 #
