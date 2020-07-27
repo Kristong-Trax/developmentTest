@@ -2,6 +2,7 @@ from Projects.PNGJP_SAND2.KPIS.BlockGoldenUtil import PNGJP_SAND2BlockGoldenUtil
 from Trax.Algo.Calculations.Core.KPI.UnifiedKPICalculation import UnifiedCalculationsScript
 from Trax.Utils.Logging.Logger import Log
 from collections import defaultdict
+import pandas as pd
 
 
 class BLOCKComplianceByScene(UnifiedCalculationsScript):
@@ -47,8 +48,15 @@ class BLOCKComplianceByScene(UnifiedCalculationsScript):
             ))
             return False
         else:
+            # merge block_targets with ext_targets
+            block_targets = block_targets.merge(self.util.external_targets,
+                                                left_on=['KPI Name', 'Product Group Name'],
+                                                right_on=["kpi_type", "Product_Group_Name"],
+                                                how="left",
+                                                suffixes=['', '_y'])
             for idx, each_target in block_targets.iterrows():
                 # check for template match in target
+                context_fk = 0 if pd.isnull(each_target.pk) else each_target.pk
                 product_group_df = self.util.custom_entity_data[
                     self.util.custom_entity_data['pk'].isin(each_target.product_group_name_fks)
                 ]
@@ -161,6 +169,7 @@ class BLOCKComplianceByScene(UnifiedCalculationsScript):
                         fk=kpi_details.iloc[0].pk,
                         numerator_id=product_group_fk,
                         denominator_id=current_template_fk,
+                        context_id=context_fk,
                         numerator_result=biggest_block_facings_count,
                         denominator_result=total_facings_count,
                         target=block_threshold_perc,

@@ -43,6 +43,7 @@ class PNGJP_SAND2BlockGoldenUtil(UnifiedKPISingleton):
 
         self.targets_from_template = self.template_parser.get_targets()
         self.custom_entity_data = self.template_parser.get_custom_entity()
+        self.external_targets = self.template_parser.get_external_targets()
 
         self.match_display_in_scene = self.data_provider.match_display_in_scene
         self.current_scene_fk = self.scene_info.iloc[0].scene_fk

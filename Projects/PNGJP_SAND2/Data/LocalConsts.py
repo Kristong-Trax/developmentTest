@@ -95,3 +95,8 @@ class Consts(object):
     PRODUCT_GROUP_ID = 'Product Group Id'
     ALLOWED_PRODUCT_GROUP_ID = 'ALLOWED;Product Group Id'
     KPI_FORMAT = 'Category: {category} - Brand: {brand} - Product group id: {group} - KPI Question: {question}'
+
+    CODE_TOP = 1
+    CODE_GOLDEN_ZONE = 2
+    CODE_BOTTOM = 3
+    CODE_TOP_GZ = 4
