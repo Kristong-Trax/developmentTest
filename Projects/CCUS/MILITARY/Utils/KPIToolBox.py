@@ -6,7 +6,6 @@ import os
 import pandas as pd
 import re
 
-from KPIUtils_v2.DB.CommonV2 import Common
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
@@ -32,9 +31,8 @@ LOGIC = {
 
 
 class MilitaryToolBox(GlobalSessionToolBox):
-    def __init__(self, data_provider, output):
-        self.common = Common(data_provider)
-        GlobalSessionToolBox.__init__(self, data_provider, output, self.common)
+    def __init__(self, data_provider, output, common):
+        GlobalSessionToolBox.__init__(self, data_provider, output, common)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
         self.own_manufacturer = self.data_provider[Data.OWN_MANUFACTURER].iloc[0]['param_value']
         self.products = data_provider[Data.PRODUCTS]

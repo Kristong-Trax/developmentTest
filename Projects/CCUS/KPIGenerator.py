@@ -138,7 +138,9 @@ class CCUSGenerator:
 
     @log_runtime('Military Calculations')
     def calculate_military(self):
-        tool_box = MilitaryToolBox(self.data_provider, self.output)
-        tool_box.main_calculation()
-        tool_box.commit_results()
-        del tool_box
+        try:
+            tool_box = MilitaryToolBox(self.data_provider, self.output, self.common)
+            tool_box.main_calculation()
+            del tool_box
+        except Exception:
+            pass
