@@ -17,7 +17,9 @@ class Consts(object):
                   'sub_category': ['***SKIP***'],
                   'category': []},
              'ff_threshold': 0.5,  # ratio between width and height (min/max)
-             'ff_factor': 0.25},  # fractional factor to apply to the number of facings
+             'ff_factor_horizontal': 1,  # fractional factor to apply to the number of facings
+             'ff_factor_vertical': 1,
+             'ff_factor_backside': 0.25},
         ]
 
     FACINGS_SOS = 'Facings SOS'
