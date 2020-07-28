@@ -140,4 +140,5 @@ class CCUSGenerator:
     def calculate_military(self):
         tool_box = MilitaryToolBox(self.data_provider, self.output)
         tool_box.main_calculation()
+        tool_box.commit_results()
         del tool_box
