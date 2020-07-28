@@ -165,8 +165,8 @@ class SinoPacificToolBox:
             policy_json = json.loads(policy)
             # special case where its only one assortment for all
             # that is there is only one key and it is is_active => Y
-            # if len(policy_json) == 1 and policy_json.get('is_active') == ['Y']:
-            #     return valid_store
+            if len(policy_json) == 1 and policy_json.get('is_active') == ['Y']:
+                return valid_store
 
             store_json = json.loads(self.store_info.reset_index().to_json(orient='records'))[0]
             # map the necessary keys to those names knows
