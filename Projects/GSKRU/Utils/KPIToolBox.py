@@ -255,7 +255,8 @@ class GSKRUToolBox:
                 target = float(target[0]) if len(target) > 0 else None
                 target = target/100 if target else None
                 if target:
-                    score = 1 if result >= target else 0
+                    # score = 1 if result >= target else 0
+                    score = round(result/target, 4)
                 else:
                     score = None
                 results.append(
@@ -277,7 +278,8 @@ class GSKRUToolBox:
                 target = float(target[0]) if len(target) > 0 else None
                 target = target/100 if target else None
                 if target:
-                    score = 1 if result >= target else 0
+                    # score = 1 if result >= target else 0
+                    score = round(result/target, 4)
                 else:
                     score = None
                 results.append(
@@ -305,7 +307,8 @@ class GSKRUToolBox:
             target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
-                score = 1 if result >= target else 0
+                # score = 1 if result >= target else 0
+                score = round(result/target, 4)
             else:
                 score = None
             results.append(
@@ -324,7 +327,8 @@ class GSKRUToolBox:
             target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
-                score = 1 if result >= target else 0
+                # score = 1 if result >= target else 0
+                score = round(result/target, 4)
             else:
                 score = None
             results.append(
