@@ -129,6 +129,7 @@ class CCUSGenerator:
         tool_box.commit_results_data(kpi_set_fk=32)
         del tool_box
 
+
     @log_runtime('Special Programs Calculations')
     def calculate_validation(self):
         tool_box = VALIDATIONToolBox(self.data_provider, self.output, kpi_set_fk=34)
@@ -138,9 +139,7 @@ class CCUSGenerator:
 
     @log_runtime('Military Calculations')
     def calculate_military(self):
-        try:
-            tool_box = MilitaryToolBox(self.data_provider, self.output, self.common)
-            tool_box.main_calculation()
-            del tool_box
-        except Exception:
-            pass
+        tool_box = MilitaryToolBox(self.data_provider, self.output)
+        tool_box.main_calculation()
+        tool_box.commit_results_data()
+        del tool_box
