@@ -98,43 +98,68 @@ class DIAGEOBENELUX_SANDToolBox:
         match_display = pd.read_sql_query(query, self.rds_conn.db)
         return match_display
 
-    def main_calculation(self, set_names):
-        """
-        This function calculates the KPI results.
-        """
+    def main_calculation(self):
+        # SOS Out Of The Box kpis
+        self.diageo_generator.activate_ootb_kpis(self.commonV2)
+
+        # sos by scene type
+        self.diageo_generator.sos_by_scene_type(self.commonV2)
+
         # Global assortment kpis
-        assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
-        self.commonV2.save_json_to_new_tables(assortment_res_dict)
+        assortment_res = self.diageo_generator.diageo_global_grouping_assortment_calculation()
+        self.commonV2.save_json_to_new_tables(assortment_res)
 
         # Global Menu kpis
-        menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
-            cocktail_product_level=True)
-        self.commonV2.save_json_to_new_tables(menus_res_dict)
+        menus_res = self.diageo_generator.diageo_global_new_share_of_menu_function()
+        self.commonV2.save_json_to_new_tables(menus_res)
 
-        for set_name in set_names:
-            set_score = 0
-
-            # Global Secondary Displays
-            if set_name in ('Secondary Displays', 'Secondary'):
-                res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
-                if res_json:
-                    self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
-                                                     result=res_json['result'])
-                    set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
-                    self.save_level2_and_level3(set_name, set_name, set_score)
-
-            if set_score == 0:
-                pass
-            elif set_score is False:
-                continue
-
-            set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
-            self.write_to_db_result(set_fk, set_score, self.LEVEL1)
-
+        # Global Secondary Displays function
+        res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+        if res_json:
+            self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+                                             result=res_json['result'])
         # committing to new tables
         self.commonV2.commit_results_data()
-
-        return
+        # committing to the old tables
+        self.common.commit_results_data()
+    #
+    # def main_calculation(self, set_names):
+    #     """
+    #     This function calculates the KPI results.
+    #     """
+    #     # Global assortment kpis
+    #     assortment_res_dict = self.diageo_generator.diageo_global_assortment_function_v2()
+    #     self.commonV2.save_json_to_new_tables(assortment_res_dict)
+    #
+    #     # Global Menu kpis
+    #     menus_res_dict = self.diageo_generator.diageo_global_share_of_menu_cocktail_function(
+    #         cocktail_product_level=True)
+    #     self.commonV2.save_json_to_new_tables(menus_res_dict)
+    #
+    #     for set_name in set_names:
+    #         set_score = 0
+    #
+    #         # Global Secondary Displays
+    #         if set_name in ('Secondary Displays', 'Secondary'):
+    #             res_json = self.diageo_generator.diageo_global_secondary_display_secondary_function()
+    #             if res_json:
+    #                 self.commonV2.write_to_db_result(fk=res_json['fk'], numerator_id=1, denominator_id=self.store_id,
+    #                                                  result=res_json['result'])
+    #                 set_score = self.tools.calculate_number_of_scenes(location_type='Secondary')
+    #                 self.save_level2_and_level3(set_name, set_name, set_score)
+    #
+    #         if set_score == 0:
+    #             pass
+    #         elif set_score is False:
+    #             continue
+    #
+    #         set_fk = self.kpi_static_data[self.kpi_static_data['kpi_set_name'] == set_name]['kpi_set_fk'].values[0]
+    #         self.write_to_db_result(set_fk, set_score, self.LEVEL1)
+    #
+    #     # committing to new tables
+    #     self.commonV2.commit_results_data()
+    #
+    #     return
 
     def save_level2_and_level3(self, set_name, kpi_name, score):
         """
