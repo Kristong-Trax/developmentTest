@@ -31,20 +31,28 @@ class SKULinearbySceneKpi(UnifiedCalculationsScript):
                     result_df = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SHELF_NUMBER,
                                                  MatchesConsts.BAY_NUMBER],
                                                 as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum,
-                                                                     MatchesConsts.WIDTH_MM_NET: np.sum})
+                                                                     MatchesConsts.WIDTH_MM_X: np.sum})
                     result_df = result_df.merge(max_shelf, on=MatchesConsts.BAY_NUMBER, how='left')
                 else:
                     matches = matches[matches[MatchesConsts.STACKING_LAYER] == 1]
                     result_df = matches.groupby([MatchesConsts.PRODUCT_FK, MatchesConsts.SHELF_NUMBER,
                                                  MatchesConsts.BAY_NUMBER],
                                                 as_index=False).agg({MatchesConsts.WIDTH_MM_ADVANCE: np.sum,
-                                                                     MatchesConsts.WIDTH_MM_X: np.sum})
+                                                                     MatchesConsts.WIDTH_MM_X: np.sum,
+                                                                     })
                     result_df = result_df.merge(max_shelf, on=MatchesConsts.BAY_NUMBER, how='left')
+                # WIDTH_MM_ADVANCE - pre-size logic
+                # WIDTH_MM_X - Old 1.33 m logic
+                # target = total linear length of the bay/shelf - pre-size logic
+                total_sku_len_in_bay_shelf = result_df.groupby(
+                    [MatchesConsts.BAY_NUMBER, MatchesConsts.SHELF_NUMBER])[MatchesConsts.WIDTH_MM_ADVANCE].sum().to_dict()
                 for i, row in result_df.iterrows():
                     bay_shelf_comb_fk = self.util.get_context_fk_from_custom_entity(
                         bay_no=row[MatchesConsts.BAY_NUMBER],
                         shelf_no=row[MatchesConsts.SHELF_NUMBER]
                     )
+                    target = total_sku_len_in_bay_shelf.get(
+                        (row[MatchesConsts.BAY_NUMBER], row[MatchesConsts.SHELF_NUMBER]), 0)
                     self.write_to_db_result(fk=kpi_fk, numerator_id=row[MatchesConsts.PRODUCT_FK],
                                             numerator_result=row[MatchesConsts.BAY_NUMBER],
                                             denominator_id=template_fk,
@@ -53,4 +61,6 @@ class SKULinearbySceneKpi(UnifiedCalculationsScript):
                                             result=row[MatchesConsts.WIDTH_MM_ADVANCE],
                                             score=row[self.util.MAX_SHELF],
                                             weight=row[MatchesConsts.WIDTH_MM_X],
-                                            by_scene=True)
+                                            by_scene=True,
+                                            target=target
+                                            )

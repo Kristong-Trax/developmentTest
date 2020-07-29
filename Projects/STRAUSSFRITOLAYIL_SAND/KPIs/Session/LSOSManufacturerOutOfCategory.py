@@ -24,7 +24,7 @@ class LSOSManufacturerOutOfCategoryKpi(UnifiedCalculationsScript):
         for category in template_categories:
             target = template[template[Consts.CATEGORY] == category][Consts.TARGET]
             if not target.empty:
-                target = target.values[0]
+                target = target.values[0] * 100
             else:
                 target = None
             category_fk = self.utils.all_products[self.utils.all_products['category'] == category][

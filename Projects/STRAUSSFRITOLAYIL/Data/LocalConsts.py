@@ -8,6 +8,7 @@ class Consts(object):
     LSOS_MANUFACTURER_OUT_OF_CATEGORY_KPI = 'LSOS Manufacturer out of Category'
     LSOS_OWN_BRAND_OUT_OF_CATEGORY_KPI = 'LSOS OWN Brand out of Category'
     OOS_MUST_HAVE_KPI = 'OOS Must Have'
+    OSA_STORE_KPI = 'OSA - STORE'
     OOS_MUST_HAVE_SKU_KPI = 'OOS Must Have - SKU'
     OOS_NPA_KPI = 'OOS NPA'
     OOS_NPA_SKU_KPI = 'OOS NPA - SKU'
