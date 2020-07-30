@@ -197,9 +197,9 @@ class GSKRUToolBox:
         soa_dict = self.gsk_soa_function()
         self.common.save_json_to_new_tables(soa_dict)
 
-        # Core Range Assortment
-        cra_dict = self.gsk_cra_function()
-        self.common.save_json_to_new_tables(cra_dict)
+        # # Core Range Assortment
+        # cra_dict = self.gsk_cra_function()
+        # self.common.save_json_to_new_tables(cra_dict)
 
         self.common.commit_results_data()
 
