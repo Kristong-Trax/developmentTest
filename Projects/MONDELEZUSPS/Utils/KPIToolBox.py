@@ -52,10 +52,10 @@ __author__ = 'krishnat'
 
 class ToolBox(GlobalSessionToolBox):
 
-    def __init__(self, data_provider, output):
+    def __init__(self, data_provider, output, common):
         GlobalSessionToolBox.__init__(self, data_provider, output)
         self.ps_data_provider = PsDataProvider(self.data_provider, self.output)
-        self.common_v2 = CommonV2(self.data_provider)
+        self.common_v2 = common
         self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         self.templates = {}
         self.parse_template()
