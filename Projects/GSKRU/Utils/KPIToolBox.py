@@ -197,9 +197,9 @@ class GSKRUToolBox:
         soa_dict = self.gsk_soa_function()
         self.common.save_json_to_new_tables(soa_dict)
 
-        # Core Range Assortment
-        cra_dict = self.gsk_cra_function()
-        self.common.save_json_to_new_tables(cra_dict)
+        # # Core Range Assortment
+        # cra_dict = self.gsk_cra_function()
+        # self.common.save_json_to_new_tables(cra_dict)
 
         self.common.commit_results_data()
 
@@ -255,7 +255,8 @@ class GSKRUToolBox:
                 target = float(target[0]) if len(target) > 0 else None
                 target = target/100 if target else None
                 if target:
-                    score = 1 if result >= target else 0
+                    # score = 1 if result >= target else 0
+                    score = round(result/target, 4)
                 else:
                     score = None
                 results.append(
@@ -277,7 +278,8 @@ class GSKRUToolBox:
                 target = float(target[0]) if len(target) > 0 else None
                 target = target/100 if target else None
                 if target:
-                    score = 1 if result >= target else 0
+                    # score = 1 if result >= target else 0
+                    score = round(result/target, 4)
                 else:
                     score = None
                 results.append(
@@ -305,7 +307,8 @@ class GSKRUToolBox:
             target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
-                score = 1 if result >= target else 0
+                # score = 1 if result >= target else 0
+                score = round(result/target, 4)
             else:
                 score = None
             results.append(
@@ -324,7 +327,8 @@ class GSKRUToolBox:
             target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
-                score = 1 if result >= target else 0
+                # score = 1 if result >= target else 0
+                score = round(result/target, 4)
             else:
                 score = None
             results.append(
