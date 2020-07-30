@@ -1,8 +1,8 @@
 
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.Decorators.Decorators import log_runtime
-from Projects.CCUS.XM.Utils.KPISceneToolBox import CCUSSceneToolBox
-from Projects.CCUS.Pillars.Utils.KPISceneToolBox import PillarsSceneToolBox
+from Projects.CCUS_SAND2.XM.Utils.KPISceneToolBox import CCUSSceneToolBox
+from Projects.CCUS_SAND2.Pillars.Utils.KPISceneToolBox import PillarsSceneToolBox
 
 from KPIUtils_v2.DB.CommonV2 import Common
 

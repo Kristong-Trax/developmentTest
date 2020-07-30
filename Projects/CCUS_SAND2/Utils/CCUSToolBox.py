@@ -6,8 +6,8 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.CCUS.Utils.Fetcher import CCUSQueries
-from Projects.CCUS.Utils.ToolBox import ToolBox
+from Projects.CCUS_SAND2.Utils.Fetcher import CCUSQueries
+from Projects.CCUS_SAND2.Utils.ToolBox import ToolBox
 
 __author__ = 'ortal'
 MAX_PARAMS = 4
@@ -578,7 +578,7 @@ class CCUSToolBox:
 # from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 # from Trax.Utils.Logging.Logger import Log
 #
-# from Projects.CCUS.Fetcher import CCUSKPIFetcher
+# from Projects.CCUS_SAND2.Fetcher import CCUSKPIFetcher
 
 # __author__ = 'nimrodp'
 #

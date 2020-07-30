@@ -7,7 +7,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from Trax.Utils.Logging.Logger import Log
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
-from Projects.CCUS.Utils.GeneralToolBox import CCUSGENERALToolBox
+from Projects.CCUS_SAND2.Utils.GeneralToolBox import CCUSGENERALToolBox
 
 __author__ = 'ortalk'
 

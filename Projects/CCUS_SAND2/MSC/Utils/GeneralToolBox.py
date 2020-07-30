@@ -6,7 +6,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS.MSC.Utils.Fetcher import MSCQueries
+from Projects.CCUS_SAND2.MSC.Utils.Fetcher import MSCQueries
 
 __author__ = 'Nimrod'
 

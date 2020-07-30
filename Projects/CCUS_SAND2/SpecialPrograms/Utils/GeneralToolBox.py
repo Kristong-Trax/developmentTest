@@ -5,7 +5,7 @@ import xlrd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.SpecialPrograms.Utils.Fetcher import SpecialProgramsQueries
+from Projects.CCUS_SAND2.SpecialPrograms.Utils.Fetcher import SpecialProgramsQueries
 
 __author__ = 'Ortal'
 

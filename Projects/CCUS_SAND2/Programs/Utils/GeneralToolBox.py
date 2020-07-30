@@ -5,7 +5,7 @@ import xlrd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.Programs.Utils.Fetcher import NEW_OBBOQueries
+from Projects.CCUS_SAND2.Programs.Utils.Fetcher import NEW_OBBOQueries
 
 __author__ = 'Ortal'
 

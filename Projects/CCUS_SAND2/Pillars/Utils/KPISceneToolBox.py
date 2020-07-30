@@ -1,5 +1,5 @@
 from Trax.Algo.Calculations.Core.DataProvider import Data
-from Projects.CCUS.Pillars.Utils.Const import Const
+from Projects.CCUS_SAND2.Pillars.Utils.Const import Const
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 

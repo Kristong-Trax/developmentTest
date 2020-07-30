@@ -10,6 +10,7 @@ from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 from Trax.Algo.Calculations.Core.DataProvider import Data
+from Trax.Utils.Logging.Logger import Log
 
 from Projects.CCUS.MILITARY.Utils.Const import *
 
@@ -364,11 +365,16 @@ class MilitaryToolBox(GlobalSessionToolBox):
         Writes results to database.
         """
 
-        self.scene_availability_df[FK] = self.scene_availability_df.apply(lambda row: self.get_kpi_fk_by_kpi_name(row[KPI_NAME]), axis=1)
-        scene_availability_dfs = [kpi[1] for kpi in list(self.scene_availability_df.groupby(by=FK, as_index=False))]
-        scene_availability_dfs = [df.groupby(by=[FK, NUMERATOR_ID, DENOMINATOR_ID, SHOULD_ENTER], as_index=False).agg(lambda x: 1 if any(x) else 0) for df in scene_availability_dfs]
-        for df in scene_availability_dfs:
-            self.write_to_db(**df.iloc[0].to_dict())
+        try:
+            self.scene_availability_df[FK] = self.scene_availability_df \
+                .apply(lambda row: self.get_kpi_fk_by_kpi_name(row[KPI_NAME]), axis=1)
+            scene_availability_dfs = [kpi[1] for kpi in list(self.scene_availability_df.groupby(by=FK, as_index=False))]
+            scene_availability_dfs = [df.groupby(by=[FK, NUMERATOR_ID, DENOMINATOR_ID, SHOULD_ENTER], as_index=False)
+                                        .agg(lambda x: 1 if any(x) else 0) for df in scene_availability_dfs]
+            for df in scene_availability_dfs:
+                self.write_to_db(**df.iloc[0].to_dict())
+        except ValueError:
+            Log.info("No Scene Availability KPI.")
 
         for _, result in self.results_df.iterrows():
             result[FK] = self.common.get_kpi_fk_by_kpi_name(result[KPI_NAME])

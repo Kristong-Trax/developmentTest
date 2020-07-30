@@ -7,7 +7,7 @@ from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.Utils.PositionGraph import CCUSPositionGraphs
+from Projects.CCUS_SAND2.Utils.PositionGraph import CCUSPositionGraphs
 
 
 

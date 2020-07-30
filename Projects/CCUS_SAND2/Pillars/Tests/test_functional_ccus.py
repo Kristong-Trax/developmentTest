@@ -3,8 +3,8 @@ import random
 from Trax.Algo.Calculations.Core.DataProvider import KEngineDataProvider, Output
 from Trax.Apps.Core.Testing.BaseCase import TestFunctionalCase
 from Trax.Data.Testing.SeedNew import Seeder
-from Projects.CCUS.Pillars.Tests.Data.test_data_ccus import ProjectsSanityData
-from Projects.CCUS.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
+from Projects.CCUS_SAND2.Pillars.Tests.Data.test_data_ccus import ProjectsSanityData
+from Projects.CCUS_SAND2.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
 from Tests.TestUtils import remove_cache_and_storage
 from KPIUtils_v2.DB.CommonV2 import Common
 
@@ -23,7 +23,7 @@ class TestCcus(TestFunctionalCase):
 
     @property
     def import_path(self):
-        return 'Projects.CCUS.Pillars.Utils.KPIToolBox'
+        return 'Projects.CCUS_SAND2.Pillars.Utils.KPIToolBox'
 
     @property
     def config_file_path(self):

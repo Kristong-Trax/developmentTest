@@ -6,7 +6,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS.Holiday.Utils.Fetcher import HolidayQueries
+from Projects.CCUS_SAND2.Holiday.Utils.Fetcher import HolidayQueries
 
 __author__ = 'Ortal'
 
