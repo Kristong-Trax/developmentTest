@@ -10,8 +10,8 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS.Programs.Utils.Fetcher import NEW_OBBOQueries
-from Projects.CCUS.Programs.Utils.GeneralToolBox import NEW_OBBOGENERALToolBox
+from Projects.CCUS_SAND2.Programs.Utils.Fetcher import NEW_OBBOQueries
+from Projects.CCUS_SAND2.Programs.Utils.GeneralToolBox import NEW_OBBOGENERALToolBox
 
 __author__ = 'Ortal'
 

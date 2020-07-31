@@ -1,7 +1,3 @@
-def get(coll, keys):
-    return [coll.get(key) for key in keys]
-
-
 # kpi results
 FK = 'fk'
 NUMERATOR_ID = 'numerator_id'
@@ -64,103 +60,51 @@ KPI_PARENT_ID = 'KPI Parent ID'
 
 KPI = 'KPI'
 KPI_TYPE = 'KPI Type'
-# survey
-PALLET = 'pallet'
-RACK = 'rack'
 SHOULD_ENTER = 'should_enter'
+LOCATION_FK = 'location_fk'
 LOCATION = 'location'
 PRODUCT_TYPE = 'product_type'
 CATEGORY_FK = 'category_fk'
 MANUFACTURER_FK = 'manufacturer_fk'
 NUMERATOR_ENTITY = 'Numerator Entity'
 DENOMINATOR_ENTITY = 'Denominator Entity'
-
-TEMPLATES = {
-    MAIN_COOLERS: 'M - Main Checkout Coolers Only',
-    SELF_COOLERS: 'M - Self Check-Out Coolers',
-    DISPLAY: 'M - Display (Pallet Drop/Rack/ Shipper)',
-    ENDCAP: 'M - Displays Endcap Only',
-    FRONT_ENTRANCE: 'M - Front Entrance Primary Displays Only',
-    BEVERAGE_AISLE: 'M - Beverage Aisle/Shelf - All (Separated by Category)',
-}
-
-MANUFACTURERS = {
-    COKE: 'CCNA',
-    FAIRLIFE: 'FAIRLIFE',  # 'FairLife LLC',
-    PEPSI: 'PBNA'
-}
-
-PRODUCTS = {
-    EMPTY: 'General Empty'
-}
-
-SURVEY_RESPONSES = {
-    PALLET: 'Pallat Drop',
-    RACK: 'Rack'
-}
-
-KPIs = {
-    COMPLIANT_BAY_COUNT: [
-        {
-            NAME: 'How Many Coca-Cola Branded Coolers are in the Front End Checkout Area?',
-            TEMPLATE: TEMPLATES[MAIN_COOLERS],
-            MANUFACTURER: get(MANUFACTURERS, [COKE, FAIRLIFE]),
-            'exclude_manufacturers': False
-        },
-        {
-            NAME: 'How Many Pepsi Branded Coolers are in the Front End Checkout Area?',
-            TEMPLATE: TEMPLATES[MAIN_COOLERS],
-            MANUFACTURER: [MANUFACTURERS[PEPSI]],
-            'exclude_manufacturers': False
-        },
-        {
-            NAME: 'How Many Coolers From Other Brands are in the Front End Checkout Area?',
-            TEMPLATE: TEMPLATES[MAIN_COOLERS],
-            MANUFACTURER: get(MANUFACTURERS, [COKE, FAIRLIFE, PEPSI]),
-            'exclude_manufacturers': True
-        },
-        {
-            NAME: 'How Many Coca-Cola Branded Coolers are in the Self Checkout Area?',
-            TEMPLATE: TEMPLATES[SELF_COOLERS],
-            MANUFACTURER: get(MANUFACTURERS, [COKE, FAIRLIFE]),
-            'exclude_manufacturers': False
-        },
-        {
-            NAME: 'How Many Pepsi Branded Coolers are in the Self Checkout Area?',
-            TEMPLATE: TEMPLATES[SELF_COOLERS],
-            MANUFACTURER: [MANUFACTURERS[PEPSI]],
-            'exclude_manufacturers': False
-        },
-        {
-            NAME: 'How Many Other Coolers From Other Brands are in the Self Checkout Area?',
-            TEMPLATE: TEMPLATES[SELF_COOLERS],
-            MANUFACTURER: get(MANUFACTURERS, [COKE, FAIRLIFE, PEPSI]),
-            'exclude_manufacturers': True
-        }
-    ],
-    FACINGS_SOS: [
-        {
-            NAME: 'SOVI Main Beverage Aisle',
-            TEMPLATE: [TEMPLATES[BEVERAGE_AISLE]],
-            NUMERATOR: MANUFACTURER,
-            DENOMINATOR: CATEGORY,
-            CONTEXT: ''
-        },
-        {
-            NAME: '% Empty by Manufacturer Within Category',
-            TEMPLATE: [TEMPLATES[BEVERAGE_AISLE]],
-            NUMERATOR: EMPTY,
-            DENOMINATOR: MANUFACTURER,
-            CONTEXT: CATEGORY
-        },
-        {
-            NAME: 'SOVI Displays',
-            TEMPLATE: get(TEMPLATES, [DISPLAY, ENDCAP, FRONT_ENTRANCE]),
-            NUMERATOR: MANUFACTURER,
-            DENOMINATOR: CATEGORY,
-            CONTEXT: ''
-        },
-    ]
-}
-
+CONTEXT_ENTITY = 'Context Entity'
+BAY_NUMBER = 'bay_number'
+SCENE_MATCH_FK = 'scene_match_fk'
+COUNT = 'count'
 REGION = 'Military'
+BRAND_FK = 'brand_fk'
+TOTAL = 'total'
+
+# sub-optimal
+store_task_area_group_items = {
+    1: 'Regular checkouts',
+    2: 'Self-service checkouts',
+    3: 'Main Aisle/ Primary Shelf',
+    4: 'Main Aisle area',
+    5: 'Entry/Lobby',
+    6: 'Cooler zone/ cold vault',
+    7: 'Outside',
+    8: 'Front perimeter',
+    9: 'Rear perimeter',
+    10: 'Right perimeter',
+    11: 'Left perimeter',
+    12: 'Deli',
+    13: 'Bakery',
+    14: 'Dairy',
+    15: 'Pharmacy',
+    16: 'Food and beverage prep area',
+    17: 'Seasonal/Promotional',
+    18: 'Produce',
+    19: 'Electronic/Gaming',
+    20: 'Meat/Poultry/Seafood',
+    21: 'Sporting Goods',
+    22: 'Frozen',
+    23: 'Organic',
+    24: 'Other',
+    25: 'Front endcap',
+    26: 'Rear endcap',
+    27: 'Mid endcap',
+    28: 'Discount area',
+    29: 'Express checkout'
+}

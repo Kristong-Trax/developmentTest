@@ -7,9 +7,9 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.Programs.Utils.Fetcher import NEW_OBBOQueries
-from Projects.CCUS.Programs.Utils.GeneralToolBox import NEW_OBBOGENERALToolBox
-from Projects.CCUS.Programs.Utils.ParseTemplates import parse_template
+from Projects.CCUS_SAND2.Programs.Utils.Fetcher import NEW_OBBOQueries
+from Projects.CCUS_SAND2.Programs.Utils.GeneralToolBox import NEW_OBBOGENERALToolBox
+from Projects.CCUS_SAND2.Programs.Utils.ParseTemplates import parse_template
 from KPIUtils.GlobalDataProvider.PsDataProvider import PsDataProvider
 
 __author__ = 'Ortal'

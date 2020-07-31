@@ -7,8 +7,8 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.MONSTER.Utils.Fetcher import MONSTERQueries
-from Projects.CCUS.MONSTER.Utils.GeneralToolBox import MONSTERGENERALToolBox
+from Projects.CCUS_SAND2.MONSTER.Utils.Fetcher import MONSTERQueries
+from Projects.CCUS_SAND2.MONSTER.Utils.GeneralToolBox import MONSTERGENERALToolBox
 
 __author__ = 'Ortal'
 

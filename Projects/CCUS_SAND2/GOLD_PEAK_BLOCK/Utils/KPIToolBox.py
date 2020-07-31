@@ -7,9 +7,9 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.GOLD_PEAK_BLOCK.Utils.Fetcher import GOLD_PEAK_BLOCKQueries
-from Projects.CCUS.GOLD_PEAK_BLOCK.Utils.GeneralToolBox import GOLD_PEAK_BLOCKGeneralToolBox
-from Projects.CCUS.GOLD_PEAK_BLOCK.Utils.ParseTemplates import parse_template
+from Projects.CCUS_SAND2.GOLD_PEAK_BLOCK.Utils.Fetcher import GOLD_PEAK_BLOCKQueries
+from Projects.CCUS_SAND2.GOLD_PEAK_BLOCK.Utils.GeneralToolBox import GOLD_PEAK_BLOCKGeneralToolBox
+from Projects.CCUS_SAND2.GOLD_PEAK_BLOCK.Utils.ParseTemplates import parse_template
 
 __author__ = 'Shani'
 

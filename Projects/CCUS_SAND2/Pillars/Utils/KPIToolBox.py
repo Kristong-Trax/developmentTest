@@ -8,7 +8,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS.Pillars.Utils.Const import Const
+from Projects.CCUS_SAND2.Pillars.Utils.Const import Const
 
 __author__ = 'Ortal'
 

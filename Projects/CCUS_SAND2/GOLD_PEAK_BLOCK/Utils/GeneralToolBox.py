@@ -6,7 +6,7 @@ from KPIUtils_v2.Calculations.PositionGraphsCalculations import PositionGraphs
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.GOLD_PEAK_BLOCK.Utils.Fetcher import GOLD_PEAK_BLOCKQueries
+from Projects.CCUS_SAND2.GOLD_PEAK_BLOCK.Utils.Fetcher import GOLD_PEAK_BLOCKQueries
 
 __author__ = 'Ortal'
 
