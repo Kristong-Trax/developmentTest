@@ -9,9 +9,9 @@ from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Conf.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS.MSC.Utils.Fetcher import MSCQueries
-from Projects.CCUS.MSC.Utils.GeneralToolBox import MSCGENERALToolBox
-from Projects.CCUS.MSC.Utils.ParseTemplates import parse_template
+from Projects.CCUS_SAND2.MSC.Utils.Fetcher import MSCQueries
+from Projects.CCUS_SAND2.MSC.Utils.GeneralToolBox import MSCGENERALToolBox
+from Projects.CCUS_SAND2.MSC.Utils.ParseTemplates import parse_template
 
 __author__ = 'Shani'
 

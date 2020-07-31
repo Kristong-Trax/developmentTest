@@ -8,7 +8,7 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Cloud.Services.Storage.Factory import StorageFactory
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.Utils.ToolBox import ToolBox as Consts
+from Projects.CCUS_SAND2.Utils.ToolBox import ToolBox as Consts
 
 __author__ = 'Nimrod'
 AVAILABILITY_SETS = 'Dunkin Donuts'
@@ -326,7 +326,7 @@ class NewTemplate:
 
 # if __name__ == '__main__':
 #     from Trax.Cloud.Services.Connector.Logger import LoggerInitializer
-#     for project_name in ['ccus']:
+#     for project_name in ['ccus_sand2']:
 #         LoggerInitializer.init('{} New Template'.format(project_name))
 #         template = NewTemplate(project_name)
 #         # products_list = template.add_product_kpis_to_static()

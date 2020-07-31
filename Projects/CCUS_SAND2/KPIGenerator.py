@@ -1,14 +1,14 @@
-from Projects.CCUS.MONSTER.Utils.KPIToolBox import MONSTERToolBox
-from Projects.CCUS.FSOP.Utils.KPIToolBox import FSOPToolBox
-from Projects.CCUS.Utils.CCUSToolBox import log_runtime
-from Projects.CCUS.DISPLAYS.KPIToolBox import DISPLAYSToolBox
-from Projects.CCUS.Programs.Utils.KPIToolBox import PROGRAMSToolBox
-from Projects.CCUS.Holiday.Utils.KPIToolBox import HOLIDAYToolBox
-from Projects.CCUS.SpecialPrograms.Utils.KPIToolBox import SpecialProgramsToolBox
-from Projects.CCUS.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
-from Projects.CCUS.Validation.Utils.KPIToolBox import VALIDATIONToolBox
-from Projects.CCUS.JEFF_DEMO.Utils.KPIToolBox import JEFFToolBox
-from Projects.CCUS.MILITARY.Utils.KPIToolBox import MilitaryToolBox
+from Projects.CCUS_SAND2.MONSTER.Utils.KPIToolBox import MONSTERToolBox
+from Projects.CCUS_SAND2.FSOP.Utils.KPIToolBox import FSOPToolBox
+from Projects.CCUS_SAND2.Utils.CCUSToolBox import log_runtime
+from Projects.CCUS_SAND2.DISPLAYS.KPIToolBox import DISPLAYSToolBox
+from Projects.CCUS_SAND2.Programs.Utils.KPIToolBox import PROGRAMSToolBox
+from Projects.CCUS_SAND2.Holiday.Utils.KPIToolBox import HOLIDAYToolBox
+from Projects.CCUS_SAND2.SpecialPrograms.Utils.KPIToolBox import SpecialProgramsToolBox
+from Projects.CCUS_SAND2.Pillars.Utils.KPIToolBox import PillarsPROGRAMSToolBox
+from Projects.CCUS_SAND2.Validation.Utils.KPIToolBox import VALIDATIONToolBox
+from Projects.CCUS_SAND2.JEFF_DEMO.Utils.KPIToolBox import JEFFToolBox
+from Projects.CCUS_SAND2.MILITARY.Utils.KPIToolBox import MilitaryToolBox
 from KPIUtils_v2.DB.CommonV2 import Common
 
 
@@ -129,7 +129,6 @@ class CCUSGenerator:
         tool_box.commit_results_data(kpi_set_fk=32)
         del tool_box
 
-
     @log_runtime('Special Programs Calculations')
     def calculate_validation(self):
         tool_box = VALIDATIONToolBox(self.data_provider, self.output, kpi_set_fk=34)
@@ -139,7 +138,6 @@ class CCUSGenerator:
 
     @log_runtime('Military Calculations')
     def calculate_military(self):
-        tool_box = MilitaryToolBox(self.data_provider, self.output)
+        tool_box = MilitaryToolBox(self.data_provider, self.output, self.common)
         tool_box.main_calculation()
-        tool_box.commit_results_data()
         del tool_box

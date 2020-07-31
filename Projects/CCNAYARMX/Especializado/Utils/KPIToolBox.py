@@ -1,18 +1,14 @@
-from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.Utils.GlobalScripts.Scripts import GlobalSessionToolBox
 from KPIUtils_v2.GlobalDataProvider.PsDataProvider import PsDataProvider
 from KPIUtils_v2.Calculations.SurveyCalculations import Survey
 from KPIUtils_v2.Calculations.BlockCalculations_v2 import Block
-from KPIUtils_v2.Calculations.AssortmentCalculations import Assortment
-from KPIUtils_v2.DB.CommonV2 import Common as CommonV2
 
 import pandas as pd
 import numpy as np
 import os
 from datetime import datetime
 
-from Projects.CCNAYARMX.Data.LocalConsts import Consts
 
 __author__ = 'krishnat'
 
@@ -104,7 +100,7 @@ GENERAL_ASSORTMENTS_SHEETS = [PLATAFORMAS_ASSORTMENT, PLATAFORMAS_CONSTRAINTS, C
                               MERCADEO_CONSTRAINTS]
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-                             'CCNayarTemplateEspecializado2020v0.7.xlsx')
+                             'CCNayarTemplateEspecializado2020v0.9.xlsx')
 PORTAFOLIO_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
                                'CCNayarEspecializado_Portafolio.xlsx')
 POS_OPTIONS_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
@@ -219,7 +215,8 @@ class EspecializadoToolBox(GlobalSessionToolBox):
                     self.templates[row[KPI_TYPE]][KPI_NAME].str.encode('utf-8') == row[KPI_NAME].encode('utf-8')].iloc[
                     0]
             except IndexError:
-                pass
+                Log.warning('No KPI defintion found for {}'.format(row[KPI_NAME]))
+                continue
             # if kpi_row[KPI_NAME] == 'Enfriador Rojo - NCBs - Especializado':
             #     a = 1
             result_data = calculation_function(kpi_row)
@@ -751,7 +748,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
 
     @staticmethod
     def calculate_assortment_passed_if_constraints(constraints_df, assortment_df, scif):
-        constraints_df = constraints_df[~ np.isnan(constraints_df)]
+        constraints_df = constraints_df.dropna(axis=1, how='all').iloc[0]
         assortment_passed = 0
         passed_list = []
         failed_list = []
@@ -1573,7 +1570,7 @@ class EspecializadoToolBox(GlobalSessionToolBox):
         for index, row in platformas_data.iterrows():
             relevant_template_name = row.template_name
             relevant_preplat = pre_req_platformas[pre_req_platformas['Platform'].str.contains(row['Platform Name'])]
-            relevant_preplat = relevant_preplat[relevant_preplat.template_name == relevant_template_name]
+            relevant_preplat = relevant_preplat[relevant_preplat.template_name.str.contains(relevant_template_name)]
 
             clump_plat = (row['Minimum facings met'] * .5 / 3 + row['Mandatory SKUs found'] * .5 / 3 + row[
                 'Survey Question'] * .5 / 3) if not 0 in [row['Minimum facings met'], row['Mandatory SKUs found'], row[

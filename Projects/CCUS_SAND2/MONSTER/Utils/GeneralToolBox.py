@@ -2,7 +2,7 @@ import pandas as pd
 from Trax.Algo.Calculations.Core.DataProvider import Data
 from Trax.Algo.Calculations.Core.Shortcuts import BaseCalculationsGroup
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.MONSTER.Utils.Fetcher import MONSTERQueries
+from Projects.CCUS_SAND2.MONSTER.Utils.Fetcher import MONSTERQueries
 
 __author__ = 'Ortal'
 

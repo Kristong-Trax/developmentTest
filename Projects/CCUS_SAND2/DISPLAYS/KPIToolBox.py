@@ -10,9 +10,9 @@ from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
-from Projects.CCUS.DISPLAYS.GeneralToolBox import DISPLAYSGENERALToolBox
-from Projects.CCUS.DISPLAYS.Fetcher import DISPLAYSQueries
-from Projects.CCUS.DISPLAYS.ParseTemplates import parse_template
+from Projects.CCUS_SAND2.DISPLAYS.GeneralToolBox import DISPLAYSGENERALToolBox
+from Projects.CCUS_SAND2.DISPLAYS.Fetcher import DISPLAYSQueries
+from Projects.CCUS_SAND2.DISPLAYS.ParseTemplates import parse_template
 
 __author__ = 'Nimrod'
 

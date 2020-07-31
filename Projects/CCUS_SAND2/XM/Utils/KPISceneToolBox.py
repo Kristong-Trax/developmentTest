@@ -2,7 +2,7 @@ from Trax.Algo.Calculations.Core.DataProvider import Data
 from KPIUtils_v2.DB.PsProjectConnector import PSProjectConnector
 from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Utils.Logging.Logger import Log
-from Projects.CCUS.XM.Utils.Const import Const
+from Projects.CCUS_SAND2.XM.Utils.Const import Const
 import pandas as pd
 
 __author__ = 'Shivi'

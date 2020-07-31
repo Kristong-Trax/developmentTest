@@ -7,8 +7,8 @@ from Trax.Algo.Calculations.Core.Constants import Keys, Fields, SCENE_ITEM_FACTS
 from Trax.Algo.Calculations.Core.Vanilla.Calculations import SceneVanillaCalculations
 from Trax.Algo.Calculations.Core.Vanilla.Output import VanillaOutput
 import pandas as pd
-from Projects.CCUS.Pillars.SceneKpis.LocalSceneCalculations import SceneCalculations
-from Projects.CCUS.Calculations import CCUSCalculations
+from Projects.CCUS_SAND2.Pillars.SceneKpis.LocalSceneCalculations import SceneCalculations
+from Projects.CCUS_SAND2.Calculations import CCUSCalculations
 
 
 def save_scene_item_facts_to_data_provider(data_provider, output):
@@ -22,9 +22,9 @@ def save_scene_item_facts_to_data_provider(data_provider, output):
 
 
 if __name__ == '__main__':
-    LoggerInitializer.init('pillars ccus calculations')
+    LoggerInitializer.init('pillars ccus_sand2 calculations')
     Config.init()
-    project_name = 'ccus'
+    project_name = 'ccus_sand2'
     data_provider = KEngineDataProvider(project_name)
     sessions_data = {
         'b82b3d94-4ebf-49b7-9d79-68cdf6807ef8': [10351119, ],

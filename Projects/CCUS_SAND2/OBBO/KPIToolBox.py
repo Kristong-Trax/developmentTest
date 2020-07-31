@@ -9,9 +9,9 @@ from Trax.Cloud.Services.Connector.Keys import DbUsers
 from Trax.Data.Utils.MySQLservices import get_table_insertion_query as insert
 from Trax.Utils.Logging.Logger import Log
 
-from Projects.CCUS.OBBO.Fetcher import OBBOQueries
-from Projects.CCUS.OBBO.GeneralToolBox import OBBOGENERALToolBox
-from Projects.CCUS.OBBO.ParseTemplates import parse_template
+from Projects.CCUS_SAND2.OBBO.Fetcher import OBBOQueries
+from Projects.CCUS_SAND2.OBBO.GeneralToolBox import OBBOGENERALToolBox
+from Projects.CCUS_SAND2.OBBO.ParseTemplates import parse_template
 
 __author__ = 'Nimrod'
 

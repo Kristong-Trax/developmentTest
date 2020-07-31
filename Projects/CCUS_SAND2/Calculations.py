@@ -1,5 +1,5 @@
 from Trax.Algo.Calculations.Core.CalculationsScript import BaseCalculationsScript
-from Projects.CCUS.KPIGenerator import CCUSGenerator
+from Projects.CCUS_SAND2.KPIGenerator import CCUSGenerator
 
 
 __author__ = 'ortal_shivi_Jasmine'
