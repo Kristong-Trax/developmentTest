@@ -68,137 +68,137 @@ class GSKRUToolBox:
         This function calculates the KPI results.
         """
 
-        # # Global KPIs
-        #
-        # # All Store KPIs
-        # assortment_store_dict = self.gsk_generator.availability_store_function(
-        #     custom_suffix='_Stacking_Included')
-        # self.common.save_json_to_new_tables(assortment_store_dict)
-        #
-        # assortment_category_dict = self.gsk_generator.availability_category_function(
-        #     custom_suffix='_Stacking_Included')
-        # self.common.save_json_to_new_tables(assortment_category_dict)
-        #
-        # assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function(
-        #     custom_suffix='_Stacking_Included')
-        # self.common.save_json_to_new_tables(assortment_subcategory_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
-        #     custom_suffix='_Stacking_Included',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
-        #     custom_suffix='_Stacking_Included',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
-        #     custom_suffix='_Stacking_Included',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # # Main Shelf KPIs
-        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        # self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-        #                                                   'gsk_set_up.xlsx'),
-        #                                      sheet_name='Functional KPIs Main Shelf',
-        #                                      keep_default_na=False)
-        # self.gsk_generator.set_up_file = self.set_up_template
-        # self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
-        # self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
-        # # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
-        #     custom_suffix='_Stacking_Included_Main_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
-        #     custom_suffix='_Stacking_Included_Main_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
-        #     custom_suffix='_Stacking_Included_Main_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function(
-        #     custom_suffix='_Main_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function(
-        #     custom_suffix='_Main_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function(
-        #     custom_suffix='_Main_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # # Secondary Shelf KPIs
-        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        # self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-        #                                                   'gsk_set_up.xlsx'),
-        #                                      sheet_name='Functional KPIs Secondary Shelf',
-        #                                      keep_default_na=False)
-        # self.gsk_generator.set_up_file = self.set_up_template
-        # self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
-        # self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
-        # # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
-        #     custom_suffix='_Stacking_Included_Secondary_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
-        #     custom_suffix='_Stacking_Included_Secondary_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
-        #     custom_suffix='_Stacking_Included_Secondary_Shelf',
-        #     fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
-        # self.common.save_json_to_new_tables(facings_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function(
-        #     custom_suffix='_Secondary_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function(
-        #     custom_suffix='_Secondary_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function(
-        #     custom_suffix='_Secondary_Shelf')
-        # self.common.save_json_to_new_tables(linear_sos_dict)
-        #
-        # # Local KPIs
-        # self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
-        # self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
-        #                                                   'gsk_set_up.xlsx'),
-        #                                      sheet_name='Functional KPIs Local',
-        #                                      keep_default_na=False)
-        # self.gsk_generator.set_up_file = self.set_up_template
-        # self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
-        # self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
-        # # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+        # Global KPIs
+
+        # All Store KPIs
+        assortment_store_dict = self.gsk_generator.availability_store_function(
+            custom_suffix='_Stacking_Included')
+        self.common.save_json_to_new_tables(assortment_store_dict)
+
+        assortment_category_dict = self.gsk_generator.availability_category_function(
+            custom_suffix='_Stacking_Included')
+        self.common.save_json_to_new_tables(assortment_category_dict)
+
+        assortment_subcategory_dict = self.gsk_generator.availability_subcategory_function(
+            custom_suffix='_Stacking_Included')
+        self.common.save_json_to_new_tables(assortment_subcategory_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
+            custom_suffix='_Stacking_Included',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
+            custom_suffix='_Stacking_Included',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
+            custom_suffix='_Stacking_Included',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function()
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        # Main Shelf KPIs
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                          'gsk_set_up.xlsx'),
+                                             sheet_name='Functional KPIs Main Shelf',
+                                             keep_default_na=False)
+        self.gsk_generator.set_up_file = self.set_up_template
+        self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
+        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
+            custom_suffix='_Stacking_Included_Main_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
+            custom_suffix='_Stacking_Included_Main_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
+            custom_suffix='_Stacking_Included_Main_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function(
+            custom_suffix='_Main_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function(
+            custom_suffix='_Main_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function(
+            custom_suffix='_Main_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        # Secondary Shelf KPIs
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                          'gsk_set_up.xlsx'),
+                                             sheet_name='Functional KPIs Secondary Shelf',
+                                             keep_default_na=False)
+        self.gsk_generator.set_up_file = self.set_up_template
+        self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
+        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_whole_store_function(
+            custom_suffix='_Stacking_Included_Secondary_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_sos_by_category_function(
+            custom_suffix='_Stacking_Included_Secondary_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        facings_sos_dict = self.gsk_generator.gsk_global_facings_by_sub_category_function(
+            custom_suffix='_Stacking_Included_Secondary_Shelf',
+            fractional_facings_parameters=LocalConsts.FRACTIONAL_FACINGS_PARAMETERS)
+        self.common.save_json_to_new_tables(facings_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_whole_store_function(
+            custom_suffix='_Secondary_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_category_function(
+            custom_suffix='_Secondary_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        linear_sos_dict = self.gsk_generator.gsk_global_linear_sos_by_sub_category_function(
+            custom_suffix='_Secondary_Shelf')
+        self.common.save_json_to_new_tables(linear_sos_dict)
+
+        # Local KPIs
+        self.rds_conn = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
+        self.set_up_template = pd.read_excel(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'Data',
+                                                          'gsk_set_up.xlsx'),
+                                             sheet_name='Functional KPIs Local',
+                                             keep_default_na=False)
+        self.gsk_generator.set_up_file = self.set_up_template
+        self.gsk_generator.tool_box.set_up_file = self.gsk_generator.set_up_file
+        self.gsk_generator.tool_box.set_up_data = LocalConsts.SET_UP_DATA.copy()
+        # self.gsk_generator = GSKGenerator(self.data_provider, self.output, self.common, self.set_up_template)
 
         # SOA
         soa_dict = self.gsk_soa_function()
         self.common.save_json_to_new_tables(soa_dict)
 
-        # # Core Range Assortment
+        # # Core Range Assortment - disabled until phase 2
         # cra_dict = self.gsk_cra_function()
         # self.common.save_json_to_new_tables(cra_dict)
 
@@ -231,118 +231,118 @@ class GSKRUToolBox:
                                                            key_filters={'additional_attribute_11': self.store_channel,
                                                                         'additional_attribute_12': self.store_format})
 
-        if targets.empty:
-            Log.warning('No SOA targets defined for this session')
-        else:
+        # if targets.empty:
+        #     Log.warning('No SOA targets defined for this session')
+        # else:
 
-            self.gsk_generator.tool_box. \
-                extract_data_set_up_file(LocalConsts.SOA, self.set_up_data, LocalConsts.KPI_DICT)
-            df = self.gsk_generator.tool_box.tests_by_template(LocalConsts.SOA, self.scif, self.set_up_data)
-            df, facings_column = self.df_filter_by_stacking(df, LocalConsts.SOA)
+        self.gsk_generator.tool_box. \
+            extract_data_set_up_file(LocalConsts.SOA, self.set_up_data, LocalConsts.KPI_DICT)
+        df = self.gsk_generator.tool_box.tests_by_template(LocalConsts.SOA, self.scif, self.set_up_data)
+        df, facings_column = self.df_filter_by_stacking(df, LocalConsts.SOA)
 
-            # Sub-Category
-            for sub_category_fk in df[ScifConsts.SUB_CATEGORY_FK].unique().tolist():
+        # Sub-Category
+        for sub_category_fk in df[ScifConsts.SUB_CATEGORY_FK].unique().tolist():
 
-                numerator_result = len(df[(df[ScifConsts.MANUFACTURER_FK] == self.own_manufacturer_id) &
-                                          (df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk)][
-                                           ScifConsts.PRODUCT_FK].unique().tolist())
-                denominator_result = len(df[df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk][
-                                             ScifConsts.PRODUCT_FK].unique().tolist())
-                result = round(float(numerator_result) / float(denominator_result), 4) \
-                    if numerator_result != 0 and denominator_result != 0 \
-                    else 0
-
-                target = targets[targets['sub_category_fk'] == sub_category_fk]['internal_target'].values
-                target = float(target[0]) if len(target) > 0 else None
-                target = target/100 if target else None
-                if target:
-                    # score = 1 if result >= target else 0
-                    score = round(result/target, 4)
-                else:
-                    score = None
-                results.append(
-                    {'fk': kpi_soa_subcat_internal_target_fk,
-                     SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
-                     SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
-                     SessionResultsConsts.DENOMINATOR_ID: self.store_id,
-                     SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
-                     SessionResultsConsts.CONTEXT_ID: sub_category_fk,
-                     SessionResultsConsts.RESULT: result,
-                     SessionResultsConsts.TARGET: target,
-                     SessionResultsConsts.SCORE: score,
-                     'identifier_parent': identifier_internal,
-                     'should_enter': True})
-
-                self.core_range_targets.update({sub_category_fk: target})
-
-                target = targets[targets['sub_category_fk'] == sub_category_fk]['external_target'].values
-                target = float(target[0]) if len(target) > 0 else None
-                target = target/100 if target else None
-                if target:
-                    # score = 1 if result >= target else 0
-                    score = round(result/target, 4)
-                else:
-                    score = None
-                results.append(
-                    {'fk': kpi_soa_subcat_external_target_fk,
-                     SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
-                     SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
-                     SessionResultsConsts.DENOMINATOR_ID: self.store_id,
-                     SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
-                     SessionResultsConsts.CONTEXT_ID: sub_category_fk,
-                     SessionResultsConsts.RESULT: result,
-                     SessionResultsConsts.TARGET: target,
-                     SessionResultsConsts.SCORE: score,
-                     'identifier_parent': identifier_external,
-                     'should_enter': True})
-
-            # Manufacturer
-            numerator_result = len(df[df[ScifConsts.MANUFACTURER_FK] == self.own_manufacturer_id][
+            numerator_result = len(df[(df[ScifConsts.MANUFACTURER_FK] == self.own_manufacturer_id) &
+                                      (df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk)][
                                        ScifConsts.PRODUCT_FK].unique().tolist())
-            denominator_result = len(df[ScifConsts.PRODUCT_FK].unique().tolist())
+            denominator_result = len(df[df[ScifConsts.SUB_CATEGORY_FK] == sub_category_fk][
+                                         ScifConsts.PRODUCT_FK].unique().tolist())
             result = round(float(numerator_result) / float(denominator_result), 4) \
                 if numerator_result != 0 and denominator_result != 0 \
                 else 0
 
-            target = targets[targets['sub_category_fk'].isnull()]['internal_target'].values
+            target = targets[targets['sub_category_fk'] == sub_category_fk]['internal_target'].values
             target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
                 # score = 1 if result >= target else 0
                 score = round(result/target, 4)
             else:
-                score = None
+                score = 0
             results.append(
-                {'fk': kpi_soa_manufacturer_internal_target_fk,
+                {'fk': kpi_soa_subcat_internal_target_fk,
                  SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
                  SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
                  SessionResultsConsts.DENOMINATOR_ID: self.store_id,
                  SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
+                 SessionResultsConsts.CONTEXT_ID: sub_category_fk,
                  SessionResultsConsts.RESULT: result,
                  SessionResultsConsts.TARGET: target,
                  SessionResultsConsts.SCORE: score,
-                 'identifier_result': identifier_internal,
+                 'identifier_parent': identifier_internal,
                  'should_enter': True})
 
-            target = targets[targets['sub_category_fk'].isnull()]['external_target'].values
+            self.core_range_targets.update({sub_category_fk: target})
+
+            target = targets[targets['sub_category_fk'] == sub_category_fk]['external_target'].values
             target = float(target[0]) if len(target) > 0 else None
             target = target/100 if target else None
             if target:
                 # score = 1 if result >= target else 0
                 score = round(result/target, 4)
             else:
-                score = None
+                score = 0
             results.append(
-                {'fk': kpi_soa_manufacturer_external_target_fk,
+                {'fk': kpi_soa_subcat_external_target_fk,
                  SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
                  SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
                  SessionResultsConsts.DENOMINATOR_ID: self.store_id,
                  SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
+                 SessionResultsConsts.CONTEXT_ID: sub_category_fk,
                  SessionResultsConsts.RESULT: result,
                  SessionResultsConsts.TARGET: target,
                  SessionResultsConsts.SCORE: score,
-                 'identifier_result': identifier_external,
+                 'identifier_parent': identifier_external,
                  'should_enter': True})
+
+        # Manufacturer
+        numerator_result = len(df[df[ScifConsts.MANUFACTURER_FK] == self.own_manufacturer_id][
+                                   ScifConsts.PRODUCT_FK].unique().tolist())
+        denominator_result = len(df[ScifConsts.PRODUCT_FK].unique().tolist())
+        result = round(float(numerator_result) / float(denominator_result), 4) \
+            if numerator_result != 0 and denominator_result != 0 \
+            else 0
+
+        target = targets[targets['sub_category_fk'].isnull()]['internal_target'].values
+        target = float(target[0]) if len(target) > 0 else None
+        target = target/100 if target else None
+        if target:
+            # score = 1 if result >= target else 0
+            score = round(result/target, 4)
+        else:
+            score = 0
+        results.append(
+            {'fk': kpi_soa_manufacturer_internal_target_fk,
+             SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
+             SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
+             SessionResultsConsts.DENOMINATOR_ID: self.store_id,
+             SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
+             SessionResultsConsts.RESULT: result,
+             SessionResultsConsts.TARGET: target,
+             SessionResultsConsts.SCORE: score,
+             'identifier_result': identifier_internal,
+             'should_enter': True})
+
+        target = targets[targets['sub_category_fk'].isnull()]['external_target'].values
+        target = float(target[0]) if len(target) > 0 else None
+        target = target/100 if target else None
+        if target:
+            # score = 1 if result >= target else 0
+            score = round(result/target, 4)
+        else:
+            score = 0
+        results.append(
+            {'fk': kpi_soa_manufacturer_external_target_fk,
+             SessionResultsConsts.NUMERATOR_ID: self.own_manufacturer_id,
+             SessionResultsConsts.NUMERATOR_RESULT: numerator_result,
+             SessionResultsConsts.DENOMINATOR_ID: self.store_id,
+             SessionResultsConsts.DENOMINATOR_RESULT: denominator_result,
+             SessionResultsConsts.RESULT: result,
+             SessionResultsConsts.TARGET: target,
+             SessionResultsConsts.SCORE: score,
+             'identifier_result': identifier_external,
+             'should_enter': True})
 
         return results
 
