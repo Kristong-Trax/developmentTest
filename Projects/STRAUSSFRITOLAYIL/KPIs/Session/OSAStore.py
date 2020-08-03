@@ -13,7 +13,7 @@ class OSAStoreKpi(UnifiedCalculationsScript):
         kpi_fk = self.utils.common.get_kpi_fk_by_kpi_type(Consts.OSA_STORE_KPI)
         sku_results = self.dependencies_data
         denominator = len(sku_results)
-        numerator = len(sku_results[sku_results['score'] == Consts.PASS])
+        numerator = len(sku_results[sku_results['score'] == Consts.PASS]) if denominator != 0 else 0
         result = self.utils.calculate_sos_result(numerator, denominator)
         self.write_to_db_result(fk=kpi_fk, numerator_id=self.utils.own_manuf_fk,
                                 denominator_id=self.utils.store_id, result=result,
