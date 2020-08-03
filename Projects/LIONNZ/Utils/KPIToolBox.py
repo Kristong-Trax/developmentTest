@@ -15,7 +15,6 @@ TEMPLATE_PARENT_FOLDER = 'Data'
 TEMPLATE_NAME = 'Template.xlsx'
 
 KPI_NAMES_SHEET = 'kpis'
-ASSORTMENT_SHEET = 'assortment'
 KPI_DETAILS_SHEET = 'details'
 KPI_INC_EXC_SHEET = 'exclude_include'
 # Column Name
@@ -34,7 +33,7 @@ Count = 'Count'
 # Output Type
 NUM_OUT = 'number'
 LIST_OUT = 'list'
-PARAM_COUNT = 4
+PARAM_COUNT = 5
 PARAM_DB_MAP = {
     # key: the value in excel as param values
     # value:
@@ -303,7 +302,8 @@ class LIONNZToolBox:
                 detail['pk'] = kpi['pk'].iloc[0]
                 # gather details
                 groupers, query_string = get_groupers_and_query_string(detail)
-                _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL] == kpi[KPI_TYPE_COL].values[0]]
+                _include_exclude = kpi_include_exclude[kpi_details[KPI_NAME_COL]
+                                                       == kpi[KPI_TYPE_COL].values[0]]
                 # gather include exclude
                 include_exclude_data_dict = get_include_exclude(_include_exclude)
                 dataframe_to_process = self.get_sanitized_match_prod_scene(
@@ -321,6 +321,11 @@ class LIONNZToolBox:
             name=kpi.kpi_name.iloc[0],
             sess=self.session_uid
         ))
+        prod_empty_sub_cat = dataframe_to_process[
+            dataframe_to_process['sub_category_fk'].isnull()]['product_fk'].tolist()
+        Log.info('Remove products with empty sub category fk: {}'.format(prod_empty_sub_cat))
+        dataframe_to_process.dropna(subset=['sub_category_fk'], inplace=True)
+        dataframe_to_process = dataframe_to_process.astype({'sub_category_fk': 'int64'}, errors='ignore')
         if query_string:
             grouped_data_frame = dataframe_to_process.query(query_string).groupby(groupers)
         else:
@@ -340,27 +345,36 @@ class LIONNZToolBox:
             denominators_df_to_save_zero = scif_with_den_context[(~scif_with_den_context[
                 PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']
             ].isin(df_with_den_context[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]))]
-
-            kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
             identifier_parent = None
-            if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
-                kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
-                                                  & (self.kpi_static_data['delete_time'].isnull())]
-                kpi_parent_detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi_parent[KPI_TYPE_COL].values[0]]
-                # hard coding; expecting only `FSOS_OWN_MANUFACTURER_IN_WHOLE_STORE` as parent
-                parent_denominator_id = self.store_id
-                parent_context_id = self.store_id
-                identifier_parent = "{}_{}_{}_{}".format(
-                    kpi_parent_detail['kpi_name'].iloc[0],
-                    kpi_parent['pk'].iloc[0],
-                    # parent_numerator_id,
-                    parent_denominator_id,
-                    parent_context_id
-                )
-
             numerator_fk = self.own_man_fk
             result = numerator_result = 0  # SAVE ALL RESULTS AS ZERO
+            denominators_df_to_save_zero.dropna(inplace=True)
+            denominators_df_to_save_zero = denominators_df_to_save_zero.astype('int64')
             for idx, each_row in denominators_df_to_save_zero.iterrows():
+                # get parent details
+                if not is_nan(kpi[KPI_PARENT_COL].iloc[0]):
+                    param_id_map = dict(each_row.fillna('0'))
+                    kpi_parent = self.kpi_static_data[(self.kpi_static_data[KPI_TYPE_COL] == kpi[KPI_PARENT_COL].iloc[0])
+                                                      & (self.kpi_static_data['delete_time'].isnull())]
+                    kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
+                    kpi_parent_detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi_parent[KPI_TYPE_COL].values[0]]
+                    parent_denominator_id = get_parameter_id(key_value=PARAM_DB_MAP[
+                                                                    kpi_parent_detail['denominator'].iloc[0]]['key'],
+                                                             param_id_map=param_id_map)
+                    if parent_denominator_id is None:
+                        parent_denominator_id = self.store_id
+                    parent_context_id = get_parameter_id(key_value=PARAM_DB_MAP[
+                                                                    kpi_parent_detail['context'].iloc[0]]['key'],
+                                                         param_id_map=param_id_map)
+                    if parent_context_id is None:
+                        parent_context_id = self.store_id
+                    identifier_parent = "{}_{}_{}_{}".format(
+                        kpi_parent_detail['kpi_name'].iloc[0],
+                        kpi_parent['pk'].iloc[0],
+                        # parent_numerator_id,
+                        int(parent_denominator_id),
+                        int(parent_context_id)
+                    )
                 context_id = each_row[PARAM_DB_MAP[kpi['context'].iloc[0]]['key']]
                 # query out empty product IDs since FSOS is not interested in them.
                 each_den_fk = each_row[PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key']]
@@ -397,10 +411,14 @@ class LIONNZToolBox:
                 group_id_tup = group_id_tup,
             param_id_map = dict(zip(groupers, group_id_tup))
             numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
-            denominator_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
-                                               param_id_map=param_id_map) or self.store_id)
-            context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'],
-                                           param_id_map=param_id_map) or self.store_id)
+            denominator_id = get_parameter_id(key_value=PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'],
+                                              param_id_map=param_id_map)
+            if denominator_id is None:
+                denominator_id = self.store_id
+            context_id = get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'],
+                                          param_id_map=param_id_map)
+            if context_id is None:
+                context_id = self.store_id
             if PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'] == 'store_fk':
                 denominator_df = dataframe_to_process
             else:
@@ -419,10 +437,14 @@ class LIONNZToolBox:
                                                   & (self.kpi_static_data['delete_time'].isnull())]
                 kpi_details = self.kpi_template.parse(KPI_DETAILS_SHEET)
                 kpi_parent_detail = kpi_details[kpi_details[KPI_NAME_COL] == kpi_parent[KPI_TYPE_COL].values[0]]
-                parent_denominator_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi_parent_detail['denominator'].iloc[0]]['key'],
-                                                          param_id_map=param_id_map) or self.store_id)
-                parent_context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi_parent_detail['context'].iloc[0]]['key'],
-                                                      param_id_map=param_id_map) or self.store_id)
+                parent_denominator_id = get_parameter_id(key_value=PARAM_DB_MAP[kpi_parent_detail['denominator'].iloc[0]]['key'],
+                                                         param_id_map=param_id_map)
+                if parent_denominator_id is None:
+                    parent_denominator_id = self.store_id
+                parent_context_id = get_parameter_id(key_value=PARAM_DB_MAP[kpi_parent_detail['context'].iloc[0]]['key'],
+                                                     param_id_map=param_id_map)
+                if parent_context_id is None:
+                    parent_context_id = self.store_id
                 self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
                                                numerator_id=numerator_id,
                                                denominator_id=denominator_id,
@@ -476,9 +498,10 @@ class LIONNZToolBox:
             param_id_map = dict(zip(groupers, group_id_tup))
             numerator_id = param_id_map.get(PARAM_DB_MAP[kpi['numerator'].iloc[0]]['key'])
             denominator_id = param_id_map.get(PARAM_DB_MAP[kpi['denominator'].iloc[0]]['key'])
-            context_id = (get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'],
-                                           param_id_map=param_id_map)
-                          or self.store_id)
+            context_id = get_parameter_id(key_value=PARAM_DB_MAP[kpi['context'].iloc[0]]['key'],
+                                          param_id_map=param_id_map)
+            if context_id is None:
+                context_id = self.store_id
             result = len(group_data)
             self.common.write_to_db_result(fk=kpi['pk'].iloc[0],
                                            numerator_id=numerator_id,
@@ -517,36 +540,30 @@ class LIONNZToolBox:
                 )].index,
                 inplace=True
             )
+
         if not include_stacking:
             # get column value for this row
-
             if scene_types_to_exclude_stacking:
                 newdf = sanitized_products_in_scene[ ~ sanitized_products_in_scene['template_name'].str.upper().isin(
                     [x.upper() if type(x) in [unicode, str] else x for x in scene_types_to_exclude_stacking]
                 )]
-
                 for each_template_name in scene_types_to_exclude_stacking:
-
                     sanitized_products_in_scene_for_temp = sanitized_products_in_scene[
                         sanitized_products_in_scene['template_name'].str.upper() == each_template_name.upper()
                         ]
-
                     filtered = sanitized_products_in_scene_for_temp[
                         sanitized_products_in_scene_for_temp['stacking_layer'] <= 1
                         ]
-
                     if filtered.empty:
                         pass
                     else:
                         # use the filtered
                         newdf = newdf.append(filtered)
-
                 sanitized_products_in_scene = newdf
             else:
                 Log.info("Exclude stacking other than in layer 1 or negative stacking [menu]")
                 sanitized_products_in_scene = sanitized_products_in_scene.loc[
                     sanitized_products_in_scene['stacking_layer'] <= 1]
-
             # exclude stacking if the flag is set
 
         if categories_to_exclude:
