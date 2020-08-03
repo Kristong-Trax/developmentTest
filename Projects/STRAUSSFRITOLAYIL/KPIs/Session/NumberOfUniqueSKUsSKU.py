@@ -25,9 +25,8 @@ class NumberOfUniqueSKUsSKUKpi(UnifiedCalculationsScript):
         for i, sku_row in combined_scenes_matches.iterrows():
             product_fk = sku_row['product_fk']
             result = sku_row['facings']
-            score = Consts.PASS if result > 0 else Consts.FAIL
             self.write_to_db_result(fk=kpi_fk, numerator_id=product_fk, result=result,
-                                    denominator_id=self.utils.store_id, score=score)
+                                    denominator_id=self.utils.store_id)
 
     def kpi_type(self):
         pass
