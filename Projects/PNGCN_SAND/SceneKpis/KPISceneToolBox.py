@@ -123,11 +123,17 @@ class PngcnSceneKpis(object):
         self.matches_from_data_provider = self.data_provider[Data.MATCHES]
         self.scif = self.data_provider[Data.SCENE_ITEM_FACTS]
         self.location_type = "" if self.scif.empty else self.scif.iloc[0]['location_type']
+        print 'self.location_type: {}'.format(self.location_type)
+
         self.psdataprovider = PsDataProvider(data_provider=self.data_provider)
         if self.location_type == 'Primary Shelf':
             template_fk = self.data_provider[Data.TEMPLATES].iloc[0].get('template_fk')
+            print template_fk  # 146
             self.eye_level_df = self.get_eye_level_shelves(
                 self.matches_from_data_provider, self.psdataprovider, template_fk)
+            # p_xlsx(df=self.eye_level_df, name='self.eye_level_df')
+            # p_xlsx(df=self.matches_from_data_provider, name='self.matches_from_data_provider')
+
             eye_level_shelves = self.eye_level_df[['scene_match_fk', 'shelf_number']].copy()
             eye_level_shelves = eye_level_shelves.rename(columns={"shelf_number": "eye_level_shelf_number"})
             self.matches_from_data_provider = pd.merge(self.matches_from_data_provider, eye_level_shelves,
@@ -146,6 +152,7 @@ class PngcnSceneKpis(object):
         self.own_manufacturer_fk = int(self.data_provider.own_manufacturer.param_value.values[0])
 
     def process_scene(self):
+        print 'run process_scene method'
         if self.location_type == 'Primary Shelf':
             self.calculate_variant_block()
             self.save_nlsos_to_custom_scif()
@@ -616,11 +623,113 @@ class PngcnSceneKpis(object):
 
         if psdataprovider:
             # blade & razor templates
-            template_fk_target = psdataprovider.get_kpi_external_targets(key_fields=["template_fk"], data_fields=[])
+            # template_fk_target = psdataprovider.get_kpi_external_targets(key_fields=["template_fk"], data_fields=[])
+            template_fk_target = psdataprovider.get_kpi_external_targets(
+                key_fields=["template_fk", "template2_fk", "template6_fk", "template7_fk"], data_fields=[])
+
+            print 'template_fk_target:'
+            print template_fk_target
+            # p_xlsx(df=template_fk_target, name='template_fk_target')
+
             blade_razor_template_fks = (
                 template_fk_target.iloc[0].get("template_fk", []) if len(template_fk_target) else [])
+            oral_template_fks = (
+                template_fk_target.iloc[0].get("template7_fk", []) if len(template_fk_target) else [])
+            laundry_razor_template_fks = (
+                template_fk_target.iloc[0].get("template6_fk", []) if len(template_fk_target) else [])
+            pcc_razor_template_fks = (
+                template_fk_target.iloc[0].get("template2_fk", []) if len(template_fk_target) else [])
         else:
             blade_razor_template_fks = []
+            oral_template_fks = []
+            laundry_razor_template_fks = []
+            pcc_razor_template_fks = []
+
+        # print oral_template_fks
+        # print laundry_razor_template_fks
+        # print pcc_razor_template_fks
+        # print blade_razor_template_fks
+
+        def _eye_level_shelves_new(total_shelf_number, template, df_bay):
+            total_shelf_number = int(total_shelf_number)
+            old_define = {5: [1, 2],
+                          6: [1, 2],
+                          7: [2, 3],
+                          8: [3, 4],
+                          9: [4, 5],
+                          10: [4, 5],
+                          'up10': [4, 5],
+                          }
+            new_define = {
+                'oral': {5: [1, 2],
+                         6: [1, 2],
+                         7: [1, 2],
+                         8: [2, 3],
+                         9: [3, 4],
+                         10: [3, 4],
+                         'up10': [4, 5],
+                         },
+                'laundry': {5: [1, 2],
+                            6: [2, 3],
+                            7: [3, 4],
+                            8: [4, 5],
+                            9: [5, 6],
+                            10: [5, 6],
+                            'up10': [5, 6],
+                            },
+                'pcc': {'s3': {5: [1, 2],
+                               6: [1, 2],
+                               7: [1, 2],
+                               8: [2, 3],
+                               9: [3, 4],
+                               10: [3, 4],
+                               'up10': [4, 5],
+                               },
+                        'b3': {5: [1, 2],
+                               6: [1, 2],
+                               7: [2, 3],
+                               8: [3, 4],
+                               9: [4, 5],
+                               10: [4, 5],
+                               'up10': [4, 5],
+                               },
+                        },
+            }
+
+            def pcc():
+                df_bay_shlef = df_bay[['shelf_number', 'stacking_layer']].groupby(['shelf_number'],
+                                                                                  as_index=False).max()
+                if df_bay_shlef.iloc[-3:, ]['stacking_layer'].isnull().all():
+                    selected_shelves = old_define[total_shelf_number]
+                else:
+                    if df_bay_shlef[df_bay_shlef['stacking_layer'] < 3]['stacking_layer'].count() >= 3:
+                        selected_shelves = new_define['pcc']['s3'][total_shelf_number]
+
+                    elif df_bay_shlef[df_bay_shlef['stacking_layer'] > 3]['stacking_layer'].count() >= 3:
+                        selected_shelves = new_define['pcc']['b3'][total_shelf_number]
+                    else:
+                        selected_shelves = old_define[total_shelf_number]
+                return selected_shelves
+
+            if template and int(template) in blade_razor_template_fks:
+                selected_shelves = [2, 3]
+            elif template and int(template) in oral_template_fks:
+                selected_shelves = new_define['oral'][total_shelf_number] if total_shelf_number > 10 else \
+                new_define['oral']['up10']
+                pass
+            elif template and int(template) in laundry_razor_template_fks:
+                selected_shelves = new_define['laundry'][total_shelf_number] if total_shelf_number > 10 else \
+                new_define['laundry']['up10']
+                pass
+            elif template and int(template) in pcc_razor_template_fks:
+                if total_shelf_number > 7:
+                    selected_shelves = pcc()
+                else:
+                    selected_shelves = old_define[total_shelf_number]
+            else:
+                selected_shelves = old_define[total_shelf_number] if total_shelf_number > 10 else old_define['up10']
+
+            return selected_shelves
 
         def _eye_level_shelves(total_shelf_number, template, blade_razor_templates):
             """ Return the eye level shelves, if the template of the scene is a blade&razor scene, always return
@@ -652,7 +761,9 @@ class PngcnSceneKpis(object):
         for i, bays_data in max_shelves.iterrows():
             bay_number = bays_data['bay_number']
             highest_shelf = bays_data['shelf_number']
-            shelves_to_choose = _eye_level_shelves(highest_shelf, template_fk, blade_razor_template_fks)
+            df_bay = df[df['bay_number'] == bay_number]
+            shelves_to_choose = _eye_level_shelves_new(highest_shelf, template_fk, df_bay)
+            # shelves_to_choose = _eye_level_shelves(highest_shelf, template_fk, blade_razor_template_fks)
             bay_df = df[(df['bay_number'] == bay_number) & (
                 df['shelf_number'].isin(shelves_to_choose))]
             final_bay_df = bay_df.copy()
@@ -660,6 +771,7 @@ class PngcnSceneKpis(object):
                 {shelves_to_choose[0]: 1, shelves_to_choose[1]: 2})
             bays_df.append(final_bay_df)
         final_df = pd.concat(bays_df)
+        # p_xlsx(df=final_df, name='final_df in fun')
         return final_df
 
     def _handle_rest_display(self):
@@ -1509,6 +1621,7 @@ class PngcnSceneKpis(object):
                 where C.name = '{}' and scene_fk = {};
             """.format('additional display', scene_id)
         df = pd.read_sql_query(query, self.project_connector.db)
+        p_xlsx(df=df, name='get_product_special_attribute_data(self, scene_id)')
         return df
 
     def _get_scene_category(self, scene_pk):
@@ -1522,4 +1635,3 @@ class PngcnSceneKpis(object):
             self.project_connector = PSProjectConnector(self.project_name, DbUsers.CalculationEng)
         df = pd.read_sql_query(query, self.project_connector.db)
         return None if df is None else df['scene_category'][0]
-
